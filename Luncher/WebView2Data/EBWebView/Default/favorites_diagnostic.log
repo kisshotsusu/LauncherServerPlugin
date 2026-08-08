@@ -1,0 +1,465 @@
+2026-08-06 10:00:10.568: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:00:10.568: [INFO] Profiles total count: 1
+2026-08-06 10:00:10.568: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=null
+2026-08-06 10:00:10.568: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:00:10.568: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:00:10.568: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:00:10.568: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:00:10.568: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:00:47.342: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:00:58.230: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:00:58.230: [INFO] Profiles total count: 1
+2026-08-06 10:00:58.230: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=null
+2026-08-06 10:00:58.230: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:00:58.230: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:00:58.230: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:00:58.230: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:00:58.230: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:02:50.707: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:03:20.808: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:03:20.808: [INFO] Profiles total count: 1
+2026-08-06 10:03:20.808: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=null
+2026-08-06 10:03:20.808: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:03:20.808: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:03:20.808: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:03:20.808: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:03:20.808: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:03:59.121: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:04:07.121: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:04:07.121: [INFO] Profiles total count: 1
+2026-08-06 10:04:07.121: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=null
+2026-08-06 10:04:07.121: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:04:07.121: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:04:07.121: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:04:07.121: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:04:07.121: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:05:11.277: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:05:29.001: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:05:29.001: [INFO] Profiles total count: 1
+2026-08-06 10:05:29.001: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=null
+2026-08-06 10:05:29.001: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:05:29.001: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:05:29.001: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:05:29.001: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:05:29.001: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:15:44.736: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:15:55.865: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:15:55.865: [INFO] Profiles total count: 1
+2026-08-06 10:15:55.865: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:15:55.865: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:15:55.865: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:15:55.865: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:15:55.865: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:15:55.865: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:15:55.865: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:17:33.715: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:17:47.326: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:17:47.326: [INFO] Profiles total count: 1
+2026-08-06 10:17:47.326: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:17:47.326: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:17:47.326: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:17:47.326: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:17:47.326: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:17:47.326: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:17:47.326: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:18:38.612: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:18:46.506: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:18:46.506: [INFO] Profiles total count: 1
+2026-08-06 10:18:46.507: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:18:46.507: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:18:46.507: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:18:46.507: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:18:46.507: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:18:46.507: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:18:46.507: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:19:57.775: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:20:05.814: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:20:05.814: [INFO] Profiles total count: 1
+2026-08-06 10:20:05.814: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:20:05.814: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:20:05.814: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:20:05.814: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:20:05.814: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:20:05.814: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:20:05.814: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:21:20.907: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:21:32.836: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:21:32.836: [INFO] Profiles total count: 1
+2026-08-06 10:21:32.836: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:21:32.836: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:21:32.836: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:21:32.836: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:21:32.836: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:21:32.836: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:21:32.837: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:21:52.882: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:22:00.877: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:22:00.877: [INFO] Profiles total count: 1
+2026-08-06 10:22:00.877: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:22:00.877: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:22:00.877: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:22:00.877: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:22:00.877: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:22:00.877: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:22:00.877: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:22:17.820: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:22:32.652: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:22:32.652: [INFO] Profiles total count: 1
+2026-08-06 10:22:32.652: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:22:32.652: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:22:32.652: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:10:53.994Z
+2026-08-06 10:22:32.652: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:22:32.652: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:22:32.652: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:22:32.652: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:34:55.053: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 10:44:19.687: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:44:19.687: [INFO] Profiles total count: 1
+2026-08-06 10:44:19.688: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:34:50.240Z
+2026-08-06 10:44:19.688: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-06 10:44:19.688: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T10:34:50.240Z
+2026-08-06 10:44:19.688: [INFO] OnDoneLoading sync enabled: 0
+2026-08-06 10:44:19.688: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-06 10:44:19.688: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-06 10:44:19.688: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-06 11:52:05.190: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 03:35:37.224: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 03:35:37.224: [INFO] Profiles total count: 1
+2026-08-07 03:35:37.224: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T11:51:46.988Z
+2026-08-07 03:35:37.224: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 03:35:37.224: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-06T11:51:46.988Z
+2026-08-07 03:35:37.224: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 03:35:37.224: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 03:35:37.224: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 03:35:37.224: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 03:39:27.548: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 03:49:27.370: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 03:49:27.370: [INFO] Profiles total count: 1
+2026-08-07 03:49:27.370: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T03:39:25.222Z
+2026-08-07 03:49:27.370: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 03:49:27.370: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T03:39:25.222Z
+2026-08-07 03:49:27.370: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 03:49:27.370: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 03:49:27.370: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 03:49:27.370: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 03:59:10.530: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:00:33.329: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:00:33.329: [INFO] Profiles total count: 1
+2026-08-07 04:00:33.329: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T03:55:51.744Z
+2026-08-07 04:00:33.329: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:00:33.329: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T03:55:51.744Z
+2026-08-07 04:00:33.329: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:00:33.329: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:00:33.329: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:00:33.329: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:28:59.381: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:29:15.998: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:29:15.998: [INFO] Profiles total count: 1
+2026-08-07 04:29:15.998: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:28:58.184Z
+2026-08-07 04:29:15.998: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:29:15.998: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:28:58.184Z
+2026-08-07 04:29:15.998: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:29:15.998: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:29:15.998: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:29:15.998: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:30:04.463: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:31:10.909: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:31:10.909: [INFO] Profiles total count: 1
+2026-08-07 04:31:10.909: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:30:04.306Z
+2026-08-07 04:31:10.909: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:31:10.909: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:30:04.306Z
+2026-08-07 04:31:10.909: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:31:10.909: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:31:10.909: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:31:10.909: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:31:50.564: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:32:08.267: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:32:08.267: [INFO] Profiles total count: 1
+2026-08-07 04:32:08.267: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:31:44.396Z
+2026-08-07 04:32:08.267: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:32:08.267: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:31:44.396Z
+2026-08-07 04:32:08.267: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:32:08.267: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:32:08.267: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:32:08.267: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:34:43.468: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:38:40.060: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:38:40.060: [INFO] Profiles total count: 1
+2026-08-07 04:38:40.060: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:34:43.267Z
+2026-08-07 04:38:40.060: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:38:40.060: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:34:43.267Z
+2026-08-07 04:38:40.060: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:38:40.060: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:38:40.060: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:38:40.060: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:39:38.345: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:41:33.636: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:41:33.636: [INFO] Profiles total count: 1
+2026-08-07 04:41:33.636: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:39:36.646Z
+2026-08-07 04:41:33.636: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:41:33.636: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:39:36.646Z
+2026-08-07 04:41:33.636: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:41:33.636: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:41:33.636: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:41:33.636: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:46:31.215: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:47:53.589: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:47:53.589: [INFO] Profiles total count: 1
+2026-08-07 04:47:53.589: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:45:33.114Z
+2026-08-07 04:47:53.589: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:47:53.589: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:45:33.114Z
+2026-08-07 04:47:53.589: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:47:53.589: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:47:53.589: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:47:53.589: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:49:01.681: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:49:09.186: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:49:09.186: [INFO] Profiles total count: 1
+2026-08-07 04:49:09.186: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:47:55.650Z
+2026-08-07 04:49:09.186: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:49:09.186: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:47:55.650Z
+2026-08-07 04:49:09.186: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:49:09.186: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:49:09.186: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:49:09.186: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:50:39.643: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:50:48.128: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:50:48.128: [INFO] Profiles total count: 1
+2026-08-07 04:50:48.128: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:49:16.062Z
+2026-08-07 04:50:48.128: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:50:48.128: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:49:16.062Z
+2026-08-07 04:50:48.128: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:50:48.128: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:50:48.128: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:50:48.128: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:51:13.984: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:51:22.449: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:51:22.449: [INFO] Profiles total count: 1
+2026-08-07 04:51:22.449: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:51:08.980Z
+2026-08-07 04:51:22.449: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:51:22.449: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:51:08.980Z
+2026-08-07 04:51:22.449: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:51:22.449: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:51:22.449: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:51:22.449: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:51:56.605: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:52:29.706: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:52:29.706: [INFO] Profiles total count: 1
+2026-08-07 04:52:29.706: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:51:08.980Z
+2026-08-07 04:52:29.706: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:52:29.706: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:51:08.980Z
+2026-08-07 04:52:29.706: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:52:29.706: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:52:29.706: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:52:29.706: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:52:55.487: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:53:23.937: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:53:23.937: [INFO] Profiles total count: 1
+2026-08-07 04:53:23.937: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:51:08.980Z
+2026-08-07 04:53:23.937: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:53:23.937: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:51:08.980Z
+2026-08-07 04:53:23.937: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:53:23.937: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:53:23.937: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:53:23.937: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:55:13.011: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:55:50.110: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:55:50.110: [INFO] Profiles total count: 1
+2026-08-07 04:55:50.110: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:55:01.171Z
+2026-08-07 04:55:50.110: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 04:55:50.110: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:55:01.171Z
+2026-08-07 04:55:50.110: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 04:55:50.110: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 04:55:50.110: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 04:55:50.110: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 04:56:40.957: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:42:47.433: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:42:47.433: [INFO] Profiles total count: 1
+2026-08-07 07:42:47.433: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:56:19.894Z
+2026-08-07 07:42:47.433: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:42:47.433: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T04:56:19.894Z
+2026-08-07 07:42:47.433: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:42:47.433: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:42:47.433: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:42:47.433: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:42:50.508: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:43:51.102: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:43:51.102: [INFO] Profiles total count: 1
+2026-08-07 07:43:51.102: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:42:50.354Z
+2026-08-07 07:43:51.102: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:43:51.102: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:42:50.354Z
+2026-08-07 07:43:51.102: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:43:51.102: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:43:51.102: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:43:51.102: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:44:02.453: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:44:14.581: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:44:14.581: [INFO] Profiles total count: 1
+2026-08-07 07:44:14.581: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:43:57.763Z
+2026-08-07 07:44:14.581: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:44:14.581: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:43:57.763Z
+2026-08-07 07:44:14.581: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:44:14.581: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:44:14.581: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:44:14.581: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:44:41.717: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:44:54.825: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:44:54.825: [INFO] Profiles total count: 1
+2026-08-07 07:44:54.825: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:44:41.560Z
+2026-08-07 07:44:54.825: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:44:54.825: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:44:41.560Z
+2026-08-07 07:44:54.825: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:44:54.825: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:44:54.825: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:44:54.825: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:45:21.201: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:46:03.445: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:46:03.445: [INFO] Profiles total count: 1
+2026-08-07 07:46:03.445: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:45:20.904Z
+2026-08-07 07:46:03.445: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:46:03.445: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:45:20.904Z
+2026-08-07 07:46:03.445: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:46:03.445: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:46:03.445: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:46:03.445: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:46:45.240: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:46:56.642: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:46:56.642: [INFO] Profiles total count: 1
+2026-08-07 07:46:56.642: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:46:45.118Z
+2026-08-07 07:46:56.642: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:46:56.642: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:46:45.118Z
+2026-08-07 07:46:56.642: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:46:56.642: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:46:56.642: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:46:56.642: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:47:27.920: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:47:29.133: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:47:29.133: [INFO] Profiles total count: 1
+2026-08-07 07:47:29.133: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:47:26.736Z
+2026-08-07 07:47:29.133: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:47:29.133: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:47:26.736Z
+2026-08-07 07:47:29.133: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:47:29.133: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:47:29.133: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:47:29.133: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:47:38.490: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:47:47.107: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:47:47.107: [INFO] Profiles total count: 1
+2026-08-07 07:47:47.107: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:47:31.734Z
+2026-08-07 07:47:47.107: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:47:47.107: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:47:31.734Z
+2026-08-07 07:47:47.107: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:47:47.107: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:47:47.107: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:47:47.107: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:47:56.024: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:48:01.900: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:48:01.900: [INFO] Profiles total count: 1
+2026-08-07 07:48:01.900: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:47:49.999Z
+2026-08-07 07:48:01.900: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 07:48:01.900: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:47:49.999Z
+2026-08-07 07:48:01.900: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 07:48:01.900: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 07:48:01.900: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 07:48:01.900: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 07:48:28.593: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:04:28.064: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:04:28.064: [INFO] Profiles total count: 1
+2026-08-07 08:04:28.064: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:48:23.222Z
+2026-08-07 08:04:28.064: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:04:28.064: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T07:48:23.222Z
+2026-08-07 08:04:28.064: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 08:04:28.064: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 08:04:28.064: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 08:04:28.064: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:15:16.741: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:15:25.514: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:15:25.514: [INFO] Profiles total count: 1
+2026-08-07 08:15:25.514: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:15:15.684Z
+2026-08-07 08:15:25.514: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:15:25.514: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:15:15.684Z
+2026-08-07 08:15:25.514: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 08:15:25.514: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 08:15:25.514: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 08:15:25.514: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:15:49.927: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:15:51.604: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:15:51.604: [INFO] Profiles total count: 1
+2026-08-07 08:15:51.604: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:15:47.111Z
+2026-08-07 08:15:51.604: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:15:51.604: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:15:47.111Z
+2026-08-07 08:15:51.604: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 08:15:51.604: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 08:15:51.604: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 08:15:51.604: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:21:09.906: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:21:10.864: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:21:10.864: [INFO] Profiles total count: 1
+2026-08-07 08:21:10.864: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:19:55.487Z
+2026-08-07 08:21:10.864: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:21:10.864: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:19:55.487Z
+2026-08-07 08:21:10.864: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 08:21:10.864: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 08:21:10.864: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 08:21:10.864: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:25:27.721: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:26:08.073: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:26:08.073: [INFO] Profiles total count: 1
+2026-08-07 08:26:08.073: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:21:56.350Z
+2026-08-07 08:26:08.073: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:26:08.073: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:21:56.350Z
+2026-08-07 08:26:08.073: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 08:26:08.073: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 08:26:08.073: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 08:26:08.073: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:29:59.056: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:32:37.486: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:32:37.486: [INFO] Profiles total count: 1
+2026-08-07 08:32:37.486: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:29:58.931Z
+2026-08-07 08:32:37.486: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:32:37.486: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:29:58.931Z
+2026-08-07 08:32:37.486: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 08:32:37.486: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 08:32:37.486: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 08:32:37.486: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:33:03.429: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:33:04.558: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:33:04.558: [INFO] Profiles total count: 1
+2026-08-07 08:33:04.558: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:32:44.317Z
+2026-08-07 08:33:04.558: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 08:33:04.558: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:32:44.317Z
+2026-08-07 08:33:04.558: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 08:33:04.558: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 08:33:04.558: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 08:33:04.558: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 08:37:43.647: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 09:24:23.227: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 09:24:23.227: [INFO] Profiles total count: 1
+2026-08-07 09:24:23.227: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:37:38.705Z
+2026-08-07 09:24:23.227: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 09:24:23.227: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T08:37:38.705Z
+2026-08-07 09:24:23.227: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 09:24:23.227: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 09:24:23.227: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 09:24:23.227: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 09:25:32.919: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 09:25:34.082: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 09:25:34.082: [INFO] Profiles total count: 1
+2026-08-07 09:25:34.082: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T09:25:28.353Z
+2026-08-07 09:25:34.082: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 09:25:34.082: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T09:25:28.353Z
+2026-08-07 09:25:34.082: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 09:25:34.082: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 09:25:34.082: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 09:25:34.082: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 09:26:00.057: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 09:26:01.179: [INFO] CurrentProfilePath: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 09:26:01.179: [INFO] Profiles total count: 1
+2026-08-07 09:26:01.179: [INFO] Profile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T09:25:35.220Z
+2026-08-07 09:26:01.179: [INFO] LastUsedProfileDir: D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default
+2026-08-07 09:26:01.179: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\test\CodeBuild\Luncher\WebView2Data\EBWebView\Default lastActive=2026-08-07T09:25:35.220Z
+2026-08-07 09:26:01.179: [INFO] OnDoneLoading sync enabled: 0
+2026-08-07 09:26:01.179: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-07 09:26:01.179: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-07 09:26:01.179: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-07 09:28:58.935: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1

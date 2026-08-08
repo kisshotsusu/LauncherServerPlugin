@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudUpdate 管理控制台</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161c27; --panel2:#1c2432; --line:#2a3444;
+    --text:#e6edf6; --dim:#8b9bb0; --accent:#4da3ff; --accent2:#38d996;
+    --warn:#ffb454; --danger:#ff6b6b; --radius:12px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Microsoft YaHei","Segoe UI",sans-serif; background:var(--bg); color:var(--text); font-size:14px; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 26px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:10; }
+  header h1 { font-size:17px; margin:0; }
+  .badge { border-radius:20px; padding:3px 12px; font-size:12px; font-weight:700; }
+  .badge.online { background:#123a26; color:var(--accent2); }
+  .badge.offline { background:#3a1a1a; color:var(--danger); }
+  .spacer { flex:1; }
+  main { max-width:1200px; margin:0 auto; padding:22px 26px 80px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; }
+  .card h3 { margin:0 0 8px; font-size:12px; color:var(--dim); font-weight:600; letter-spacing:.5px; }
+  .card .value { font-size:22px; font-weight:700; }
+  .card .sub { font-size:12px; color:var(--dim); margin-top:6px; word-break:break-all; }
+  .section { margin-top:26px; }
+  .section > h2 { font-size:15px; margin:0 0 10px; display:flex; align-items:center; gap:10px; }
+  .section > h2 .hint { font-size:12px; color:var(--dim); font-weight:400; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--dim); font-weight:600; white-space:nowrap; }
+  tr:hover td { background:var(--panel2); }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  button { background:var(--accent); color:#06121f; border:none; font-weight:700; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+  button:hover { filter:brightness(1.1); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
+  button.green { background:var(--accent2); color:#061c12; }
+  button.red { background:transparent; color:var(--danger); border:1px solid var(--danger); }
+  input,select { background:#0b1119; border:1px solid var(--line); color:var(--text); padding:8px 10px; border-radius:8px; font-size:13px; outline:none; }
+  input:focus,select:focus { border-color:var(--accent); }
+  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:14px 0 6px; }
+  .toolbar label { font-size:12px; color:var(--dim); }
+  #toast { position:fixed; right:20px; top:70px; z-index:99; display:flex; flex-direction:column; gap:8px; }
+  .toast { padding:10px 16px; border-radius:10px; font-size:13px; background:var(--panel2); border:1px solid var(--line); box-shadow:0 6px 24px rgba(0,0,0,.4); max-width:420px; white-space:pre-wrap; }
+  .toast.ok { border-color:var(--accent2); color:var(--accent2); }
+  .toast.err { border-color:var(--danger); color:var(--danger); }
+  .muted { color:var(--dim); font-size:12px; }
+  code,pre { background:#0b1018; border:1px solid var(--line); border-radius:8px; padding:2px 6px; font-size:12px; color:#9fd0ff; }
+  pre { padding:12px; overflow:auto; max-height:60vh; white-space:pre-wrap; word-break:break-all; }
+  .empty { color:var(--dim); padding:22px; text-align:center; }
+  .breadcrumb { font-size:13px; margin:8px 0; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .breadcrumb a { color:var(--accent); }
+  .btn-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .modal-mask.show { display:flex; }
+  .modal { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); max-width:900px; width:100%; max-height:85vh; display:flex; flex-direction:column; }
+  .modal-head { display:flex; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .modal-head h3 { margin:0; font-size:14px; flex:1; }
+  .modal-body { padding:14px 16px; overflow:auto; }
+  .modal-body table { font-size:12px; }
+  .file-row { display:flex; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); }
+  .file-row .fname { flex:1; word-break:break-all; }
+  .progress { height:6px; background:#0b1018; border-radius:6px; overflow:hidden; margin-top:8px; }
+  .progress > div { height:100%; background:var(--accent2); width:0; transition:width .2s; }
+  .tabs { display:flex; gap:6px; border-bottom:1px solid var(--line); margin-bottom:14px; }
+  .tabs button { background:transparent; color:var(--dim); border:none; border-bottom:2px solid transparent; border-radius:0; padding:9px 14px; font-weight:600; }
+  .tabs button.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .hidden { display:none; }
+  .switch { position:relative; width:38px; height:20px; display:inline-block; vertical-align:middle; }
+  .switch input { display:none; }
+  .switch .track { position:absolute; inset:0; background:#0b1019; border:1px solid var(--line); border-radius:20px; transition:.2s; cursor:pointer; }
+  .switch .track::after { content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--dim); transition:.2s; }
+  .switch input:checked + .track { background:var(--accent2); border-color:var(--accent2); }
+  .switch input:checked + .track::after { left:20px; background:#fff; }
+  .switch input:disabled + .track { opacity:.4; cursor:not-allowed; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CloudUpdate 管理控制台</h1>
+  <span class="badge offline" id="serverBadge">连接中...</span>
+  <span class="muted" id="serverTime"></span>
+  <div class="spacer"></div>
+  <label class="muted">管理员令牌</label>
+  <input type="password" id="tokenInput" placeholder="留空则不需要" style="width:180px" onchange="saveToken()">
+</header>
+
+<main>
+  <div class="grid" id="statusGrid">
+    <div class="card"><h3>项目</h3><div class="value" id="stProject">-</div><div class="sub" id="stPlatforms"></div></div>
+    <div class="card"><h3>当前版本</h3><div class="value" id="stCurrent">-</div><div class="sub" id="stChain"></div></div>
+    <div class="card"><h3>版本数量</h3><div class="value" id="stCount">-</div><div class="sub" id="stHotpatcher"></div></div>
+    <div class="card"><h3>完整性清单</h3><div class="value" id="stManifest">-</div><div class="sub" id="stManifestSub"></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button onclick="loadAll()">刷新</button>
+    <button class="ghost" onclick="reindex()">重建版本索引</button>
+    <button class="ghost" onclick="importHotPatcher()" id="btnImport">一键导入 HotPatcher</button>
+    <span class="muted" id="manifestLinks"></span>
+  </div>
+
+  <div class="tabs">
+    <button class="active" data-tab="versions" onclick="switchTab('versions')">版本管理</button>
+    <button data-tab="files" onclick="switchTab('files')">云端文件</button>
+    <button data-tab="manifest" onclick="switchTab('manifest')">完整性清单</button>
+    <button data-tab="control" onclick="switchTab('control')">服务器控制</button>
+    <button data-tab="launcher" onclick="switchTab('launcher')">启动器管理</button>
+    <button data-tab="settings" onclick="switchTab('settings')">服务器设置</button>
+    <button data-tab="api" onclick="switchTab('api')">API 说明</button>
+  </div>
+
+  <div id="tab-versions" class="tab-panel">
+    <div class="toolbar">
+      <label>平台</label>
+      <select id="managePlatform" onchange="state.managePlatform=this.value;renderVersions()"></select>
+      <button class="ghost" onclick="setAllVersions(true)">全部开放</button>
+      <button class="ghost" onclick="setAllVersions(false)">全部关闭</button>
+      <span class="muted" id="enabledHint"></span>
+      <span class="spacer"></span>
+      <button class="green" onclick="openUploadVersion()">上传新版本文件</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>开放下载</th><th>版本</th><th>基础版本</th><th>时间</th><th>类型</th><th>变更/删除资产</th><th>更新包大小</th><th>操作</th>
+      </tr></thead>
+      <tbody id="versionsBody"><tr><td colspan="8" class="empty">加载中...</td></tr></tbody>
+    </table>
+    <div class="muted" style="margin-top:10px">“开放下载”控制客户端可见与可下载的版本（客户端 /api/versions 只返回开放的版本）；未做过任何设置时默认全部开放。</div>
+  </div>
+
+  <div id="tab-files" class="tab-panel hidden">
+    <div class="toolbar">
+      <label>平台</label>
+      <select id="filePlatform" onchange="state.platform=this.value;state.filePath='';refreshBaseVersionSelect();loadFiles()"></select>
+      <label>基础包版本</label>
+      <select id="fileBaseVersion" onchange="state.baseVersion=this.value;state.filePath='';loadFiles()"></select>
+      <button class="green" onclick="openUploadPackage()">上传到当前目录</button>
+      <span class="muted">上传的文件会进入打包目录，成为客户端修复/下载的数据源</span>
+    </div>
+    <div class="breadcrumb" id="fileBreadcrumb"></div>
+    <table>
+      <thead><tr><th>名称</th><th>类型</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead>
+      <tbody id="filesBody"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
+    </table>
+  </div>
+
+  <div id="tab-manifest" class="tab-panel hidden">
+    <div class="card" id="manifestCard"></div>
+  </div>
+
+  <div id="tab-control" class="tab-panel hidden">
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
+      <div class="card"><h3>进程 PID</h3><div class="value" id="ctlPid">-</div><div class="sub" id="ctlPython"></div></div>
+      <div class="card"><h3>运行时长</h3><div class="value" id="ctlUptime">-</div><div class="sub" id="ctlStarted"></div></div>
+      <div class="card"><h3>监听地址</h3><div class="value" id="ctlListen">-</div><div class="sub" id="ctlConfigPath"></div></div>
+      <div class="card"><h3>数据目录</h3><div class="value" id="ctlDataDir" style="font-size:15px">-</div><div class="sub" id="ctlVersionLib"></div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>控制操作</h3>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="red" onclick="restartServer()">重启服务器</button>
+        <button class="ghost" onclick="reindex()">重建版本索引</button>
+        <button class="ghost" onclick="regenerateAllManifests()">重新生成全部完整性清单</button>
+        <button class="ghost" onclick="loadAll()">刷新状态</button>
+      </div>
+      <div class="muted" style="margin-top:10px">重启会先拉起新进程再关闭旧进程（约 3 秒），页面会自动刷新；监听地址/端口等配置在重启后生效。</div>
+    </div>
+  </div>
+
+  <div id="tab-launcher" class="tab-panel hidden">
+    <div class="card">
+      <h3>启动器版本（历史管理）</h3>
+      <div class="muted">像游戏基础包一样维护“版本文件夹”历史；发布时把所选文件夹中的 Launcher.exe / SelfUpdater.exe / ui/ 快照到 data/launcher，客户端启动自检自动升级。客户端只需 Launcher.exe，界面资源与 SelfUpdater 首次运行时会自动从服务器拉取到 app/ 子目录。当前发布：<span id="launcherVerSub" style="color:var(--accent2)">-</span></div>
+      <table style="margin-top:10px">
+        <thead><tr><th>版本</th><th>文件夹</th><th>文件</th><th>Launcher.exe 大小</th><th>操作</th></tr></thead>
+        <tbody id="launcherVersionsBody"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
+      </table>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+        <input id="addLauncherVersion" placeholder="版本号 如 1.1.0" style="width:130px">
+        <input id="addLauncherDir" placeholder="版本文件夹路径，如 D:/Release/Launcher_1.1.0（须含 Launcher.exe）" style="flex:1;min-width:280px">
+        <button class="green" onclick="addLauncherVersion()">添加 / 更新版本</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+        <label class="muted">发布说明（可选）</label>
+        <input id="setLauncherNote" placeholder="写入当前发布版本" style="flex:1;min-width:240px">
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>背景序列帧（指定文件夹）</h3>
+      <div class="muted">选择服务器上的背景图文件夹（PNG 序列帧，按文件名排序），客户端启动自检自动下载新版背景。当前版本：<span id="bgVersion" style="color:var(--accent2)">-</span> · <span id="bgInfo">-</span></div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+        <input id="setBgDir" placeholder="背景文件夹路径，如 D:/LauncherAssets/Background" style="flex:1;min-width:280px">
+        <button class="green" onclick="saveBgDir()">保存背景目录</button>
+        <button class="red" onclick="clearBgDir()">清除配置</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+        <label class="muted">序列帧 FPS</label>
+        <input id="setBgFps" type="number" min="1" style="width:90px">
+        <button class="ghost" onclick="saveBgFps()">保存 FPS</button>
+      </div>
+      <div id="bgFileList" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div id="tab-api" class="tab-panel hidden">
+    <div class="card" style="line-height:1.9">
+      <div><strong>状态</strong>　<code>GET /api/status</code></div>
+      <div><strong>版本索引</strong>　<code>GET /api/versions</code></div>
+      <div><strong>更新描述</strong>　<code>GET /api/version/&lt;id&gt;</code></div>
+      <div><strong>完整性清单</strong>　<code>GET /api/manifest.json?platform=Windows</code></div>
+      <div><strong>云端文件浏览</strong>　<code>GET /api/files?platform=Windows&amp;path=CodeBuild/Content</code></div>
+      <div><strong>云端文件下载</strong>　<code>GET /files/packages/&lt;平台&gt;/&lt;相对路径&gt;</code></div>
+      <div><strong>更新包下载</strong>　<code>GET /files/versions/&lt;版本&gt;/&lt;文件名&gt;</code></div>
+      <div><strong>重建索引</strong>　<code>POST /api/versions/reindex</code></div>
+      <div><strong>重新生成清单</strong>　<code>POST /api/manifest/generate?platform=Windows</code></div>
+      <div><strong>上传文件</strong>　<code>POST /api/upload?target=package|version&amp;platform=Windows&amp;path=&amp;versionId=</code>（multipart，字段名 file）</div>
+      <div><strong>一键导入</strong>　<code>POST /api/import/hotpatcher</code></div>
+      <div><strong>开放版本（查询）</strong>　<code>GET /api/enabled_versions</code></div>
+      <div><strong>开放版本（设置）</strong>　<code>POST /api/enabled_versions</code>　<code>{platform, versions:[...]}</code>，客户端仅可见列表内版本</div>
+      <div><strong>删除版本</strong>　<code>DELETE /api/version/&lt;id&gt;</code>（移入 data/trash 回收站）</div>
+      <div><strong>重启服务器</strong>　<code>POST /api/server/restart</code></div>
+      <div><strong>启动器历史版本</strong>　<code>GET /api/launcher/versions</code>／<code>POST {version, dir}</code>／<code>DELETE /api/launcher/versions/&lt;版本&gt;</code></div>
+      <div><strong>启动器版本发布</strong>　<code>POST /api/launcher/publish</code>　<code>{version, note}</code>（从版本文件夹快照 exe）</div>
+      <div><strong>背景资源清单</strong>　<code>GET /api/launcher/background</code>（客户端自检用，指定文件夹）</div>
+      <div><strong>背景目录设置</strong>　<code>POST /api/launcher/background/dir</code>　<code>{dir}</code></div>
+      <div><strong>背景 FPS / 清除配置</strong>　<code>POST /api/launcher/background</code>　<code>{frameFps}</code>／<code>POST /api/launcher/background/clear</code></div>
+      <div class="muted" style="margin-top:8px">配置了 admin_token 时，管理操作需携带 <code>Authorization: Bearer &lt;token&gt;</code>。</div>
+    </div>
+  </div>
+
+  <div id="tab-settings" class="tab-panel hidden">
+    <div class="card">
+      <h3>服务器设置（保存后立即生效并写入 config.json；主机/端口需重启生效）</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+        <div>
+          <label class="muted">项目名</label>
+          <input id="setProject" style="width:100%;margin-top:4px">
+        </div>
+        <div>
+          <label class="muted">平台（逗号分隔）</label>
+          <input id="setPlatforms" style="width:100%;margin-top:4px">
+        </div>
+        <div>
+          <label class="muted">监听地址</label>
+          <input id="setHost" style="width:100%;margin-top:4px" placeholder="0.0.0.0（重启生效）">
+        </div>
+        <div>
+          <label class="muted">监听端口</label>
+          <input id="setPort" type="number" style="width:100%;margin-top:4px" placeholder="8710（重启生效）">
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="muted">数据目录（清单缓存 / 索引 / 回收站）</label>
+          <input id="setDataDir" style="width:100%;margin-top:4px">
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="muted">版本文件库位置（存储导入的版本 JSON / Pak / 描述文件）</label>
+          <input id="setVersionLib" style="width:100%;margin-top:4px" placeholder="data/versions 或绝对路径">
+        </div>
+        <div id="setPackageRoots" style="grid-column:1/-1"></div>
+        <div style="grid-column:1/-1">
+          <label class="muted">补丁包位置（HotPatcher 产物目录，一键导入的数据源）</label>
+          <input id="setPatchSource" style="width:100%;margin-top:4px" placeholder="例如 D:/test/CodeBuild/Saved/HotPatcher">
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="muted">版本顺序（逗号分隔，用于更新链排序）</label>
+          <input id="setOrder" style="width:100%;margin-top:4px" placeholder="1.0,1.2,1.3,1.4">
+        </div>
+        <div>
+          <label class="muted">清单哈希算法</label>
+          <select id="setHash" style="width:100%;margin-top:4px">
+            <option value="md5">MD5</option>
+            <option value="sha1">SHA1</option>
+          </select>
+        </div>
+        <div>
+          <label class="muted">上传大小上限（MB）</label>
+          <input id="setMaxUpload" type="number" style="width:100%;margin-top:4px">
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="muted">清单排除模式（每行一个，fnmatch 风格）</label>
+          <textarea id="setExcludes" rows="4" style="width:100%;margin-top:4px;font-family:Consolas,monospace;font-size:12px"></textarea>
+        </div>
+        <div>
+          <label class="muted">管理员令牌（留空保持当前；填新值则覆盖）</label>
+          <input id="setToken" type="password" style="width:100%;margin-top:4px" placeholder="已设置: 是/否">
+          <label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="setClearToken"> 清除当前令牌</label>
+        </div>
+        <div>
+          <label class="muted">&nbsp;</label>
+          <div class="btn-row" style="margin-top:4px">
+            <button class="green" onclick="saveSettings()">保存设置</button>
+            <button class="red" onclick="restartServer()">重启服务器</button>
+          </div>
+          <span class="muted" id="settingsHint"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<div class="modal-mask" id="modalMask" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modalTitle">详情</h3><button class="ghost" onclick="closeModal()">关闭</button></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const state = { token: localStorage.getItem('cu_token') || '', status: null, versions: [], files: [], filePath: '', platform: '', baseVersion: '', baseContainers: {}, enabledMap: {}, managePlatform: '', uptimeBase: 0, uptimeAt: 0, launcherVer: null, launcherVersions: [], launcherPublished: '', bg: null };
+const $ = id => document.getElementById(id);
+
+function saveToken() { state.token = $('tokenInput').value.trim(); localStorage.setItem('cu_token', state.token); toast('令牌已保存', 'ok'); }
+
+function headers(json) {
+  const h = {};
+  if (state.token) h['Authorization'] = 'Bearer ' + state.token;
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+}
+
+async function api(url, opts = {}) {
+  const resp = await fetch(url, opts);
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+  if (!resp.ok) throw new Error((data && data.error) || ('HTTP ' + resp.status));
+  return data;
+}
+
+function toast(text, type) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || '');
+  el.textContent = text;
+  $('toast').appendChild(el);
+  setTimeout(() => el.remove(), type === 'err' ? 8000 : 5000);
+}
+
+function fmtSize(bytes) {
+  if (!bytes && bytes !== 0) return '-';
+  const u = ['B','KB','MB','GB','TB']; let i = 0, v = bytes;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return v.toFixed(1) + ' ' + u[i];
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+  $('tab-' + name).classList.remove('hidden');
+}
+
+async function loadAll() {
+  try {
+    const [status, index, config] = await Promise.all([api('/api/status'), api('/api/versions?all=1'), api('/api/config')]);
+    state.status = status;
+    state.versions = index.versions || [];
+    state.config = config.config || {};
+    state.enabledMap = status.enabledVersions || config.enabledVersions || {};
+    state.uptimeBase = status.uptimeSeconds || 0;
+    state.uptimeAt = Date.now();
+    $('serverBadge').textContent = '在线';
+    $('serverBadge').className = 'badge online';
+    $('serverTime').textContent = status.serverTime || '';
+    $('stProject').textContent = status.project || '-';
+    $('stPlatforms').textContent = (status.platforms || []).join(', ');
+    $('stCurrent').textContent = index.current || '-';
+    $('stChain').textContent = (index.updateChain || []).join(' → ') || '无更新链';
+    $('stCount').textContent = status.versionCount ?? '-';
+    $('stHotpatcher').textContent = (config.hotpatcherSource ? 'HotPatcher 源已配置' : '未配置 HotPatcher 源');
+    const ms = status.manifests || {};
+    const keys = Object.keys(ms);
+    if (keys.length) {
+      const items = ms[keys[0]] || [];
+      const m = items[items.length - 1] || {};
+      $('stManifest').textContent = m.exists ? m.fileCount + ' 个文件' : '未生成';
+      $('stManifestSub').textContent = m.exists ? ('基础包 ' + (m.baseVersion || '') + ' · ' + (m.generatedAt || '')) : '';
+      $('manifestLinks').innerHTML = keys.flatMap(p => (ms[p] || []).filter(x => x.exists).map(x =>
+        `<a href="/api/manifest.json?platform=${p}&baseVersion=${x.baseVersion}">${p} ${x.baseVersion} 清单</a>`)).join(' · ');
+    }
+    if (state.token && !status.authRequired) toast('服务器未启用令牌，已忽略本地令牌', 'err');
+    initManagePlatform();
+    renderVersions();
+    renderControl();
+    try { state.launcherVer = await api('/api/launcher/version'); } catch (e) { state.launcherVer = null; }
+    try {
+      const lv = await api('/api/launcher/versions');
+      state.launcherVersions = lv.versions || [];
+      state.launcherPublished = lv.published || '';
+    } catch (e) { state.launcherVersions = []; state.launcherPublished = ''; }
+    try { state.bg = await api('/api/launcher/background'); } catch (e) { state.bg = null; }
+    renderLauncherTab();
+    initFilePlatform();
+    renderManifestTab();
+    renderSettings();
+  } catch (e) {
+    $('serverBadge').textContent = '离线';
+    $('serverBadge').className = 'badge offline';
+    toast('加载失败：' + e.message, 'err');
+  }
+}
+
+function renderVersions() {
+  const body = $('versionsBody');
+  const list = state.versions.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  if (!list.length) { body.innerHTML = '<tr><td colspan="8" class="empty">暂无版本，请先导入 HotPatcher 产物</td></tr>'; return; }
+  const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
+  const configured = state.enabledMap[platform] !== undefined;
+  const effective = configured ? state.enabledMap[platform].slice() : list.map(v => v.versionId);
+  $('enabledHint').textContent = configured
+    ? '已开放 ' + effective.length + ' / ' + list.length + ' 个版本'
+    : '未设置开放列表，默认全部开放';
+  body.innerHTML = list.map(v => `
+    <tr>
+      <td>
+        <label class="switch" title="${effective.includes(v.versionId) ? '点击关闭开放' : '点击开放下载'}">
+          <input type="checkbox" ${effective.includes(v.versionId) ? 'checked' : ''} onchange="toggleVersion('${esc(v.versionId)}', this.checked)">
+          <span class="track"></span>
+        </label>
+      </td>
+      <td><strong>${esc(v.versionId)}</strong></td>
+      <td>${esc(v.baseVersionId) || '-'}</td>
+      <td>${esc(v.date) || '-'}</td>
+      <td>${v.type === 'full' ? '<span style="color:var(--accent2)">完整包</span>' : '补丁包'}</td>
+      <td>${v.changedAssetCount} / ${v.deletedAssetCount}</td>
+      <td>${fmtSize(v.totalSizeBytes)}</td>
+      <td class="btn-row">
+        <button class="ghost" onclick="showVersion('${esc(v.versionId)}')">详情</button>
+        <button class="red" onclick="deleteVersion('${esc(v.versionId)}')">删除</button>
+      </td>
+    </tr>`).join('');
+}
+
+function initManagePlatform() {
+  const platforms = (state.status && state.status.platforms) || [];
+  const sel = $('managePlatform');
+  sel.innerHTML = platforms.map(p => `<option>${esc(p)}</option>`).join('');
+  if (platforms.length) {
+    if (!platforms.includes(state.managePlatform)) state.managePlatform = platforms[0];
+    sel.value = state.managePlatform;
+  }
+}
+
+async function toggleVersion(id, on) {
+  const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
+  if (!platform) { toast('无可用平台', 'err'); return; }
+  const all = state.versions.map(v => v.versionId);
+  let list = state.enabledMap[platform] !== undefined ? state.enabledMap[platform].slice() : all.slice();
+  if (on) {
+    if (!list.includes(id)) list.push(id);
+  } else {
+    list = list.filter(x => x !== id);
+  }
+  await saveEnabledVersions(platform, list);
+}
+
+async function setAllVersions(on) {
+  const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
+  if (!platform) { toast('无可用平台', 'err'); return; }
+  const all = state.versions.map(v => v.versionId);
+  if (!confirm(on ? `确定开放 ${platform} 平台全部版本吗？` : `确定关闭 ${platform} 平台全部版本的下载吗？`)) return;
+  await saveEnabledVersions(platform, on ? all.slice() : []);
+}
+
+async function saveEnabledVersions(platform, list) {
+  try {
+    const r = await api('/api/enabled_versions', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({ platform, versions: list }),
+    });
+    toast(r.message + '（客户端可见 ' + r.clientVersions.length + ' 个版本）', 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function showVersion(id) {
+  try {
+    const desc = await api('/api/version/' + encodeURIComponent(id));
+    $('modalTitle').textContent = '版本 ' + id + ' 更新描述';
+    const files = (desc.files || []).map(f => `
+      <div class="file-row">
+        <span class="fname"><a href="${esc(f.url)}" target="_blank">${esc(f.fileName)}</a>
+        <span class="muted">[${esc(f.kind)}] ${fmtSize(f.size)}</span></span>
+        <span class="muted">${f.hash ? f.hash.slice(0, 12) : ''}</span>
+      </div>`).join('');
+    $('modalBody').innerHTML = `
+      <div class="muted" style="margin-bottom:8px">base=${esc(desc.baseVersionId || '-')} · 时间=${esc(desc.date || '-')} · 类型=${esc(desc.type)} · 变更=${desc.changedAssetCount} · 删除=${desc.deletedAssetCount} · 需重启=${desc.restartRequired ? '是' : '否'}</div>
+      ${files || '<div class="empty">无下载文件</div>'}`;
+    $('modalMask').classList.add('show');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deleteVersion(id) {
+  if (!confirm('确定删除版本 ' + id + ' 吗？将移入 data/trash 回收站。')) return;
+  try {
+    const r = await api('/api/version/' + encodeURIComponent(id), { method: 'DELETE', headers: headers() });
+    toast(r.message, 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function reindex() {
+  try {
+    const r = await api('/api/versions/reindex', { method: 'POST', headers: headers() });
+    toast(r.message, 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function importHotPatcher() {
+  if (!confirm('确认一键导入 HotPatcher 产物？')) return;
+  const btn = $('btnImport');
+  btn.disabled = true;
+  try {
+    const r = await api('/api/import/hotpatcher', { method: 'POST', headers: headers() });
+    toast((r.ok ? '导入完成' : '导入失败') + '\n' + (r.output || r.error || '').slice(-1500), r.ok ? 'ok' : 'err');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+  btn.disabled = false;
+}
+
+function renderManifestTab() {
+  const ms = (state.status && state.status.manifests) || {};
+  const keys = Object.keys(ms);
+  if (!keys.length) { $('manifestCard').innerHTML = '<div class="empty">无平台</div>'; return; }
+  $('manifestCard').innerHTML = keys.map(p => {
+    const items = ms[p] || [];
+    if (!items.length) return `<div style="padding:10px 0"><strong>${esc(p)}</strong><div class="muted">未配置基础包</div></div>`;
+    return items.map(m => `
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)">
+        <div style="flex:1">
+          <div><strong>${esc(p)} / 基础包 ${esc(m.baseVersion)}</strong> ${m.exists ? '<span class="badge online" style="padding:2px 8px">已生成</span>' : '<span class="badge offline">未生成</span>'}</div>
+          <div class="muted">${m.exists ? m.fileCount + ' 个文件 · ' + (m.generatedAt || '') : '点击右侧按钮扫描基础包目录并生成清单'}</div>
+        </div>
+        <div class="btn-row">
+          <button class="ghost" onclick="regenerateManifest('${esc(p)}','${esc(m.baseVersion)}')">重新生成</button>
+          ${m.exists ? `<a href="/api/manifest.json?platform=${esc(p)}&baseVersion=${esc(m.baseVersion)}">下载</a>` : ''}
+        </div>
+      </div>`).join('');
+  }).join('');
+}
+
+function renderSettings() {
+  const cfg = state.config || {};
+  $('setProject').value = cfg.project || '';
+  $('setPlatforms').value = (cfg.platforms || []).join(', ');
+  $('setHost').value = cfg.host || '';
+  $('setPort').value = cfg.port || '';
+  $('setDataDir').value = cfg.dataDir || '';
+  $('setVersionLib').value = cfg.versionLibraryDir || '';
+  const base = cfg.basePackages || {};
+  const platforms = cfg.platforms || [];
+  state.baseContainers = {};
+  $('setPackageRoots').innerHTML = platforms.map(p => `
+    <div style="border:1px solid var(--line);border-radius:8px;padding:10px">
+      <div class="muted" style="margin-bottom:6px">基础包位置（${esc(p)}）— 支持多版本，完整性清单与修复下载源</div>
+      <div class="base-rows" data-platform="${esc(p)}"></div>
+      <button class="ghost" style="margin-top:8px" onclick="addBaseRow('${esc(p)}')">+ 添加基础包版本</button>
+    </div>`).join('');
+  platforms.forEach(p => {
+    const container = document.querySelector(`.base-rows[data-platform="${CSS.escape(p)}"]`);
+    state.baseContainers[p] = container;
+    const rows = base[p] || {};
+    Object.keys(rows).sort().forEach(v => addBaseRow(p, v, rows[v], false));
+  });
+  $('setPatchSource').value = cfg.patchSourceDir || '';
+  $('setOrder').value = cfg.hotpatcherOrder || '';
+  $('setHash').value = cfg.manifestHash || 'md5';
+  $('setMaxUpload').value = cfg.maxUploadMb || 2048;
+  $('setExcludes').value = (cfg.manifestExcludePatterns || []).join('\n');
+  $('setToken').value = '';
+  $('setClearToken').checked = false;
+  $('settingsHint').textContent = cfg.adminTokenSet ? '当前已启用管理令牌' : '当前未启用管理令牌';
+}
+
+function addBaseRow(platform, version, path, focus = true) {
+  const container = state.baseContainers[platform];
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'base-row';
+  div.style.cssText = 'display:flex;gap:8px;margin-top:6px;align-items:center';
+  div.innerHTML = `
+    <input class="base-ver" style="width:100px" placeholder="版本号" value="${esc(version || '')}">
+    <input class="base-path" style="flex:1" placeholder="例如 D:/test/CodeBuild/HotPatherPack/Windows_1.0" value="${esc(path || '')}">
+    <button class="red" onclick="this.closest('.base-row').remove()">删除</button>`;
+  container.appendChild(div);
+  if (focus && version) div.querySelector('.base-path').focus();
+}
+
+async function saveSettings() {
+  const basePackages = {};
+  let rowError = '';
+  document.querySelectorAll('.base-rows').forEach(group => {
+    const platform = group.dataset.platform;
+    const map = {};
+    group.querySelectorAll('.base-row').forEach(row => {
+      const version = row.querySelector('.base-ver').value.trim();
+      const path = row.querySelector('.base-path').value.trim();
+      if ((version && !path) || (!version && path)) {
+        rowError = '基础包行缺少版本号或路径（' + (version || path) + '）';
+      } else if (version && path) {
+        map[version] = path;
+      }
+    });
+    if (Object.keys(map).length) basePackages[platform] = map;
+  });
+  if (rowError) { toast(rowError, 'err'); return; }
+  const payload = {
+    project: $('setProject').value.trim(),
+    platforms: $('setPlatforms').value.split(',').map(s => s.trim()).filter(Boolean),
+    host: $('setHost').value.trim(),
+    port: parseInt($('setPort').value, 10) || 8710,
+    dataDir: $('setDataDir').value.trim(),
+    versionLibraryDir: $('setVersionLib').value.trim(),
+    basePackages,
+    patchSourceDir: $('setPatchSource').value.trim(),
+    hotpatcherOrder: $('setOrder').value.trim(),
+    manifestHash: $('setHash').value,
+    maxUploadMb: parseInt($('setMaxUpload').value, 10) || 2048,
+    manifestExcludePatterns: $('setExcludes').value.split('\n').map(s => s.trim()).filter(Boolean),
+  };
+  const token = $('setToken').value.trim();
+  if (token) payload.adminToken = token;
+  if ($('setClearToken').checked) payload.clearAdminToken = true;
+  try {
+    const r = await api('/api/config/update', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify(payload),
+    });
+    toast(r.message, 'ok');
+    await loadAll();
+    switchTab('versions');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function restartServer() {
+  if (!confirm('确定重启服务器吗？页面会短暂断开，约 3 秒后恢复。')) return;
+  try {
+    const r = await api('/api/server/restart', { method: 'POST', headers: headers() });
+    toast(r.message, 'ok');
+    setTimeout(() => location.reload(), 3500);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function regenerateManifest(platform, baseVersion) {
+  try {
+    const r = await api('/api/manifest/generate?platform=' + encodeURIComponent(platform) + '&baseVersion=' + encodeURIComponent(baseVersion || ''), { method: 'POST', headers: headers() });
+    toast(r.message, 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- 服务器控制 ----------
+function fmtUptime(sec) {
+  sec = Math.max(0, sec || 0);
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return (d ? d + ' 天 ' : '') + (h ? h + ' 时 ' : '') + (m ? m + ' 分 ' : '') + s + ' 秒';
+}
+
+function renderControl() {
+  const s = state.status || {};
+  const cfg = state.config || {};
+  $('ctlPid').textContent = s.pid || '-';
+  $('ctlPython').textContent = 'Python ' + (s.python || '-') + (s.configPath ? ' · ' + s.configPath : '');
+  $('ctlUptime').textContent = fmtUptime(s.uptimeSeconds || 0);
+  $('ctlStarted').textContent = '启动于 ' + (s.startedAt || '-');
+  $('ctlListen').textContent = (s.host || '-') + ' : ' + (s.port || '-');
+  $('ctlConfigPath').textContent = '版本库: ' + (s.versionLibraryDir || '-');
+  $('ctlDataDir').textContent = cfg.dataDir || '-';
+  const base = Object.keys(s.basePackages || {});
+  $('ctlVersionLib').textContent = base.length ? '基础包: ' + base.join(', ') : '基础包: -';
+}
+
+async function regenerateAllManifests() {
+  const ms = (state.status && state.status.manifests) || {};
+  const jobs = [];
+  Object.keys(ms).forEach(p => (ms[p] || []).forEach(m => jobs.push({ p, v: m.baseVersion })));
+  if (!jobs.length) { toast('没有可生成的基础包清单', 'err'); return; }
+  if (!confirm('重新生成 ' + jobs.length + ' 个完整性清单？')) return;
+  for (const j of jobs) {
+    try {
+      const r = await api('/api/manifest/generate?platform=' + encodeURIComponent(j.p) + '&baseVersion=' + encodeURIComponent(j.v || ''), { method: 'POST', headers: headers() });
+      toast(r.message, 'ok');
+    } catch (e) {
+      toast(j.p + ' ' + (j.v || '') + ' 生成失败：' + e.message, 'err');
+    }
+  }
+  await loadAll();
+}
+
+// ---------- 启动器管理 ----------
+function renderLauncherTab() {
+  const lv = state.launcherVer;
+  $('launcherVerSub').textContent = lv && lv.version
+    ? (lv.version + (lv.note ? ' · ' + lv.note : ''))
+    : '未发布';
+  $('setLauncherNote').value = lv && lv.note ? lv.note : '';
+
+  const rows = state.launcherVersions || [];
+  const body = $('launcherVersionsBody');
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" class="empty">暂无版本，请添加版本文件夹</td></tr>';
+  } else {
+    body.innerHTML = rows.map(v => `
+      <tr>
+        <td><strong>${esc(v.version)}</strong>${v.version === state.launcherPublished ? ' <span class="badge online" style="padding:2px 8px">当前发布</span>' : ''}</td>
+        <td class="muted" style="word-break:break-all">${esc(v.path)}</td>
+        <td>${v.launcherExe ? 'Launcher.exe' : ''}${v.launcherExe && v.selfUpdaterExe ? ' + ' : ''}${v.selfUpdaterExe ? 'SelfUpdater.exe' : ''}${!v.launcherExe ? '<span style="color:var(--danger)">缺 Launcher.exe</span>' : ''}</td>
+        <td>${v.exeSize ? fmtSize(v.exeSize) : '-'}</td>
+        <td class="btn-row">
+          <button class="green" ${v.launcherExe ? '' : 'disabled'} onclick="publishLauncher('${esc(v.version)}')">发布</button>
+          <button class="red" onclick="deleteLauncherVersion('${esc(v.version)}')">移除</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  const bg = state.bg || {};
+  $('bgVersion').textContent = bg.version || '未配置';
+  $('bgInfo').textContent = bg.version ? (bg.files.length + ' 张图 · FPS ' + bg.frameFps) : '-';
+  $('setBgDir').value = bg.dir || '';
+  $('setBgFps').value = bg.frameFps || 12;
+  $('bgFileList').innerHTML = bg.files && bg.files.length
+    ? bg.files.map(f => `<div class="file-row"><span class="fname">${esc(f.name)}</span><span class="muted">${fmtSize(f.size)}</span></div>`).join('')
+    : '<div class="muted">未配置背景文件夹或文件夹内无 PNG</div>';
+}
+
+async function addLauncherVersion() {
+  const version = $('addLauncherVersion').value.trim();
+  const dir = $('addLauncherDir').value.trim();
+  if (!version || !dir) { toast('请填写版本号和文件夹路径', 'err'); return; }
+  try {
+    const r = await api('/api/launcher/versions', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({ version, dir }),
+    });
+    toast(r.message, 'ok');
+    $('addLauncherVersion').value = '';
+    $('addLauncherDir').value = '';
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function deleteLauncherVersion(version) {
+  if (!confirm('确定移除版本 ' + version + ' 吗？（仅移除配置，磁盘文件保留）')) return;
+  try {
+    const r = await api('/api/launcher/versions/' + encodeURIComponent(version), { method: 'DELETE', headers: headers() });
+    toast(r.message, 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function publishLauncher(version) {
+  if (!confirm('发布版本 ' + version + '？将从其文件夹快照 Launcher.exe / SelfUpdater.exe 并推送客户端升级。')) return;
+  try {
+    const r = await api('/api/launcher/publish', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({ version, note: $('setLauncherNote').value.trim() }),
+    });
+    toast(r.message, 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveBgDir() {
+  const dir = $('setBgDir').value.trim();
+  if (!dir) { toast('请填写背景文件夹路径', 'err'); return; }
+  try {
+    const r = await api('/api/launcher/background/dir', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({ dir }),
+    });
+    toast(r.message, 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function clearBgDir() {
+  if (!confirm('清除背景目录配置？不会删除磁盘文件，客户端将不再更新背景。')) return;
+  try {
+    const r = await api('/api/launcher/background/clear', { method: 'POST', headers: headers() });
+    toast(r.message, 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveBgFps() {
+  const fps = parseInt($('setBgFps').value, 10);
+  if (!fps || fps <= 0) { toast('FPS 必须大于 0', 'err'); return; }
+  try {
+    const r = await api('/api/launcher/background', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({ frameFps: fps }),
+    });
+    toast(r.message, 'ok');
+    await loadAll();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- 云端文件 ----------
+function initFilePlatform() {
+  const platforms = (state.status && state.status.platforms) || [];
+  const sel = $('filePlatform');
+  sel.innerHTML = platforms.map(p => `<option>${esc(p)}</option>`).join('');
+  if (platforms.length) {
+    state.platform = state.platform || platforms[0];
+    sel.value = state.platform;
+    refreshBaseVersionSelect();
+    loadFiles();
+  }
+}
+
+function refreshBaseVersionSelect() {
+  const cfg = state.config || {};
+  const versions = Object.keys((cfg.basePackages && cfg.basePackages[state.platform]) || {});
+  versions.sort();
+  const sel = $('fileBaseVersion');
+  sel.innerHTML = versions.map(v => `<option>${esc(v)}</option>`).join('');
+  if (versions.length) {
+    if (!versions.includes(state.baseVersion)) state.baseVersion = versions[versions.length - 1];
+    sel.value = state.baseVersion;
+  } else {
+    state.baseVersion = '';
+    sel.innerHTML = '<option value="">（无）</option>';
+  }
+}
+
+async function loadFiles(dir) {
+  if (dir !== undefined) state.filePath = dir;
+  try {
+    const data = await api('/api/files?platform=' + encodeURIComponent(state.platform) + '&baseVersion=' + encodeURIComponent(state.baseVersion || '') + '&path=' + encodeURIComponent(state.filePath));
+    renderBreadcrumb(data.path, data.parent);
+    const body = $('filesBody');
+    if (!data.entries.length) { body.innerHTML = '<tr><td colspan="5" class="empty">空目录</td></tr>'; return; }
+    body.innerHTML = data.entries.map(e => e.type === 'dir' ? `
+      <tr>
+        <td><a href="#" onclick="event.preventDefault();loadFiles('${esc(e.path)}')">📁 ${esc(e.name)}</a></td>
+        <td class="muted">目录</td><td>-</td><td class="muted">${esc(e.modified)}</td>
+        <td><button class="ghost" onclick="navigator.clipboard.writeText('/files/packages/${esc(state.platform)}/${esc(state.baseVersion)}/${esc(e.path)}');toast('路径已复制','ok')">复制路径</button></td>
+      </tr>` : `
+      <tr>
+        <td>📄 ${esc(e.name)}</td>
+        <td class="muted">文件</td><td>${fmtSize(e.size)}</td><td class="muted">${esc(e.modified)}</td>
+        <td class="btn-row">
+          <a href="${esc(e.downloadUrl)}" download>下载</a>
+          <button class="ghost" onclick="navigator.clipboard.writeText('${esc(location.origin + e.downloadUrl)}');toast('下载地址已复制','ok')">复制链接</button>
+        </td>
+      </tr>`).join('');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function renderBreadcrumb(path, parent) {
+  const parts = path ? path.split('/') : [];
+  let acc = '';
+  const crumbs = [{ name: '根目录', path: '' }].concat(parts.map((p, i) => {
+    acc = acc ? acc + '/' + p : p;
+    return { name: p, path: acc };
+  }));
+  $('fileBreadcrumb').innerHTML = crumbs.map((c, i) =>
+    i < crumbs.length - 1
+      ? `<a href="#" onclick="event.preventDefault();loadFiles('${esc(c.path)}')">${esc(c.name)}</a> <span class="muted">/</span>`
+      : `<span>${esc(c.name)}</span>`).join(' ');
+}
+
+function openUploadPackage() {
+  $('modalTitle').textContent = '上传到基础包 ' + (state.baseVersion || '?') + ' / ' + (state.filePath || '根目录');
+  $('modalBody').innerHTML = uploadFormHtml();
+  $('modalMask').classList.add('show');
+}
+
+function openUploadVersion() {
+  $('modalTitle').textContent = '上传新版本文件';
+  $('modalBody').innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:10px"><label>版本号</label><input id="upVersionId" placeholder="例如 1.5"></div>
+    ${uploadFormHtml('version')}`;
+  $('modalMask').classList.add('show');
+}
+
+function uploadFormHtml(target) {
+  return `
+    <input type="file" id="upFile" multiple style="margin-bottom:10px">
+    <div id="upProgress"></div>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="green" onclick="doUpload('${target || 'package'}')">开始上传</button>
+      <button class="ghost" onclick="closeModal()">取消</button>
+    </div>`;
+}
+
+async function doUpload(target) {
+  const fileInput = $('upFile');
+  if (!fileInput.files.length) { toast('请先选择文件', 'err'); return; }
+  const fd = new FormData();
+  for (const f of fileInput.files) fd.append('file', f);
+  let url;
+  if (target === 'version') {
+    const id = $('upVersionId').value.trim();
+    if (!id) { toast('请填写版本号', 'err'); return; }
+    url = '/api/upload?target=version&versionId=' + encodeURIComponent(id) + '&path=Windows';
+  } else {
+    url = '/api/upload?target=package&platform=' + encodeURIComponent(state.platform) + '&baseVersion=' + encodeURIComponent(state.baseVersion || '') + '&path=' + encodeURIComponent(state.filePath);
+  }
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    if (state.token) xhr.setRequestHeader('Authorization', 'Bearer ' + state.token);
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) $('upProgress').innerHTML =
+        `<div class="progress"><div style="width:${Math.round(e.loaded / e.total * 100)}%"></div></div><div class="muted">${Math.round(e.loaded / e.total * 100)}%</div>`;
+    };
+    xhr.onload = () => {
+      try {
+        const r = JSON.parse(xhr.responseText);
+        if (xhr.status >= 400 || !r.ok) toast(r.error || ('HTTP ' + xhr.status), 'err');
+        else { toast(r.message + (r.note ? '\n' + r.note : ''), 'ok'); closeModal(); if (target === 'version') reindex(); else loadFiles(); }
+      } catch (e) { toast('响应解析失败', 'err'); }
+    };
+    xhr.onerror = () => toast('网络错误', 'err');
+    xhr.send(fd);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function closeModal() { $('modalMask').classList.remove('show'); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+$('tokenInput').value = state.token;
+loadAll();
+setInterval(loadAll, 30000);
+setInterval(() => {
+  if (state.uptimeAt) $('ctlUptime').textContent = fmtUptime(state.uptimeBase + Math.floor((Date.now() - state.uptimeAt) / 1000));
+}, 1000);
+</script>
+</body>
+</html>

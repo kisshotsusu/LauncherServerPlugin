@@ -1,0 +1,43 @@
+{
+  "host": "0.0.0.0",
+  "port": 8710,
+  "project": "CodeBuild",
+  "platforms": [
+    "Windows"
+  ],
+  "data_dir": "data",
+  "web_dir": "web",
+  "admin_token": "",
+  "version_library_dir": "data/versions",
+  "base_packages": {
+    "Windows": {
+      "1.0": "D:\\test\\CodeBuild\\HotPatherPack\\Windows",
+      "1.4": "D:\\test\\CodeBuild\\HotPatherPack\\WindowsIOStore"
+    }
+  },
+  "manifest_exclude_patterns": [
+    "**/*.pdb",
+    "**/*.download",
+    "Manifest_*.txt",
+    "Saved/**",
+    "**/__pycache__/**"
+  ],
+  "manifest_hash": "md5",
+  "max_upload_mb": 2048,
+  "hotpatcher_source": "D:\\test\\CodeBuild\\Saved\\HotPatcher",
+  "hotpatcher_order": "1.0,1.2,1.3,1.4",
+  "enabled_versions": {
+    "Windows": [
+      "1.0",
+      "1.3",
+      "1.4"
+    ]
+  },
+  "launcher_versions": {
+    "1.0.0": "data/launcher"
+  },
+  "background_dir": "D:\\test\\CodeBuild\\Luncher\\Background",
+  "package_roots": {
+    "Windows": "D:\\test\\CodeBuild\\HotPatherPack\\WindowsIOStore"
+  }
+}

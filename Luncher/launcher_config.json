@@ -1,0 +1,11 @@
+{
+  "autoCheckOnStart": true,
+  "autoRepairOnStart": false,
+  "frameDir": "Background",
+  "frameFps": 24,
+  "gamePath": "D:\\test\\DownLoadTest",
+  "launcherVersion": "1.0.0",
+  "platform": "Windows",
+  "serverUrl": "http://127.0.0.1:8710",
+  "speedLimitKBps": 0
+}

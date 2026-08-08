@@ -1,0 +1,26 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "CloudUpdate",
+	"Description": "运行时文件完整性检查与基于 HotPatcher JSON 的云更新管理",
+	"Category": "Network",
+	"CreatedBy": "Codex",
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "CloudUpdate",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "HotPatcher",
+			"Enabled": true
+		}
+	]
+}

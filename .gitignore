@@ -30,3 +30,18 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio
+.vs/
+
+# Server runtime data
+Server/data/manifests/
+Server/data/versions/
+
+# Unreal Engine plugin build output
+Plugins/CloudUpdate/Intermediate/
+Plugins/CloudUpdate/Binaries/
+
+# Build and debug artifacts
+obj/
+*.pdb
