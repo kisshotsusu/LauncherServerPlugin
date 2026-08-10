@@ -73,6 +73,9 @@ private:
 	// ---------- 更新检查 ----------
 	void ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJson);
 
+	// ---------- 回滚被撤销版本 ----------
+	void RollbackRevokedVersion(const FString& RevokedVersion, const TArray<FCloudDownloadFile>& Files, const FString& TargetVersion);
+
 	// ---------- 应用更新 ----------
 	void ResolveUpdateDirect();
 	void OnPatchConfigFetched(const TSharedPtr<FJsonObject>& InJson);

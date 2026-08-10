@@ -57,6 +57,9 @@ from versions import (
     load_versions_index,
     filter_index_by_enabled,
     read_descriptor,
+    _revoked_entry_from_descriptor,
+    load_revoked_store,
+    save_revoked_store,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -873,6 +876,12 @@ class UpdateHandler(BaseHTTPRequestHandler):
         if not os.path.isdir(version_dir):
             self._send_json({"ok": False, "error": f"版本 {version_id} 不存在"}, status=404)
             return
+        # 删除前快照描述文件，供客户端精确删除已下载内容（整包不回滚）
+        entry = _revoked_entry_from_descriptor(self.cfg, version_id)
+        if entry and entry.get("type") != "full":
+            store = load_revoked_store(self.cfg)
+            store[version_id] = entry
+            save_revoked_store(self.cfg, store)
         trash_dir = os.path.join(self.cfg["data_dir"], "trash")
         os.makedirs(trash_dir, exist_ok=True)
         target = os.path.join(trash_dir, version_id)

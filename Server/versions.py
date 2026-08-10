@@ -21,6 +21,40 @@ def _read_json(path, default=None):
 
 
 
+def _revoked_store_path(cfg):
+    return os.path.join(cfg["data_dir"], "revoked.json")
+
+
+def load_revoked_store(cfg):
+    """已删除版本的快照库（versionId -> {versionId, type, files}），持久化在 data/revoked.json。"""
+    return _read_json(_revoked_store_path(cfg)) or {}
+
+
+def save_revoked_store(cfg, store):
+    path = _revoked_store_path(cfg)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(store, f, ensure_ascii=False, indent=2)
+
+
+def _revoked_entry_from_descriptor(cfg, version_id):
+    """从描述文件生成"被撤销版本"条目（versionId + 文件清单），供客户端精确删除。"""
+    desc = read_descriptor(cfg, version_id)
+    if not desc:
+        return None
+    files = []
+    for f in desc.get("files", []):
+        fn = f.get("fileName")
+        if not fn:
+            continue
+        files.append({
+            "fileName": fn,
+            "hash": f.get("hash", ""),
+            "size": f.get("size", 0),
+            "kind": f.get("kind", ""),
+        })
+    return {"versionId": version_id, "type": desc.get("type", ""), "files": files}
+
+
 def build_versions_index(cfg, explicit_order=None):
     """扫描版本文件库与基础包目录生成版本索引（补丁 + 基础包多版本）。"""
     ensure_dirs(cfg)
@@ -96,8 +130,20 @@ def build_versions_index(cfg, explicit_order=None):
         "versions": versions,
         "updateChain": chain,
         "baseVersions": base_versions,
+        "revoked": [],
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
     }
+    # 注入已删除版本的快照：版本若被重新发布（仍在 all_ids 中）则从撤销库移除
+    revoked_store = load_revoked_store(cfg)
+    cleaned = {}
+    for vid, entry in revoked_store.items():
+        if vid in all_ids:
+            continue
+        cleaned[vid] = entry
+    if cleaned:
+        index["revoked"] = [cleaned[k] for k in sorted(cleaned.keys(), key=version_key)]
+    if cleaned != revoked_store:
+        save_revoked_store(cfg, cleaned)
     index_path = os.path.join(cfg["data_dir"], "versions.json")
     with open(index_path, "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
@@ -132,6 +178,8 @@ def filter_index_by_enabled(index, cfg):
     for ids in configured.values():
         allowed_any |= ids
 
+    original_versions = list(index.get("versions") or [])
+
     index = dict(index)
     index["versions"] = [v for v in (index.get("versions") or [])
                          if v.get("versionId") in allowed_any]
@@ -145,6 +193,21 @@ def filter_index_by_enabled(index, cfg):
     all_ids = [v.get("versionId") for v in index.get("versions", [])]
     if all_ids:
         index["current"] = max(all_ids, key=version_key)
+
+    # 被隐藏的补丁版本：客户端若已下载应删除。从描述文件快照文件清单注入 revoked
+    hidden_ids = [v.get("versionId") for v in original_versions
+                  if v.get("type") != "full" and v.get("versionId") not in allowed_any]
+    revoked = list(index.get("revoked") or [])
+    seen = {r.get("versionId") for r in revoked}
+    for vid in hidden_ids:
+        if vid in seen:
+            continue
+        entry = _revoked_entry_from_descriptor(cfg, vid)
+        if entry:
+            revoked.append(entry)
+            seen.add(vid)
+    if revoked:
+        index["revoked"] = revoked
     return index
 
 

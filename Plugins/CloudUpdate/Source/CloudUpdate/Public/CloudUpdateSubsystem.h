@@ -13,6 +13,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCloudRepairFinished, bool, bSu
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnCloudUpdateCheckFinished, bool, bSuccess, bool, bHasUpdate, const FString&, LatestVersion, const TArray<FCloudUpdateVersionInfo>&, Versions, const FString&, Message);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudUpdateProgress, float, Progress, int32, Completed, int32, Total, const FString&, CurrentFile);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudUpdateFinished, bool, bSuccess, bool, bRestartRequired, const FString&, VersionId, const FString&, Message);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudRollbackFinished, bool, bSuccess, bool, bRestartRequired, const FString&, VersionId, const FString&, Message);
 
 /**
  * 云更新运行时子系统
@@ -92,6 +93,10 @@ public:
 	/** 更新完成 */
 	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate")
 	FOnCloudUpdateFinished OnUpdateFinished;
+
+	/** 回滚被撤销（隐藏/删除）版本完成 */
+	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate")
+	FOnCloudRollbackFinished OnRollbackFinished;
 
 private:
 	TSharedPtr<FCloudUpdateService> Service;

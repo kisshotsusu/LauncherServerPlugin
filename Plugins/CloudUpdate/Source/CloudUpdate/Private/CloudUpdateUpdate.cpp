@@ -98,6 +98,103 @@ void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJs
 		}
 	}
 
+	// 回滚检测：若本地版本被服务器撤销（隐藏/删除），删除本地内容并回退到上一链版本
+	TArray<FCloudDownloadFile> RevokedFiles;
+	FString RevokedVersion;
+	const TArray<TSharedPtr<FJsonValue>>* RevokedValues = nullptr;
+	if (InJson->TryGetArrayField(TEXT("revoked"), RevokedValues))
+	{
+		for (const TSharedPtr<FJsonValue>& Value : *RevokedValues)
+		{
+			const TSharedPtr<FJsonObject> Obj = Value->AsObject();
+			if (!Obj.IsValid())
+			{
+				continue;
+			}
+			FString Rid;
+			Obj->TryGetStringField(TEXT("versionId"), Rid);
+			if (Rid.IsEmpty() || !Rid.Equals(LocalVersion, ESearchCase::IgnoreCase))
+			{
+				continue;
+			}
+			FString RType;
+			Obj->TryGetStringField(TEXT("type"), RType);
+			if (RType == TEXT("full"))
+			{
+				continue; // 整包不回滚
+			}
+			RevokedVersion = Rid;
+			const TArray<TSharedPtr<FJsonValue>>* FileValues = nullptr;
+			if (Obj->TryGetArrayField(TEXT("files"), FileValues))
+			{
+				for (const TSharedPtr<FJsonValue>& Fv : *FileValues)
+				{
+					const TSharedPtr<FJsonObject> FObj = Fv->AsObject();
+					if (!FObj.IsValid())
+					{
+						continue;
+					}
+					FCloudDownloadFile File;
+					FObj->TryGetStringField(TEXT("fileName"), File.FileName);
+					FObj->TryGetStringField(TEXT("targetRelativePath"), File.TargetRelativePath);
+					FObj->TryGetStringField(TEXT("hash"), File.Hash);
+					FObj->TryGetNumberField(TEXT("size"), File.FileSize);
+					FString KindStr;
+					if (FObj->TryGetStringField(TEXT("kind"), KindStr))
+					{
+						if (KindStr == TEXT("ContentPak"))
+						{
+							File.Kind = ECloudDownloadKind::ContentPak;
+						}
+						else if (KindStr == TEXT("IoStore"))
+						{
+							File.Kind = ECloudDownloadKind::IoStoreContainer;
+						}
+						else
+						{
+							File.Kind = ECloudDownloadKind::ExternFile;
+						}
+					}
+					if (!File.FileName.IsEmpty())
+					{
+						RevokedFiles.Add(File);
+					}
+				}
+			}
+			break;
+		}
+	}
+
+	if (!RevokedVersion.IsEmpty())
+	{
+		// 计算回退目标：比被撤销版本低的最高可用版本；没有则退到最新基础包
+		FString PreviousVersion;
+		TArray<FString> Candidates;
+		for (const FCloudUpdateVersionInfo& Info : AllVersions)
+		{
+			Candidates.Add(Info.VersionId);
+		}
+		for (const FString& B : BaseVersions)
+		{
+			Candidates.Add(B);
+		}
+		for (const FString& C : Candidates)
+		{
+			if (IsVersionNewer(RevokedVersion, C))
+			{
+				if (PreviousVersion.IsEmpty() || IsVersionNewer(C, PreviousVersion))
+				{
+					PreviousVersion = C;
+				}
+			}
+		}
+		if (PreviousVersion.IsEmpty() && BaseVersions.Num() > 0)
+		{
+			PreviousVersion = BaseVersions.Last();
+		}
+		RollbackRevokedVersion(RevokedVersion, RevokedFiles, PreviousVersion);
+	}
+
 	TArray<FCloudUpdateVersionInfo> Pending;
 	for (const FString& BaseId : BaseVersions)
 	{
@@ -599,4 +696,55 @@ void FCloudUpdateService::FinishUpdate(bool bSuccess, const FString& InMessage)
 		Owner->OnUpdateFinished.Broadcast(bSuccess, bRestartRequired, PendingVersionId, InMessage);
 	}
 	SetBusy(false);
+}
+
+void FCloudUpdateService::RollbackRevokedVersion(const FString& RevokedVersion, const TArray<FCloudDownloadFile>& Files, const FString& TargetVersion)
+{
+	bool bRestart = false;
+	for (const FCloudDownloadFile& File : Files)
+	{
+		FString Path;
+		if (File.Kind == ECloudDownloadKind::ExternFile)
+		{
+			Path = GetLocalRoot() / File.TargetRelativePath;
+		}
+		else
+		{
+			Path = GetPakDir() / File.FileName;
+		}
+		if (File.Kind == ECloudDownloadKind::ContentPak && FPaths::FileExists(Path))
+		{
+			const int32 Order = UFlibPakHelper::GetPakOrderByPakPath(Path);
+			UFlibPakHelper::UnmountPak(Path, Order);
+		}
+		if (FPaths::FileExists(Path))
+		{
+			if (IFileManager::Get().Delete(*Path, false, true))
+			{
+				UE_LOG(LogCloudUpdate, Log, TEXT("已删除被撤销版本的文件：%s"), *Path);
+			}
+			else
+			{
+				// 文件被占用（游戏运行中）：标记需重启后由系统释放
+				bRestart = true;
+				UE_LOG(LogCloudUpdate, Warning, TEXT("无法删除被占用的撤销文件（重启后生效）：%s"), *Path);
+			}
+		}
+		if (File.Kind == ECloudDownloadKind::IoStoreContainer)
+		{
+			// IoStore 容器运行时无法卸载，删除后需重启生效
+			bRestart = true;
+		}
+	}
+
+	SaveLocalVersion(TargetVersion);
+	UE_LOG(LogCloudUpdate, Log, TEXT("已回滚被撤销版本 %s，本地版本回退至 %s（需重启=%d）"),
+		*RevokedVersion, *TargetVersion, bRestart ? 1 : 0);
+
+	if (Owner)
+	{
+		Owner->OnRollbackFinished.Broadcast(true, bRestart, RevokedVersion,
+			FString::Printf(TEXT("已回滚被撤销的版本 %s，回退至 %s%s"),
+				*RevokedVersion, *TargetVersion, bRestart ? TEXT("（需重启生效）") : TEXT("")));
+	}
 }
