@@ -8,6 +8,7 @@ from urllib.parse import quote, unquote
 
 from config import ensure_dirs, get_base_packages, get_latest_base_version, version_key
 from manifest import build_base_descriptor
+from storage import get_storage
 
 
 def _read_json(path, default=None):
@@ -212,6 +213,17 @@ def filter_index_by_enabled(index, cfg):
 
 
 
+def _rewrite_descriptor_urls(cfg, desc):
+    """远程存储（s3）下，把描述里 /files/... 相对路径改写为 presigned URL，供客户端直连对象存储下载。"""
+    storage = get_storage(cfg)
+    if not storage.is_remote or not desc:
+        return
+    for f in desc.get("files", []) or []:
+        url = f.get("url") or ""
+        if url.startswith("/files/"):
+            f["url"] = storage.url_for_key(url[len("/files/"):])
+
+
 def read_descriptor(cfg, version_id):
     version_id = os.path.basename(unquote(version_id))
     # 基础包版本：在任一平台中找到则动态生成整包描述（优先于版本文件库中的同名 full 描述）
@@ -221,6 +233,7 @@ def read_descriptor(cfg, version_id):
     desc_path = os.path.join(cfg["versions_dir"], version_id, "descriptor.json")
     desc = _read_json(desc_path)
     if desc:
+        _rewrite_descriptor_urls(cfg, desc)
         return desc
     return None
 

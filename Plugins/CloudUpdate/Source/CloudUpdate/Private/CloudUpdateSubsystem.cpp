@@ -2,6 +2,7 @@
 #include "CloudUpdateService.h"
 #include "CloudUpdateSettings.h"
 #include "Engine/Engine.h"
+#include "HttpModule.h"
 
 UCloudUpdateSubsystem* UCloudUpdateSubsystem::GetCloudUpdateSubsystem()
 {
@@ -11,6 +12,9 @@ UCloudUpdateSubsystem* UCloudUpdateSubsystem::GetCloudUpdateSubsystem()
 void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	// 允许自签名证书：服务器启用 HTTPS（自签名或内网证书）时，启动器才能正常拉取版本/清单。
+	// 仅对内网分发与自签名场景放开；若服务器使用公网合法证书，此设置无副作用。
+	FHttpModule::Get().SetAllowSelfSignedCertificates(true);
 	Service = MakeShared<FCloudUpdateService>(this);
 
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();

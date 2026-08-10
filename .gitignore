@@ -37,6 +37,8 @@
 # Server runtime data
 Server/data/manifests/
 Server/data/versions/
+# Generated self-signed TLS cert/key (private key, never commit)
+Server/data/ssl/
 
 # Unreal Engine plugin build output
 Plugins/CloudUpdate/Intermediate/
@@ -55,3 +57,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+
+# PyInstaller build output (packaged exe goes to Server/dist, not committed)
+Server/build/
+Server/dist/

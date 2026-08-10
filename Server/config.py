@@ -7,9 +7,13 @@
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
+# PyInstaller 单文件打包后 __file__ 指向临时解压目录，改用 exe 实际所在目录作为基准
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).resolve().parent
 
 
 def resolve_server_path(path):
@@ -72,6 +76,17 @@ def load_config(config_path=None):
         latest = get_latest_base_version(cfg, platform)
         cfg["package_roots"][platform] = get_base_dir(cfg, platform, latest)
     cfg["manifests_dir"] = os.path.join(cfg["data_dir"], "manifests")
+
+    # HTTPS 与对象存储（云 OSS/COS）配置默认值
+    cfg.setdefault("https", {
+        "enabled": False,
+        "certFile": "",
+        "keyFile": "",
+        "autoGenSelfSigned": True,
+        "country": "CN",
+        "commonName": "CloudUpdate",
+    })
+    cfg.setdefault("storage", {"backend": "local", "s3": {}})
     return cfg
 
 

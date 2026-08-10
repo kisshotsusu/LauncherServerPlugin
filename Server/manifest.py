@@ -8,6 +8,7 @@ import os
 import time
 
 from config import get_base_dir, get_latest_base_version
+from storage import get_storage
 
 
 def hash_file(path, algo="md5", chunk_size=1024 * 1024):
@@ -100,7 +101,7 @@ def build_base_descriptor(cfg, platform, base_version):
             continue
         files.append({
             "fileName": os.path.basename(rel),
-            "url": f"/files/packages/{platform}/{base_version}/{rel}",
+            "url": get_storage(cfg).url_for("packages", platform=platform, version=base_version, rel=rel),
             "targetRelativePath": rel,
             "hash": entry.get("hash", ""),
             "size": entry.get("size", 0),

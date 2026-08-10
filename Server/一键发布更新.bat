@@ -21,6 +21,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo Publish finished. Opening admin page ...
-start "" http://127.0.0.1:8710/
+echo Publish finished. Start the server with 启动服务器.bat so clients can fetch the update.
+echo (Web admin page removed — all management is now via command-line subcommands.)
 pause

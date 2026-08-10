@@ -1,0 +1,50 @@
+{
+  "host": "0.0.0.0",
+  "port": 8710,
+  "project": "CodeBuild",
+  "platforms": ["Windows"],
+  "data_dir": "data",
+  "admin_token": "",
+  "version_library_dir": "data/versions",
+  "base_packages": {
+    "Windows": {
+      "1.0": "../HotPatherPack/Windows",
+      "1.4": "../HotPatherPack/WindowsIOStore"
+    }
+  },
+  "manifest_exclude_patterns": ["**/*.pdb", "**/*.download", "**/__pycache__/**"],
+  "manifest_hash": "md5",
+  "max_upload_mb": 2048,
+  "hotpatcher_source": "../Saved/HotPatcher",
+  "hotpatcher_order": "1.0,1.2,1.3,1.4",
+  "enabled_versions": { "Windows": ["1.0", "1.3", "1.4"] },
+  "launcher_versions": { "1.0.0": "data/launcher" },
+  "background_dir": "../Luncher/Background",
+  "package_roots": { "Windows": "../HotPatherPack/WindowsIOStore" },
+
+  "https": {
+    "enabled": true,
+    "certFile": "",
+    "keyFile": "",
+    "autoGenSelfSigned": true,
+    "country": "CN",
+    "commonName": "CloudUpdate"
+  },
+
+  "storage": {
+    "backend": "s3",
+    "s3": {
+      "provider": "oss",
+      "endpoint": "oss-cn-hangzhou.aliyuncs.com",
+      "region": "cn-hangzhou",
+      "service": "oss",
+      "bucket": "your-bucket",
+      "accessKeyId": "YOUR_ACCESS_KEY_ID",
+      "secretAccessKey": "YOUR_ACCESS_KEY_SECRET",
+      "prefix": "cloudupdate",
+      "publicBaseUrl": "",
+      "addressingStyle": "virtual",
+      "presignExpires": 3600
+    }
+  }
+}
