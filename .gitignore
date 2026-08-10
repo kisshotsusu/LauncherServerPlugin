@@ -45,3 +45,13 @@ Plugins/CloudUpdate/Binaries/
 # Build and debug artifacts
 obj/
 *.pdb
+
+# Runtime caches / temp files (should never be committed)
+Luncher/app/WebView2Data/
+*.download
+
+# Python bytecode / caches (build artifacts, never commit)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
