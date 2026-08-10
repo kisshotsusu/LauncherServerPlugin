@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """配置加载、路径解析与版本号辅助（CloudUpdate 管理服务器）。
 
-相对路径均以本文件所在目录（Server/）为基准，与 run_server.py 的 BASE_DIR 一致。
+配置中的相对路径一律以 **config.json 所在目录** 为基准（而不是程序/exe 所在目录），
+这样把 exe 放到 dist/ 等子目录、或用 --config 指定别处的配置时，
+data、web、../HotPatherPack 这类相对路径依然指向同一批真实资源。
+未加载配置时退化为本文件（或 exe）所在目录。
 """
 
 import json
@@ -15,14 +18,27 @@ BASE_DIR = Path(__file__).resolve().parent
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys.executable).resolve().parent
 
+# 相对路径基准：load_config() 会把它设为 config.json 所在目录。
+# 在配置加载前（例如查找默认配置文件）退化为 BASE_DIR。
+CONFIG_DIR = BASE_DIR
 
-def resolve_server_path(path):
-    """把配置中的路径解析为绝对路径（相对路径以 Server 目录为基准）。"""
+
+def set_config_dir(path):
+    """设置相对路径基准目录（传入 config.json 路径或其所在目录）。"""
+    global CONFIG_DIR
+    p = Path(path).resolve()
+    CONFIG_DIR = p.parent if p.is_file() else p
+    return CONFIG_DIR
+
+
+def resolve_server_path(path, base=None):
+    """把配置中的路径解析为绝对路径（相对路径以 config.json 所在目录为基准）。"""
     p = os.path.expandvars(os.path.expanduser(str(path).strip()))
     if not p:
         return ""
     if not os.path.isabs(p):
-        p = str((BASE_DIR / p).resolve())
+        base_dir = Path(base).resolve() if base else CONFIG_DIR
+        p = str((base_dir / p).resolve())
     return os.path.abspath(p)
 
 
@@ -33,6 +49,8 @@ def load_config(config_path=None):
     with open(config_path, "r", encoding="utf-8") as f:
         cfg = json.load(f)
     cfg["_config_path"] = str(Path(config_path).resolve())
+    # 后续所有相对路径都以 config.json 所在目录为基准
+    set_config_dir(cfg["_config_path"])
     cfg.setdefault("host", "0.0.0.0")
     cfg.setdefault("port", 8710)
     cfg.setdefault("project", "CodeBuild")
@@ -48,8 +66,8 @@ def load_config(config_path=None):
     cfg.setdefault("hotpatcher_source", "")
     cfg.setdefault("hotpatcher_order", "")
     cfg.setdefault("version_library_dir", os.path.join(cfg["data_dir"], "versions"))
-    cfg["data_dir"] = str((BASE_DIR / cfg["data_dir"]).resolve())
-    cfg["web_dir"] = str((BASE_DIR / cfg["web_dir"]).resolve())
+    cfg["data_dir"] = resolve_server_path(cfg["data_dir"])
+    cfg["web_dir"] = resolve_server_path(cfg["web_dir"])
     cfg["version_library_dir"] = resolve_server_path(cfg["version_library_dir"])
     cfg["versions_dir"] = cfg["version_library_dir"]
     cfg["hotpatcher_source"] = resolve_server_path(cfg["hotpatcher_source"])
@@ -87,6 +105,23 @@ def load_config(config_path=None):
         "commonName": "CloudUpdate",
     })
     cfg.setdefault("storage", {"backend": "local", "s3": {}})
+
+    # 启动器版本源目录：相对路径同样以 config.json 所在目录为基准，
+    # 否则会跟随进程当前工作目录漂移（双击启动时尤其不可控）。
+    launcher_versions = cfg.get("launcher_versions") or {}
+    cfg["launcher_versions"] = {
+        str(version): resolve_server_path(path)
+        for version, path in launcher_versions.items()
+        if str(path).strip()
+    }
+
+    # HTTPS 证书/私钥路径同理
+    https_cfg = cfg.get("https") or {}
+    for key in ("certFile", "keyFile"):
+        if https_cfg.get(key):
+            https_cfg[key] = resolve_server_path(https_cfg[key])
+    cfg["https"] = https_cfg
+
     return cfg
 
 

@@ -4,58 +4,12 @@
   "platforms": [
     "Windows"
   ],
-  "current": "1.4",
-  "versions": [
-    {
-      "versionId": "1.4",
-      "baseVersionId": "",
-      "date": "2026-08-07T22:14:41+0800",
-      "type": "full",
-      "url": "/api/version/1.4?platform=Windows",
-      "changedAssetCount": 0,
-      "deletedAssetCount": 0,
-      "totalSizeBytes": 534509581
-    },
-    {
-      "versionId": "1.3",
-      "baseVersionId": "1.2",
-      "date": "2026.08.06-06.32.49",
-      "type": "patch",
-      "url": "/api/version/1.3",
-      "changedAssetCount": 1,
-      "deletedAssetCount": 3309,
-      "totalSizeBytes": 14182
-    },
-    {
-      "versionId": "1.2",
-      "baseVersionId": "1.0",
-      "date": "2026.08.06-06.18.54",
-      "type": "patch",
-      "url": "/api/version/1.2",
-      "changedAssetCount": 2,
-      "deletedAssetCount": 3309,
-      "totalSizeBytes": 19811
-    },
-    {
-      "versionId": "1.0",
-      "baseVersionId": "",
-      "date": "2026-08-07T22:14:40+0800",
-      "type": "full",
-      "url": "/api/version/1.0?platform=Windows",
-      "changedAssetCount": 0,
-      "deletedAssetCount": 0,
-      "totalSizeBytes": 612979528
-    }
-  ],
-  "updateChain": [
-    "1.2",
-    "1.3"
-  ],
+  "current": "",
+  "versions": [],
+  "updateChain": [],
   "baseVersions": {
-    "Windows": [
-      "1.0",
-      "1.4"
-    ]
+    "Windows": []
   },
-  "generatedAt": "2026-08-08T02:47:52+0800"
+  "revoked": [],
+  "generatedAt": "2026-08-10T19:20:15+0800"
 }

@@ -9,7 +9,7 @@ CloudUpdate 管理服务器（独立程序）。
   - 作为云端文件仓库：/files/packages/... 与 /files/versions/...（local 模式）
   - 远程存储（s3）模式下，下载 URL 为对象存储的 presigned URL，客户端直连下载
   - 支持 HTTPS（自签名证书自动生成，或加载用户证书）
-  - 管理操作通过命令行子命令完成（不再依赖网页）：
+  - 管理操作可通过网页控制台（默认首页）或命令行子命令完成：
         serve              启动服务（供启动器读取版本与下载）
         reindex            重建版本索引
         gen-manifest       重新生成完整性清单
@@ -25,7 +25,9 @@ CloudUpdate 管理服务器（独立程序）。
   python run_server.py --config config.json serve --host 0.0.0.0 --port 8711
 """
 import argparse
+import contextlib
 import hashlib
+import io
 import json
 import mimetypes
 import os
@@ -44,6 +46,7 @@ from config import (
     load_config,
     ensure_dirs,
     safe_join,
+    parse_multipart,
     version_key,
     get_base_packages,
     get_latest_base_version,
@@ -75,6 +78,14 @@ BASE_DIR = Path(__file__).resolve().parent
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys.executable).resolve().parent
 SERVER_START_TIME = time.time()
+# 供「重启服务器」接口重新拉起同一进程
+_APP_ARGV = []
+# 是否为双击启动（无子命令）：用于决定要不要自动打开浏览器 / 结束时暂停
+_DOUBLE_CLICKED = False
+
+
+def _is_double_clicked():
+    return _DOUBLE_CLICKED
 
 
 class UpdateHandler(BaseHTTPRequestHandler):
@@ -131,6 +142,12 @@ class UpdateHandler(BaseHTTPRequestHandler):
         path = unquote(parsed.path)
         query = parse_qs(parsed.query)
 
+        # 网页管理控制台：默认首页与静态资源（其余请求继续走 API / 文件下发）
+        if path in ("/", "/index.html") or path.startswith("/web/"):
+            rel = "index.html" if path in ("/", "/index.html") else path[len("/web/"):]
+            self._serve_web_file(rel)
+            return
+
         if path == "/api/status":
             self._api_status(query)
         elif path == "/api/versions":
@@ -183,6 +200,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "ok": True,
             "server": "CloudUpdateServer",
             "storageBackend": "s3" if storage.is_remote else "local",
+            "authRequired": bool(self.cfg.get("admin_token")),
             "https": bool(self.cfg.get("https", {}).get("enabled")),
             "project": self.cfg["project"],
             "platforms": self.cfg["platforms"],
@@ -235,7 +253,22 @@ class UpdateHandler(BaseHTTPRequestHandler):
         rel_dir = query.get("path", [""])[0]
         root = get_base_dir(self.cfg, platform, base_version)
         if not root or not os.path.isdir(root):
-            self._send_json({"ok": False, "error": f"平台 {platform} 未配置基础包目录"}, status=404)
+            # get_base_packages 会过滤掉磁盘上不存在的目录，因此这里回查原始配置，
+            # 区分「压根没配置」和「配置了但目录不存在」，避免给出误导性的提示。
+            raw = (self.cfg.get("base_packages", {}) or {}).get(platform) or {}
+            if raw:
+                paths = {str(v): str(p) for v, p in raw.items()}
+                detail = "；".join(f"{v} → {p}" for v, p in paths.items())
+                self._send_json({
+                    "ok": False,
+                    "error": f"平台 {platform} 的基础包目录已在 config.json 配置，但磁盘上不存在（尚未导入内容？）：{detail}",
+                    "configuredPaths": paths,
+                }, status=404)
+            else:
+                self._send_json({
+                    "ok": False,
+                    "error": f"平台 {platform} 未在 config.json 的 base_packages 中配置基础包目录",
+                }, status=404)
             return
         abs_dir = safe_join(root, rel_dir)
         if abs_dir is None or not os.path.isdir(abs_dir):
@@ -292,6 +325,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "launcherVersions": self.cfg.get("launcher_versions", {}),
             "backgroundDir": self.cfg.get("background_dir", ""),
             "storageBackend": "s3" if get_storage(self.cfg).is_remote else "local",
+            "adminTokenSet": bool(self.cfg.get("admin_token")),
         }
 
     def _api_launcher_version(self):
@@ -425,6 +459,353 @@ class UpdateHandler(BaseHTTPRequestHandler):
             return
         self._send_file(abs_path)
 
+    # ---------- 网页控制台静态资源 ----------
+    def _serve_web_file(self, rel):
+        web_dir = self.cfg.get("web_dir") or os.path.join(BASE_DIR, "web")
+        if not os.path.isdir(web_dir):
+            meipass = getattr(sys, "_MEIPASS", "")
+            if meipass and os.path.isdir(os.path.join(meipass, "web")):
+                web_dir = os.path.join(meipass, "web")
+        if not rel or rel == "index.html":
+            rel = "index.html"
+        abs_path = safe_join(web_dir, rel)
+        if abs_path is None or not os.path.isfile(abs_path):
+            self._send_json({"ok": False, "error": "404 Not Found"}, status=404)
+            return
+        self._send_file(abs_path)
+
+    # ---------- 管理操作（HTTP 接口，需管理令牌）----------
+    def _auth_ok(self):
+        token = self.cfg.get("admin_token")
+        if not token:
+            return True
+        auth = self.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            auth = auth[len("Bearer "):].strip()
+        return auth == token
+
+    def _json_body(self):
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        if length <= 0:
+            self._send_json({"ok": False, "error": "空请求体"}, status=400)
+            return None
+        raw = self.rfile.read(length)
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except Exception as exc:
+            self._send_json({"ok": False, "error": f"JSON 解析失败：{exc}"}, status=400)
+            return None
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+        query = parse_qs(parsed.query)
+        if not self._auth_ok():
+            self._send_json({"ok": False, "error": "未授权：需要 Bearer 管理令牌"}, status=401)
+            return
+        if path == "/api/versions/reindex":
+            self._admin_reindex()
+        elif path == "/api/manifest/generate":
+            self._admin_manifest_generate(query)
+        elif path == "/api/import/hotpatcher":
+            self._admin_import()
+        elif path == "/api/enabled_versions":
+            self._admin_set_enabled()
+        elif path == "/api/upload":
+            self._admin_upload(query)
+        elif path == "/api/launcher/versions":
+            self._admin_launcher_add_version()
+        elif path == "/api/launcher/publish":
+            self._admin_launcher_publish()
+        elif path == "/api/launcher/background/dir":
+            self._admin_launcher_bg_dir()
+        elif path == "/api/launcher/background/clear":
+            self._admin_launcher_bg_clear()
+        elif path == "/api/launcher/background":
+            self._admin_launcher_bg()
+        elif path == "/api/config/update":
+            self._admin_config_update()
+        elif path == "/api/server/restart":
+            self._admin_restart()
+        else:
+            self._send_json({"ok": False, "error": "404 Not Found"}, status=404)
+
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+        if not self._auth_ok():
+            self._send_json({"ok": False, "error": "未授权：需要 Bearer 管理令牌"}, status=401)
+            return
+        if path.startswith("/api/version/"):
+            self._admin_delete_version(path[len("/api/version/"):])
+        elif path.startswith("/api/launcher/versions/"):
+            self._admin_delete_launcher_version(path[len("/api/launcher/versions/"):])
+        else:
+            self._send_json({"ok": False, "error": "404 Not Found"}, status=404)
+
+    def _admin_reindex(self):
+        try:
+            idx = build_versions_index(self.cfg)
+            self._send_json({"ok": True, "message": f"索引已重建：当前 {idx['current']}"})
+        except Exception as exc:
+            self._send_json({"ok": False, "error": str(exc)}, status=500)
+
+    def _admin_manifest_generate(self, query):
+        try:
+            platform = query.get("platform", [self.cfg["platforms"][0]])[0]
+            base_version = query.get("baseVersion", [""])[0] or None
+            m = generate_manifest(self.cfg, platform, base_version=base_version, force=True)
+            self._send_json({"ok": True, "message": f"已生成清单 {platform}：{m['fileCount']} 个文件"})
+        except Exception as exc:
+            self._send_json({"ok": False, "error": str(exc)}, status=500)
+
+    def _admin_import(self):
+        try:
+            src = self.cfg.get("hotpatcher_source", "")
+            if not src or not os.path.isdir(src):
+                self._send_json({"ok": False, "error": f"未配置或找不到 HotPatcher 产物目录：{src}"}, status=400)
+                return
+            entries = [e for e in sorted(os.listdir(src))
+                       if os.path.isfile(os.path.join(src, e, f"{e}_Release.json"))]
+            if not entries:
+                self._send_json({"ok": False, "error": f"在 {src} 未找到任何 HotPatcher 版本（缺少 *_Release.json）"}, status=400)
+                return
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                _do_import_core(self.cfg)
+            self._send_json({"ok": True, "output": buf.getvalue(), "message": "导入完成"})
+        except Exception as exc:
+            self._send_json({"ok": False, "error": str(exc), "output": ""}, status=500)
+
+    def _admin_set_enabled(self):
+        data = self._json_body()
+        if data is None:
+            return
+        platform = (data.get("platform") or "").strip()
+        versions = data.get("versions")
+        if not platform or not isinstance(versions, list):
+            self._send_json({"ok": False, "error": "缺少 platform 或 versions"}, status=400)
+            return
+        ids = [str(x).strip() for x in versions if str(x).strip()]
+        ev = dict(self.cfg.get("enabled_versions") or {})
+        ev[platform] = ids
+        _apply_config_updates({"enabled_versions": ev})
+        index = load_versions_index(self.cfg)
+        filtered = filter_index_by_enabled(index, self.cfg)
+        client_versions = [v.get("versionId") for v in (filtered.get("versions") or [])]
+        self._send_json({"ok": True, "message": f"已开放 {platform}：{ids}", "clientVersions": client_versions})
+
+    def _admin_delete_version(self, version_id):
+        ok, msg = delete_version(self.cfg, version_id)
+        self._send_json({"ok": ok, "message": msg}, status=200 if ok else 500)
+
+    def _admin_upload(self, query):
+        target = query.get("target", [""])[0]
+        if target not in ("package", "version", "launcher", "background"):
+            self._send_json({"ok": False, "error": "target 仅支持 package/version/launcher/background"}, status=400)
+            return
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        if length <= 0:
+            self._send_json({"ok": False, "error": "空请求体"}, status=400)
+            return
+        body = self.rfile.read(length)
+        parts = parse_multipart(self.headers.get("Content-Type", ""), body)
+        if not parts:
+            self._send_json({"ok": False, "error": "未解析到上传文件（需 multipart/form-data，字段名 file）"}, status=400)
+            return
+        max_mb = int(self.cfg.get("max_upload_mb", 2048) or 2048)
+        storage = get_storage(self.cfg)
+        saved = []
+        for name, filename, content in parts:
+            if name != "file" or not filename:
+                continue
+            if len(content) > max_mb * 1024 * 1024:
+                self._send_json({"ok": False, "error": f"文件超过上限 {max_mb}MB"}, status=413)
+                return
+            kw = self._upload_kw(target, query, filename)
+            if kw is None:
+                self._send_json({"ok": False, "error": "参数不完整（缺少 platform/versionId 等）"}, status=400)
+                return
+            import tempfile
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1])
+            try:
+                tmp.write(content)
+                tmp.close()
+                storage.upload_file(target, src_path=tmp.name, **kw)
+                saved.append(filename)
+            finally:
+                if os.path.exists(tmp.name):
+                    try:
+                        os.remove(tmp.name)
+                    except OSError:
+                        pass
+        if not saved:
+            self._send_json({"ok": False, "error": "没有可保存的文件"}, status=400)
+            return
+        self._send_json({"ok": True, "message": f"已上传 {len(saved)} 个文件", "note": ", ".join(saved)})
+
+    def _upload_kw(self, target, query, filename):
+        if target == "package":
+            platform = query.get("platform", [self.cfg["platforms"][0]])[0]
+            base_version = query.get("baseVersion", [""])[0] or ""
+            path = query.get("path", [""])[0] or ""
+            rel = (path + "/" + filename) if path else filename
+            return {"platform": platform, "version": base_version, "rel": rel}
+        if target == "version":
+            version_id = query.get("versionId", [""])[0] or ""
+            if not version_id:
+                return None
+            path = query.get("path", ["Windows"])[0] or "Windows"
+            rel = (path + "/" + filename) if path else filename
+            return {"version": version_id, "rel": rel}
+        if target == "launcher":
+            path = query.get("path", [""])[0] or filename
+            return {"rel": path}
+        if target == "background":
+            return {"name": filename}
+        return None
+
+    def _admin_launcher_add_version(self):
+        data = self._json_body()
+        if data is None:
+            return
+        version = (data.get("version") or "").strip()
+        dirpath = (data.get("dir") or "").strip()
+        if not version or not dirpath:
+            self._send_json({"ok": False, "error": "缺少 version 或 dir"}, status=400)
+            return
+        lv = dict(self.cfg.get("launcher_versions") or {})
+        lv[version] = dirpath
+        _apply_config_updates({"launcher_versions": lv})
+        self._send_json({"ok": True, "message": f"已添加启动器版本 {version} -> {dirpath}"})
+
+    def _admin_delete_launcher_version(self, version):
+        version = unquote(version)
+        lv = dict(self.cfg.get("launcher_versions") or {})
+        if version not in lv:
+            self._send_json({"ok": False, "error": f"启动器版本 {version} 不存在"}, status=404)
+            return
+        lv.pop(version, None)
+        _apply_config_updates({"launcher_versions": lv})
+        self._send_json({"ok": True, "message": f"已移除启动器版本 {version}"})
+
+    def _admin_launcher_publish(self):
+        data = self._json_body()
+        if data is None:
+            return
+        version = (data.get("version") or "").strip()
+        if not version:
+            self._send_json({"ok": False, "error": "缺少 version"}, status=400)
+            return
+        try:
+            ns = type("NS", (), {"version": version})()
+            cmd_publish_launcher(ns, self.cfg)
+            self._send_json({"ok": True, "message": f"启动器版本已发布：{version}"})
+        except Exception as exc:
+            self._send_json({"ok": False, "error": str(exc)}, status=500)
+
+    def _admin_launcher_bg_dir(self):
+        data = self._json_body()
+        if data is None:
+            return
+        dirpath = (data.get("dir") or "").strip()
+        if not dirpath:
+            self._send_json({"ok": False, "error": "缺少 dir"}, status=400)
+            return
+        _apply_config_updates({"background_dir": dirpath})
+        self._send_json({"ok": True, "message": f"已设置背景目录：{dirpath}"})
+
+    def _admin_launcher_bg(self):
+        data = self._json_body()
+        if data is None:
+            return
+        try:
+            fps = int(data.get("frameFps"))
+        except (TypeError, ValueError):
+            self._send_json({"ok": False, "error": "frameFps 必须为整数"}, status=400)
+            return
+        if fps <= 0:
+            self._send_json({"ok": False, "error": "frameFps 必须大于 0"}, status=400)
+            return
+        bg_json = os.path.join(self.cfg["data_dir"], "launcher", "background.json")
+        meta = _read_json(bg_json) or {}
+        meta["frameFps"] = fps
+        os.makedirs(os.path.dirname(bg_json), exist_ok=True)
+        with open(bg_json, "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+        self._send_json({"ok": True, "message": f"背景帧率已设为 {fps} FPS"})
+
+    def _admin_launcher_bg_clear(self):
+        _apply_config_updates({"background_dir": ""})
+        bg_json = os.path.join(self.cfg["data_dir"], "launcher", "background.json")
+        if os.path.isfile(bg_json):
+            try:
+                os.remove(bg_json)
+            except OSError:
+                pass
+        self._send_json({"ok": True, "message": "已清除背景目录配置"})
+
+    def _admin_config_update(self):
+        data = self._json_body()
+        if data is None:
+            return
+        updates = {}
+        if "project" in data:
+            updates["project"] = str(data["project"])
+        if "platforms" in data:
+            updates["platforms"] = [str(p).strip() for p in data["platforms"] if str(p).strip()]
+        if "host" in data:
+            updates["host"] = str(data["host"])
+        if "port" in data:
+            updates["port"] = int(data["port"])
+        if "dataDir" in data:
+            updates["data_dir"] = str(data["dataDir"])
+        if "versionLibraryDir" in data:
+            updates["version_library_dir"] = str(data["versionLibraryDir"])
+        if "basePackages" in data:
+            updates["base_packages"] = data["basePackages"]
+        if "patchSourceDir" in data:
+            updates["hotpatcher_source"] = str(data["patchSourceDir"])
+        if "hotpatcherOrder" in data:
+            updates["hotpatcher_order"] = str(data["hotpatcherOrder"])
+        if "manifestHash" in data:
+            updates["manifest_hash"] = str(data["manifestHash"])
+        if "maxUploadMb" in data:
+            updates["max_upload_mb"] = int(data["maxUploadMb"])
+        if "manifestExcludePatterns" in data:
+            updates["manifest_exclude_patterns"] = list(data["manifestExcludePatterns"])
+        if data.get("clearAdminToken"):
+            updates["admin_token"] = ""
+        elif data.get("adminToken"):
+            updates["admin_token"] = str(data["adminToken"])
+        if not updates:
+            self._send_json({"ok": False, "error": "没有可更新的字段"}, status=400)
+            return
+        try:
+            _apply_config_updates(updates)
+        except Exception as exc:
+            self._send_json({"ok": False, "error": str(exc)}, status=500)
+            return
+        self._send_json({"ok": True, "message": "配置已保存并重新加载（host/port/https 等需重启服务器生效）"})
+
+    def _admin_restart(self):
+        try:
+            self._send_json({"ok": True, "message": "服务器正在重启…"})
+            self.wfile.flush()
+        except Exception:
+            pass
+        srv = UpdateHandler.server
+        if srv is not None:
+            try:
+                srv.server_close()
+            except Exception:
+                pass
+        time.sleep(0.2)
+        try:
+            os.execv(sys.executable, [sys.executable] + list(_APP_ARGV))
+        except Exception as exc:
+            self._send_json({"ok": False, "error": f"重启失败：{exc}"}, status=500)
+
 
 # ---------- 管理操作（命令行子命令）----------
 
@@ -502,14 +883,29 @@ def cmd_serve(args, cfg):
     if ctx:
         server.socket = ctx.wrap_socket(server.socket, server_side=True)
     UpdateHandler.server = server
+    storage_label = "S3 对象存储" if get_storage(cfg).is_remote else "本地磁盘"
     print("=" * 60)
+    console_url = f"{scheme}://127.0.0.1:{cfg['port']}/"
     print("CloudUpdate 管理服务器已启动")
-    print(f"  地址     : {scheme}://{cfg['host']}:{cfg['port']}")
-    print(f"  存储后端 : {'S3 对象存储' if get_storage(cfg).is_remote else '本地磁盘'}")
+    print(f"  ★ 网页管理控制台 : {console_url}")
+    print("    （把上面这个地址复制到浏览器打开即可管理）")
+    print(f"  状态接口 : {scheme}://127.0.0.1:{cfg['port']}/api/status")
+    print(f"  监听地址 : {scheme}://{cfg['host']}:{cfg['port']}")
+    print(f"  存储后端 : {storage_label}")
     print(f"  项目     : {cfg['project']}  platforms: {','.join(cfg['platforms'])}")
+    print(f"  配置文件 : {cfg.get('_config_path', '')}")
     print(f"  数据目录 : {cfg['data_dir']}")
     print("  按 Ctrl+C 停止")
     print("=" * 60)
+    # 双击启动 或 显式 --open 时自动打开管理页面，省去手动复制地址
+    want_open = _is_double_clicked() or bool(getattr(args, "open", False))
+    if want_open and not cfg.get("no_open_browser"):
+        try:
+            import webbrowser
+            threading.Timer(1.0, lambda: webbrowser.open(console_url)).start()
+            print("正在为你自动打开浏览器...")
+        except Exception:
+            pass
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -555,17 +951,11 @@ def cmd_upload(args, cfg):
     print(f"已上传 [{target}] -> {storage.url_for(target, **kw)}")
 
 
-def cmd_import_hotpatcher(args, cfg):
-    run_import(cfg.get("hotpatcher_source", ""), cfg["data_dir"], cfg["project"],
-               cfg["platforms"][0], cfg.get("hotpatcher_order", ""))
-    # s3 模式：把补丁 pak 与外部文件同步到对象存储，否则客户端拿到的 presigned URL 会 404
-    storage = get_storage(cfg)
-    if not storage.is_remote:
-        return
+def _sync_versions_to_s3(cfg, storage):
+    """把版本库中的补丁 pak 与外部文件同步到对象存储（remote 模式），否则客户端 presigned URL 会 404。"""
     versions_dir = cfg["versions_dir"]
     if not os.path.isdir(versions_dir):
         return
-    platform0 = cfg["platforms"][0]
     for entry in sorted(os.listdir(versions_dir)):
         vdir = os.path.join(versions_dir, entry)
         if not os.path.isdir(vdir):
@@ -594,7 +984,39 @@ def cmd_import_hotpatcher(args, cfg):
             src = safe_join(base, rel) if base else None
             if src and os.path.isfile(src):
                 storage.upload_file("packages", src_path=src, platform=pf, version=bv, rel=rel)
-        print(f"  已同步版本 {entry} 到对象存储")
+
+
+def _do_import_core(cfg):
+    """执行 HotPatcher 导入 + 远程存储同步（打印到 stdout，供 CLI 与网页共用）。"""
+    run_import(cfg.get("hotpatcher_source", ""), cfg["data_dir"], cfg["project"],
+               cfg["platforms"][0], cfg.get("hotpatcher_order", ""))
+    storage = get_storage(cfg)
+    if storage.is_remote:
+        _sync_versions_to_s3(cfg, storage)
+
+
+def cmd_import_hotpatcher(args, cfg):
+    _do_import_core(cfg)
+
+
+def _apply_config_updates(updates, cfg=None):
+    """把更新合并进磁盘配置并重新加载（同时刷新运行时 cfg）。供网页管理接口复用。"""
+    cfg = cfg or UpdateHandler.cfg
+    cfg_path = cfg.get("_config_path")
+    if not cfg_path:
+        return cfg
+    disk = _read_json(cfg_path)
+    if not isinstance(disk, dict):
+        disk = {}
+    disk.pop("_storage", None)
+    disk.pop("_config_path", None)
+    disk.update(updates)
+    with open(cfg_path, "w", encoding="utf-8") as f:
+        json.dump(disk, f, ensure_ascii=False, indent=2)
+    new_cfg = load_config(cfg_path)
+    UpdateHandler.cfg = new_cfg
+    ensure_dirs(new_cfg)
+    return new_cfg
 
 
 def cmd_publish_launcher(args, cfg):
@@ -663,14 +1085,52 @@ def cmd_version_delete(args, cfg):
     sys.exit(0 if ok else 1)
 
 
+def _resolve_default_config(exe_dir):
+    """双击启动时，按 exe 所在目录 -> 上级目录（Server/）的顺序寻找 config.json。"""
+    here = os.path.join(exe_dir, "config.json")
+    if os.path.isfile(here):
+        return here
+    parent = os.path.join(os.path.dirname(exe_dir), "config.json")
+    if os.path.isfile(parent):
+        return parent
+    return here
+
+
+def _write_default_config(path):
+    """在 exe 旁边生成一个最小可用的默认配置，避免双击后因缺配置而报错退出。"""
+    default = {
+        "host": "0.0.0.0",
+        "port": 8710,
+        "project": "MyGame",
+        "platforms": ["Windows"],
+        "data_dir": "data",
+        "base_packages": {"Windows": {}},
+        "https": {
+            "enabled": False,
+            "certFile": "",
+            "keyFile": "",
+            "autoGenSelfSigned": True,
+            "country": "CN",
+            "commonName": "CloudUpdate",
+        },
+        "storage": {"backend": "local", "s3": {}},
+    }
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(default, f, ensure_ascii=False, indent=2)
+
+
 def main():
+    global _APP_ARGV
+    _APP_ARGV = list(sys.argv)
     parser = argparse.ArgumentParser(prog="CloudUpdateServer", description="CloudUpdate 管理服务器（独立程序）")
     parser.add_argument("--config", default=None, help="config.json 路径")
     parser.add_argument("--host", default=None, help="覆盖监听地址")
     parser.add_argument("--port", type=int, default=None, help="覆盖监听端口")
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("serve", help="启动 HTTP/HTTPS 服务（供启动器读取版本与下载）")
+    p_serve = sub.add_parser("serve", help="启动 HTTP/HTTPS 服务（供启动器读取版本与下载）")
+    p_serve.add_argument("--open", action="store_true", help="启动后自动打开网页管理控制台")
     sub.add_parser("reindex", help="重建版本索引")
     sub.add_parser("gen-manifest", help="重新生成完整性清单")
     p_up = sub.add_parser("upload", help="上传文件到存储（local 写磁盘 / s3 传对象）")
@@ -690,10 +1150,36 @@ def main():
     p_vd.add_argument("--id", required=True, help="版本号")
 
     args = parser.parse_args()
+
+    # 双击（无子命令）时，默认进入 serve，让服务器真正跑起来而不是闪一下帮助就退出
+    global _DOUBLE_CLICKED
+    double_clicked = not args.command
+    _DOUBLE_CLICKED = double_clicked
     if not args.command:
-        parser.print_help()
-        return
-    cfg = load_config(args.config)
+        args.command = "serve"
+
+    # 解析配置文件：未指定则自动寻找 exe 旁 / 上级目录；都不存在则生成默认配置
+    cfg_path = args.config or _resolve_default_config(str(BASE_DIR))
+    if not os.path.isfile(cfg_path):
+        _write_default_config(cfg_path)
+        print(f"[初始化] 已生成默认配置：{cfg_path}")
+        print(f"          请在需要时编辑 data_dir / base_packages / storage 等字段。")
+    elif double_clicked and args.config is None:
+        # 双击且使用了自动找到的配置，提示来源
+        print(f"[配置] 使用：{cfg_path}")
+
+    if args.command == "serve" and double_clicked:
+        print("[双击启动] 未指定子命令，默认以 serve 模式启动服务器。")
+        print("           如需其它命令（reindex / import-hotpatcher / set-enabled ...），请在终端中运行。")
+
+    try:
+        cfg = load_config(cfg_path)
+    except Exception as exc:
+        print(f"\n[配置错误] 无法加载 {cfg_path}：{type(exc).__name__}: {exc}")
+        if double_clicked:
+            input("\n按 Enter 退出...")
+        sys.exit(1)
+
     if args.host:
         cfg["host"] = args.host
     if args.port:
@@ -711,7 +1197,18 @@ def main():
         "gen-cert": cmd_gen_cert,
         "version-delete": cmd_version_delete,
     }
-    dispatch[args.command](args, cfg)
+
+    try:
+        dispatch[args.command](args, cfg)
+    except SystemExit:
+        raise
+    except Exception as exc:
+        import traceback
+        print(f"\n[运行错误] {type(exc).__name__}: {exc}")
+        traceback.print_exc()
+        if double_clicked:
+            input("\n按 Enter 退出...")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

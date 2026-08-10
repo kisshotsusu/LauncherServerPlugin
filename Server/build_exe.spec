@@ -4,7 +4,7 @@ a = Analysis(
     ['run_server.py'],
     pathex=['.'],
     binaries=[],
-    datas=[],
+    datas=[('web', 'web')],
     hiddenimports=['config', 'manifest', 'versions', 'storage', 'certgen', 'importer', 'cryptography'],
     hookspath=[],
     runtime_hooks=[],

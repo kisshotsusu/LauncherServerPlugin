@@ -1,26 +1,36 @@
 @echo off
-chcp 65001 >nul
-title One-Click Publish Update
 cd /d "%~dp0"
+title One-Click Publish Update
 
-echo ============ Step 1/2: Import HotPatcher ============
-call "%~dp0导入HotPatcher更新包.bat"
+set "RUN=dist\CloudUpdateServer.exe"
+if not exist "%RUN%" set "RUN=python run_server.py"
+
+echo ============ Step 1/2 : Import HotPatcher packages ============
+%RUN% --config config.json import-hotpatcher
 if errorlevel 1 (
-  echo [ERROR] Import failed, aborting.
+  echo.
+  echo [ERROR] Import failed - aborting.
+  echo.
   pause
   exit /b 1
 )
 
 echo.
-echo ============ Step 2/2: Regenerate manifest ============
-call "%~dp0重新生成完整性清单.bat"
+echo ============ Step 2/2 : Regenerate integrity manifest ============
+%RUN% --config config.json gen-manifest --platform Windows
 if errorlevel 1 (
+  echo.
   echo [ERROR] Manifest generation failed.
+  echo.
   pause
   exit /b 1
 )
 
 echo.
-echo Publish finished. Start the server with 启动服务器.bat so clients can fetch the update.
-echo (Web admin page removed — all management is now via command-line subcommands.)
+echo ============================================================
+echo   Publish finished.
+echo   Start the server with Start.bat, then manage everything
+echo   in the web console at http://127.0.0.1:8710/
+echo ============================================================
+echo.
 pause

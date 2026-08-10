@@ -61,3 +61,11 @@ __pycache__/
 # PyInstaller build output (packaged exe goes to Server/dist, not committed)
 Server/build/
 Server/dist/
+# Build-only virtual environment created by build_exe.bat (not committed)
+Server/build_venv/
+# Temporary build/verify output dirs
+Server/dist_new/
+Server/build_new/
+# Server stdout log written when launched from the .bat helpers
+Server/_*.log
+Server/_*.html

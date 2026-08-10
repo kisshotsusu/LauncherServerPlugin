@@ -1,32 +1,83 @@
 @echo off
-chcp 65001 >nul
-REM 打包 CloudUpdateServer 为单文件 exe（需 Python 3.8+）
 setlocal
 cd /d "%~dp0"
+title Build CloudUpdateServer.exe
 
-echo [1/2] 安装依赖（pyinstaller + cryptography）...
-python -m pip install --upgrade pip
-python -m pip install pyinstaller cryptography
-if errorlevel 1 (
-    echo 依赖安装失败，请检查 Python 环境
-    pause
-    exit /b 1
+echo ============================================================
+echo   Build CloudUpdateServer.exe  (single file, web UI bundled)
+echo ============================================================
+echo.
+
+REM ---------- 1. locate a python interpreter ----------
+set "PY="
+where python >nul 2>nul
+if not errorlevel 1 set "PY=python"
+if not defined PY (
+  where py >nul 2>nul
+  if not errorlevel 1 set "PY=py"
 )
+if not defined PY (
+  echo [ERROR] Python was not found in PATH.
+  echo         Install Python 3.9+ and tick "Add python.exe to PATH".
+  echo.
+  pause
+  exit /b 1
+)
+echo [1/4] Using interpreter: %PY%
 
-echo [2/2] 打包 CloudUpdateServer.exe（单文件）...
-REM 注意：传入 build_exe.spec 时不能再带 --onefile/--name/--hidden-import
-REM （这些已在 spec 内定义）。否则 PyInstaller 会报 "makespec options not valid"。
-python -m PyInstaller --clean --distpath dist --workpath build build_exe.spec
-
-if exist "dist\CloudUpdateServer.exe" (
+REM ---------- 2. isolated build virtual environment ----------
+set "VENV=%~dp0build_venv"
+set "VPY=%VENV%\Scripts\python.exe"
+if not exist "%VPY%" (
+  echo [2/4] Creating build virtual environment ...
+  "%PY%" -m venv "%VENV%"
+  if errorlevel 1 (
+    echo [ERROR] Could not create the virtual environment.
+    echo         Check that your Python installation is complete.
     echo.
-    echo 打包完成：dist\CloudUpdateServer.exe
-    echo 用法示例：
-    echo   dist\CloudUpdateServer.exe --config config.json serve
-    echo   dist\CloudUpdateServer.exe --config config.json gen-cert
-) else (
-    echo 打包失败，请查看上方日志
     pause
     exit /b 1
+  )
+) else (
+  echo [2/4] Reusing existing build virtual environment.
 )
-endlocal
+
+"%VPY%" -m pip --version >nul 2>nul
+if errorlevel 1 (
+  echo       pip is missing - bootstrapping with ensurepip ...
+  "%VPY%" -m ensurepip --upgrade
+)
+
+REM ---------- 3. dependencies ----------
+echo [3/4] Installing build dependencies (pyinstaller, cryptography) ...
+"%VPY%" -m pip install --disable-pip-version-check -q pyinstaller cryptography
+if errorlevel 1 (
+  echo [ERROR] Dependency installation failed. Check network / proxy settings.
+  echo.
+  pause
+  exit /b 1
+)
+
+REM ---------- 4. build ----------
+taskkill /F /IM CloudUpdateServer.exe >nul 2>nul
+
+echo [4/4] Building with PyInstaller ...
+echo.
+"%VPY%" -m PyInstaller --noconfirm --distpath dist --workpath build build_exe.spec
+if errorlevel 1 (
+  echo.
+  echo [ERROR] Build failed. Scroll up to see the PyInstaller output.
+  echo.
+  pause
+  exit /b 1
+)
+
+echo.
+echo ============================================================
+echo   Build finished:  dist\CloudUpdateServer.exe
+echo.
+echo   To run it, double-click Start.bat
+echo   (or run: dist\CloudUpdateServer.exe --config config.json serve)
+echo ============================================================
+echo.
+pause

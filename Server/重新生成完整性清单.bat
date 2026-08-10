@@ -1,13 +1,13 @@
 @echo off
-chcp 65001 >nul
-title Regenerate Integrity Manifest
 cd /d "%~dp0"
+title Regenerate Integrity Manifest
 
-set "RUN=python run_server.py"
-if exist "dist\CloudUpdateServer.exe" set "RUN=dist\CloudUpdateServer.exe"
+set "RUN=dist\CloudUpdateServer.exe"
+if not exist "%RUN%" set "RUN=python run_server.py"
 
-echo Scanning package directory and regenerating manifest ...
-%RUN% gen-manifest --platform Windows
+echo Scanning the package directory and regenerating the manifest ...
+echo.
+%RUN% --config config.json gen-manifest --platform Windows
 
 echo.
 if errorlevel 1 (
@@ -15,4 +15,5 @@ if errorlevel 1 (
 ) else (
   echo Manifest regenerated.
 )
+echo.
 pause
