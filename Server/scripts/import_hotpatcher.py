@@ -33,7 +33,9 @@ SERVER_DIR = SCRIPT_DIR.parent
 if str(SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(SERVER_DIR))
 
-from run_server import build_versions_index, get_base_dir, hash_file, load_config  # noqa: E402
+from config import get_base_dir, load_config  # noqa: E402
+from manifest import hash_file  # noqa: E402
+from versions import build_versions_index  # noqa: E402
 
 
 def read_json(path):

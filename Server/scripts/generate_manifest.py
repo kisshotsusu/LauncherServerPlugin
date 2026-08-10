@@ -23,7 +23,8 @@ SERVER_DIR = SCRIPT_DIR.parent
 if str(SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(SERVER_DIR))
 
-from run_server import ensure_dirs, generate_manifest, load_config  # noqa: E402
+from config import ensure_dirs, load_config  # noqa: E402
+from manifest import generate_manifest  # noqa: E402
 
 
 def main():

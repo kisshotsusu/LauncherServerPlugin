@@ -11,8 +11,8 @@
   "version_library_dir": "data/versions",
   "base_packages": {
     "Windows": {
-      "1.0": "D:\\test\\CodeBuild\\HotPatherPack\\Windows",
-      "1.4": "D:\\test\\CodeBuild\\HotPatherPack\\WindowsIOStore"
+      "1.0": "../HotPatherPack/Windows",
+      "1.4": "../HotPatherPack/WindowsIOStore"
     }
   },
   "manifest_exclude_patterns": [
@@ -24,7 +24,7 @@
   ],
   "manifest_hash": "md5",
   "max_upload_mb": 2048,
-  "hotpatcher_source": "D:\\test\\CodeBuild\\Saved\\HotPatcher",
+  "hotpatcher_source": "../Saved/HotPatcher",
   "hotpatcher_order": "1.0,1.2,1.3,1.4",
   "enabled_versions": {
     "Windows": [
@@ -36,8 +36,8 @@
   "launcher_versions": {
     "1.0.0": "data/launcher"
   },
-  "background_dir": "D:\\test\\CodeBuild\\Luncher\\Background",
+  "background_dir": "../Luncher/Background",
   "package_roots": {
-    "Windows": "D:\\test\\CodeBuild\\HotPatherPack\\WindowsIOStore"
+    "Windows": "../HotPatherPack/WindowsIOStore"
   }
 }

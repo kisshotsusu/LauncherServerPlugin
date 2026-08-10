@@ -10,458 +10,58 @@ CloudUpdate 管理服务器（零第三方依赖，仅 Python 标准库）
   - 管理页面：/（web/index.html）
   - 管理操作：重建版本索引、重新生成完整性清单
 
+本文件为 HTTP 路由与请求处理层；底层逻辑拆分到：
+  config.py   —— 配置加载、路径/版本号辅助
+  manifest.py —— 完整性清单生成与哈希
+  versions.py —— 版本索引与更新描述
+
 启动：
   python run_server.py [--config config.json] [--host 0.0.0.0] [--port 8710]
 """
 
 import argparse
-import fnmatch
 import hashlib
-import io
 import json
 import mimetypes
 import os
-import re
 import shutil
 import subprocess
 import sys
 import threading
 import time
-from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from config import (
+    resolve_server_path,
+    load_config,
+    ensure_dirs,
+    safe_join,
+    parse_multipart,
+    version_key,
+    get_base_packages,
+    get_latest_base_version,
+    get_base_dir,
+    launcher_bg_dir,
+)
+from manifest import (
+    hash_file,
+    matches_any,
+    generate_manifest,
+    build_base_descriptor,
+)
+from versions import (
+    _read_json,
+    build_versions_index,
+    load_versions_index,
+    filter_index_by_enabled,
+    read_descriptor,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 SERVER_START_TIME = time.time()
 
-
-# ---------------------------------------------------------------------------
-# 配置
-# ---------------------------------------------------------------------------
-
-def resolve_server_path(path):
-    """把配置中的路径解析为绝对路径（相对路径以 Server 目录为基准）。"""
-    p = os.path.expandvars(os.path.expanduser(str(path).strip()))
-    if not p:
-        return ""
-    if not os.path.isabs(p):
-        p = str((BASE_DIR / p).resolve())
-    return os.path.abspath(p)
-
-
-def load_config(config_path=None):
-    if config_path is None:
-        config_path = BASE_DIR / "config.json"
-    with open(config_path, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
-    cfg["_config_path"] = str(Path(config_path).resolve())
-    cfg.setdefault("host", "0.0.0.0")
-    cfg.setdefault("port", 8710)
-    cfg.setdefault("project", "CodeBuild")
-    cfg.setdefault("platforms", ["Windows"])
-    cfg.setdefault("data_dir", "data")
-    cfg.setdefault("web_dir", "web")
-    cfg.setdefault("admin_token", "")
-    cfg.setdefault("package_roots", {})
-    cfg.setdefault("base_packages", {})
-    cfg.setdefault("manifest_exclude_patterns", [])
-    cfg.setdefault("manifest_hash", "md5")
-    cfg.setdefault("max_upload_mb", 2048)
-    cfg.setdefault("hotpatcher_source", "")
-    cfg.setdefault("hotpatcher_order", "")
-    cfg.setdefault("version_library_dir", os.path.join(cfg["data_dir"], "versions"))
-    cfg["data_dir"] = str((BASE_DIR / cfg["data_dir"]).resolve())
-    cfg["web_dir"] = str((BASE_DIR / cfg["web_dir"]).resolve())
-    cfg["version_library_dir"] = resolve_server_path(cfg["version_library_dir"])
-    cfg["versions_dir"] = cfg["version_library_dir"]
-    cfg["hotpatcher_source"] = resolve_server_path(cfg["hotpatcher_source"])
-
-    # 迁移旧的 package_roots（单基础包）到 base_packages（多版本基础包）
-    if not cfg["base_packages"] and cfg.get("package_roots"):
-        migrated = {}
-        for platform, root in cfg["package_roots"].items():
-            if isinstance(root, dict):
-                migrated[platform] = {str(k): resolve_server_path(v) for k, v in root.items()}
-            else:
-                migrated[platform] = {"1.0": resolve_server_path(root)}
-        cfg["base_packages"] = migrated
-    else:
-        for platform, versions in cfg["base_packages"].items():
-            cfg["base_packages"][platform] = {
-                str(version): resolve_server_path(path)
-                for version, path in (versions or {}).items()
-            }
-
-    # 兼容字段：package_roots 指向各平台最新基础包
-    cfg["package_roots"] = {}
-    for platform in cfg["platforms"]:
-        latest = get_latest_base_version(cfg, platform)
-        cfg["package_roots"][platform] = get_base_dir(cfg, platform, latest)
-    cfg["manifests_dir"] = os.path.join(cfg["data_dir"], "manifests")
-    return cfg
-
-
-def ensure_dirs(cfg):
-    os.makedirs(cfg["versions_dir"], exist_ok=True)
-    os.makedirs(cfg["manifests_dir"], exist_ok=True)
-
-
-def safe_join(root, rel_path):
-    """将 rel_path 安全地解析到 root 下，防止路径穿越。"""
-    root = os.path.abspath(root)
-    candidate = os.path.abspath(os.path.join(root, rel_path))
-    if os.path.commonpath([root, candidate]) != root:
-        return None
-    return candidate
-
-
-def parse_multipart(content_type, body):
-    """极简 multipart/form-data 解析，返回 [(field_name, filename_or_None, bytes)]。"""
-    if not content_type or "boundary=" not in content_type:
-        return []
-    boundary = content_type.split("boundary=", 1)[1].strip().strip('"').encode("utf-8")
-    delimiter = b"--" + boundary
-    parts = []
-    for raw_part in body.split(delimiter):
-        raw_part = raw_part.strip(b"\r\n")
-        if not raw_part or raw_part == b"--":
-            continue
-        header_blob, _, content = raw_part.partition(b"\r\n\r\n")
-        headers = {}
-        for line in header_blob.split(b"\r\n"):
-            key, _, value = line.partition(b":")
-            headers[key.strip().lower().decode("utf-8", "replace")] = value.strip().decode("utf-8", "replace")
-        disposition = headers.get("content-disposition", "")
-        name = ""
-        filename = None
-        for token in disposition.split(";"):
-            token = token.strip()
-            if token.lower().startswith("name="):
-                name = token[5:].strip('"')
-            elif token.lower().startswith("filename="):
-                filename = token[9:].strip('"')
-        parts.append((name, filename, content))
-    return parts
-
-
-def version_key(version):
-    """版本号比较键：1.0 < 1.2 < 1.4 < 2.0。"""
-    key = []
-    for part in re.split(r"[.\-_]", str(version)):
-        key.append((1, int(part), "") if part.isdigit() else (0, 0, part))
-    return tuple(key)
-
-
-def get_base_packages(cfg, platform):
-    """返回该平台的 {基础包版本号: 绝对路径}（自动过滤不存在的目录）。"""
-    result = {}
-    for version, path in (cfg.get("base_packages", {}).get(platform) or {}).items():
-        path = str(path or "")
-        if path and os.path.isdir(path):
-            result[str(version)] = os.path.abspath(path)
-    return result
-
-
-def get_latest_base_version(cfg, platform):
-    versions = list(get_base_packages(cfg, platform).keys())
-    if not versions:
-        return ""
-    return max(versions, key=version_key)
-
-
-def get_base_dir(cfg, platform, base_version=None):
-    """获取基础包目录；base_version 为空时取该平台最新版本。"""
-    packages = get_base_packages(cfg, platform)
-    if not packages:
-        return ""
-    if base_version and base_version in packages:
-        return packages[base_version]
-    latest = get_latest_base_version(cfg, platform)
-    return packages.get(latest, "")
-
-
-def launcher_bg_dir(cfg):
-    """背景序列帧来源目录：优先 background_dir 配置，其次 data/launcher/background。"""
-    raw = cfg.get("background_dir") or ""
-    if raw:
-        resolved = resolve_server_path(raw)
-        if os.path.isdir(resolved):
-            return resolved
-    return os.path.join(cfg["data_dir"], "launcher", "background")
-
-
-# ---------------------------------------------------------------------------
-# 哈希
-# ---------------------------------------------------------------------------
-
-def hash_file(path, algo="md5", chunk_size=1024 * 1024):
-    h = hashlib.new(algo)
-    size = 0
-    with open(path, "rb") as f:
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                break
-            size += len(chunk)
-            h.update(chunk)
-    return h.hexdigest(), size
-
-
-def matches_any(rel_path, patterns):
-    rel = rel_path.replace("\\", "/")
-    for pat in patterns:
-        p = pat.replace("\\", "/")
-        if fnmatch.fnmatch(rel, p) or fnmatch.fnmatch(os.path.basename(rel), p):
-            return True
-        # 允许目录前缀模式，例如 Engine/Extras/
-        if p.endswith("/") and rel.startswith(p):
-            return True
-    return False
-
-
-# ---------------------------------------------------------------------------
-# 完整性清单
-# ---------------------------------------------------------------------------
-
-def generate_manifest(cfg, platform, base_version=None, force=False):
-    """扫描基础包目录生成完整性清单，返回清单 dict（按基础包版本缓存）。"""
-    project = cfg["project"]
-    root = get_base_dir(cfg, platform, base_version)
-    if not root or not os.path.isdir(root):
-        raise RuntimeError(f"未配置或找不到平台 {platform} 的打包目录")
-    version = base_version or get_latest_base_version(cfg, platform) or "base"
-
-    cache_path = os.path.join(cfg["manifests_dir"], f"{project}_{platform}_{version}.json")
-    latest_path = os.path.join(cfg["manifests_dir"], f"{project}_{platform}.json")
-    for candidate in (cache_path, latest_path if version == get_latest_base_version(cfg, platform) else ""):
-        if candidate and os.path.exists(candidate) and not force:
-            with open(candidate, "r", encoding="utf-8") as f:
-                cached = json.load(f)
-            if cached.get("baseVersionId") == version:
-                return cached
-            # 缓存属于其他基础包版本，忽略并重新生成
-
-    files = []
-    for dirpath, dirnames, filenames in os.walk(root):
-        for name in filenames:
-            abs_path = os.path.join(dirpath, name)
-            rel = os.path.relpath(abs_path, root).replace("\\", "/")
-            if matches_any(rel, cfg["manifest_exclude_patterns"]):
-                continue
-            digest, size = hash_file(abs_path, cfg["manifest_hash"])
-            files.append({
-                "path": rel,
-                "size": size,
-                "hash": digest,
-                "hashType": cfg["manifest_hash"],
-            })
-
-    files.sort(key=lambda x: x["path"])
-    manifest = {
-        "schemaVersion": 1,
-        "project": project,
-        "platform": platform,
-        "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "baseVersionId": version,
-        "fileCount": len(files),
-        "files": files,
-    }
-    os.makedirs(cfg["manifests_dir"], exist_ok=True)
-    with open(cache_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=2)
-    if version == get_latest_base_version(cfg, platform):
-        with open(latest_path, "w", encoding="utf-8") as f:
-            json.dump(manifest, f, ensure_ascii=False, indent=2)
-    return manifest
-
-
-def build_base_descriptor(cfg, platform, base_version):
-    """为基础包版本动态生成更新描述（整包文件列表，客户端据此整包替换）。"""
-    manifest = generate_manifest(cfg, platform, base_version)
-    files = []
-    for entry in manifest.get("files", []):
-        rel = entry.get("path", "")
-        if not rel:
-            continue
-        files.append({
-            "fileName": os.path.basename(rel),
-            "url": f"/files/packages/{platform}/{base_version}/{rel}",
-            "targetRelativePath": rel,
-            "hash": entry.get("hash", ""),
-            "size": entry.get("size", 0),
-            "kind": "ExternFile",
-        })
-    return {
-        "schemaVersion": 1,
-        "versionId": base_version,
-        "baseVersionId": "",
-        "date": manifest.get("generatedAt", ""),
-        "type": "full",
-        "changedAssetCount": 0,
-        "deletedAssetCount": 0,
-        "restartRequired": True,
-        "ioStoreEnabled": False,
-        "files": files,
-    }
-
-
-# ---------------------------------------------------------------------------
-# 版本索引与更新描述
-# ---------------------------------------------------------------------------
-
-def _read_json(path, default=None):
-    if not os.path.exists(path):
-        return default
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return default
-
-
-def build_versions_index(cfg, explicit_order=None):
-    """扫描版本文件库与基础包目录生成版本索引（补丁 + 基础包多版本）。"""
-    ensure_dirs(cfg)
-    patch_versions = []
-    versions_dir = cfg["versions_dir"]
-    if os.path.isdir(versions_dir):
-        for entry in sorted(os.listdir(versions_dir)):
-            desc_path = os.path.join(versions_dir, entry, "descriptor.json")
-            desc = _read_json(desc_path)
-            if not desc:
-                continue
-            info = {
-                "versionId": desc.get("versionId", entry),
-                "baseVersionId": desc.get("baseVersionId", ""),
-                "date": desc.get("date", ""),
-                "type": desc.get("type", "patch"),
-                "url": f"/api/version/{quote(entry)}",
-                "changedAssetCount": desc.get("changedAssetCount", 0),
-                "deletedAssetCount": desc.get("deletedAssetCount", 0),
-                "totalSizeBytes": sum(f.get("size", 0) for f in desc.get("files", [])),
-            }
-            patch_versions.append(info)
-
-    # 基础包版本（多版本整包）
-    base_versions = {}
-    base_ids_all = set()
-    for platform in cfg["platforms"]:
-        base_versions[platform] = []
-        packages = get_base_packages(cfg, platform)
-        for version in sorted(packages.keys(), key=version_key):
-            base_versions[platform].append(version)
-            base_ids_all.add(version)
-            # 基础包整包优先：移除版本库中同名的补丁/整包条目，避免重复
-            patch_versions = [v for v in patch_versions if v["versionId"] != version]
-            manifest = _read_json(os.path.join(
-                cfg["manifests_dir"], f"{cfg['project']}_{platform}_{version}.json"))
-            total_size = sum(f.get("size", 0) for f in (manifest or {}).get("files", [])) if manifest else 0
-            patch_versions.append({
-                "versionId": version,
-                "baseVersionId": "",
-                "date": (manifest or {}).get("generatedAt", ""),
-                "type": "full",
-                "url": f"/api/version/{quote(version)}?platform={quote(platform)}",
-                "changedAssetCount": 0,
-                "deletedAssetCount": 0,
-                "totalSizeBytes": total_size,
-            })
-
-    # 补丁按日期降序，整体再按版本号降序（基础包 2.0 会排在补丁 1.4 之前）
-    versions = sorted(patch_versions, key=lambda v: version_key(v["versionId"]), reverse=True)
-
-    chain = []
-    if explicit_order:
-        order = [x.strip() for x in explicit_order.split(",") if x.strip()]
-        for vid in order:
-            for v in patch_versions:
-                if v["versionId"] == vid and v["type"] != "full":
-                    chain.append(vid)
-                    break
-    else:
-        # 无显式顺序时：按日期升序取 patch 版本作为更新链
-        chain = [v["versionId"] for v in sorted(patch_versions, key=lambda v: v["date"]) if v["type"] == "patch"]
-    # 基础包版本不进更新链（整包已包含其内容，避免客户端整包后再打同名补丁）
-    chain = [vid for vid in chain if vid not in base_ids_all]
-
-    all_ids = [v["versionId"] for v in patch_versions]
-    current = max(all_ids, key=version_key) if all_ids else ""
-    index = {
-        "schemaVersion": 1,
-        "project": cfg["project"],
-        "platforms": cfg["platforms"],
-        "current": current,
-        "versions": versions,
-        "updateChain": chain,
-        "baseVersions": base_versions,
-        "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-    }
-    index_path = os.path.join(cfg["data_dir"], "versions.json")
-    with open(index_path, "w", encoding="utf-8") as f:
-        json.dump(index, f, ensure_ascii=False, indent=2)
-    return index
-
-
-def load_versions_index(cfg, rebuild=False):
-    index_path = os.path.join(cfg["data_dir"], "versions.json")
-    index = _read_json(index_path)
-    if index is None or rebuild:
-        index = build_versions_index(cfg)
-    return index
-
-
-def filter_index_by_enabled(index, cfg):
-    """按 enabled_versions 配置过滤客户端可见版本。
-    未配置任何开放列表 = 全部开放；配置后只开放列表内的版本。
-    管理端（?all=1）不受影响，始终看到完整索引。
-    """
-    if not index:
-        return index
-    ev = cfg.get("enabled_versions") or {}
-    configured = {}
-    for platform, ids in ev.items():
-        if isinstance(ids, list) and ids:
-            configured[str(platform)] = set(str(x) for x in ids)
-    if not configured:
-        return index
-    allowed_any = set()
-    for ids in configured.values():
-        allowed_any |= ids
-
-    index = dict(index)
-    index["versions"] = [v for v in (index.get("versions") or [])
-                         if v.get("versionId") in allowed_any]
-    index["updateChain"] = [x for x in (index.get("updateChain") or [])
-                            if x in allowed_any]
-    bv = dict(index.get("baseVersions") or {})
-    for platform, ids in bv.items():
-        if platform in configured:
-            bv[platform] = [x for x in ids if x in configured[platform]]
-    index["baseVersions"] = bv
-    all_ids = [v.get("versionId") for v in index.get("versions", [])]
-    if all_ids:
-        index["current"] = max(all_ids, key=version_key)
-    return index
-
-
-def read_descriptor(cfg, version_id):
-    version_id = os.path.basename(unquote(version_id))
-    # 基础包版本：在任一平台中找到则动态生成整包描述（优先于版本文件库中的同名 full 描述）
-    for platform in cfg["platforms"]:
-        if version_id in get_base_packages(cfg, platform):
-            return build_base_descriptor(cfg, platform, version_id)
-    desc_path = os.path.join(cfg["versions_dir"], version_id, "descriptor.json")
-    desc = _read_json(desc_path)
-    if desc:
-        return desc
-    return None
-
-
-# ---------------------------------------------------------------------------
-# HTTP 服务
-# ---------------------------------------------------------------------------
 
 class UpdateHandler(BaseHTTPRequestHandler):
     server_version = "CloudUpdateServer/1.0"
