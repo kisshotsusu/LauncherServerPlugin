@@ -101,22 +101,27 @@
     </div>
     <nav>
       <div class="nav-group">
-        <div class="group-title">游戏版本管理</div>
-        <button class="nav-item active" data-tab="versions" onclick="switchTab('versions')">📦 版本管理</button>
+        <div class="group-title">总览</div>
+        <button class="nav-item active" data-tab="overview" onclick="switchTab('overview')">📊 总览</button>
+      </div>
+      <div class="nav-group">
+        <div class="group-title">游戏版本</div>
+        <button class="nav-item" data-tab="versions" onclick="switchTab('versions')">📦 版本管理</button>
         <button class="nav-item" data-tab="manifest" onclick="switchTab('manifest')">✅ 完整性清单</button>
       </div>
       <div class="nav-group">
-        <div class="group-title">存储位置管理</div>
-        <button class="nav-item" data-tab="storage" onclick="switchTab('storage')">🗄️ 存储配置</button>
+        <div class="group-title">存储管理</div>
+        <button class="nav-item" data-tab="dirs" onclick="switchTab('dirs')">📁 目录位置</button>
+        <button class="nav-item" data-tab="oss" onclick="switchTab('oss')">🗄️ 对象存储</button>
         <button class="nav-item" data-tab="files" onclick="switchTab('files')">☁️ 云端文件</button>
       </div>
       <div class="nav-group">
-        <div class="group-title">服务器配置管理</div>
-        <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">⚙️ 服务器设置</button>
-        <button class="nav-item" data-tab="control" onclick="switchTab('control')">🖥️ 服务器控制</button>
+        <div class="group-title">服务器管理</div>
+        <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">⚙️ 基本设置</button>
+        <button class="nav-item" data-tab="control" onclick="switchTab('control')">🖥️ 运行状态</button>
       </div>
       <div class="nav-group">
-        <div class="group-title">启动器管理</div>
+        <div class="group-title">启动器</div>
         <button class="nav-item" data-tab="launcher" onclick="switchTab('launcher')">🚀 启动器管理</button>
       </div>
       <div class="nav-group">
@@ -133,7 +138,7 @@
 
   <main class="content">
     <div class="topbar">
-      <h2 id="pageTitle">版本管理</h2>
+      <h2 id="pageTitle">总览</h2>
       <span class="badge offline" id="serverBadge">连接中...</span>
       <span class="muted" id="serverTime"></span>
       <div class="spacer"></div>
@@ -141,14 +146,27 @@
       <input type="password" id="tokenInput" placeholder="留空则不需要" style="width:180px" onchange="saveToken()">
     </div>
 
-    <div class="status-strip" id="statusGrid">
-      <div class="card"><h3>项目</h3><div class="value" id="stProject">-</div><div class="sub" id="stPlatforms"></div></div>
-      <div class="card"><h3>当前版本</h3><div class="value" id="stCurrent">-</div><div class="sub" id="stChain"></div></div>
-      <div class="card"><h3>版本数量</h3><div class="value" id="stCount">-</div><div class="sub" id="stHotpatcher"></div></div>
-      <div class="card"><h3>完整性清单</h3><div class="value" id="stManifest">-</div><div class="sub" id="stManifestSub"></div></div>
+    <div id="tab-overview" class="tab-panel">
+      <div class="status-strip" id="statusGrid">
+        <div class="card"><h3>项目</h3><div class="value" id="stProject">-</div><div class="sub" id="stPlatforms"></div></div>
+        <div class="card"><h3>当前版本</h3><div class="value" id="stCurrent">-</div><div class="sub" id="stChain"></div></div>
+        <div class="card"><h3>版本数量</h3><div class="value" id="stCount">-</div><div class="sub" id="stHotpatcher"></div></div>
+        <div class="card"><h3>完整性清单</h3><div class="value" id="stManifest">-</div><div class="sub" id="stManifestSub"></div></div>
+      </div>
+      <div class="card">
+        <h3>快捷操作</h3>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="ghost" onclick="loadAll()">刷新状态</button>
+          <button class="ghost" onclick="reindex()">重建版本索引</button>
+          <button class="ghost" onclick="importHotPatcher()" id="btnImport">一键导入 HotPatcher</button>
+          <button class="ghost" onclick="regenerateAllManifests()">重新生成全部完整性清单</button>
+          <button class="red" onclick="restartServer()">重启服务器</button>
+        </div>
+        <div class="muted" id="manifestLinks" style="margin-top:10px"></div>
+      </div>
     </div>
 
-    <div id="tab-versions" class="tab-panel">
+    <div id="tab-versions" class="tab-panel hidden">
       <div class="card">
         <div class="toolbar">
           <label>平台</label>
@@ -157,9 +175,6 @@
           <button class="ghost" onclick="setAllVersions(false)">全部关闭</button>
           <span class="muted" id="enabledHint"></span>
           <span class="spacer"></span>
-          <button class="ghost" onclick="loadAll()">刷新</button>
-          <button class="ghost" onclick="reindex()">重建索引</button>
-          <button class="ghost" onclick="importHotPatcher()" id="btnImport">一键导入 HotPatcher</button>
           <button class="green" onclick="openUploadVersion()">上传新版本文件</button>
         </div>
         <table>
@@ -169,7 +184,6 @@
           <tbody id="versionsBody"><tr><td colspan="8" class="empty">加载中...</td></tr></tbody>
         </table>
         <div class="muted" style="margin-top:10px">“开放下载”控制客户端可见与可下载的版本（客户端 /api/versions 只返回开放的版本）；未做过任何设置时默认全部开放。</div>
-        <div class="muted" id="manifestLinks" style="margin-top:8px"></div>
       </div>
     </div>
 
@@ -177,9 +191,10 @@
       <div class="card" id="manifestCard"></div>
     </div>
 
-    <div id="tab-storage" class="tab-panel hidden">
+    <div id="tab-dirs" class="tab-panel hidden">
       <div class="card">
         <h3>目录位置</h3>
+        <div class="muted" style="margin-top:2px">这些目录决定清单缓存、版本文件库、HotPatcher 导入源和基础包修复源的位置</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
           <div>
             <label class="muted">数据目录（清单缓存 / 索引 / 回收站）</label>
@@ -204,8 +219,15 @@
           </div>
           <div id="setPackageRoots" style="grid-column:1/-1"></div>
         </div>
+        <div class="btn-row" style="margin-top:14px">
+          <button class="green" onclick="saveDirSettings()">保存目录配置</button>
+          <span class="muted">保存后立即生效并写回 config.json</span>
+        </div>
       </div>
-      <div class="card" style="margin-top:16px">
+    </div>
+
+    <div id="tab-oss" class="tab-panel hidden">
+      <div class="card">
         <h3>对象存储（OSS / S3 兼容）</h3>
         <div class="muted" style="margin-top:2px">启用后客户端直连对象存储下载，上传与发布会同步到远端</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px">
@@ -279,8 +301,6 @@
             </div>
           </div>
         </div>
-      </div>
-      <div class="card" style="margin-top:16px">
         <div class="btn-row">
           <button class="green" onclick="saveStorageSettings()">保存存储配置</button>
           <span class="muted">保存后立即生效并写回 config.json</span>
@@ -308,7 +328,7 @@
 
     <div id="tab-settings" class="tab-panel hidden">
       <div class="card">
-        <h3>服务器设置（保存后立即生效并写入 config.json；主机/端口需重启生效）</h3>
+        <h3>基础信息</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
           <div>
             <label class="muted">项目名</label>
@@ -318,14 +338,24 @@
             <label class="muted">平台（逗号分隔）</label>
             <input id="setPlatforms" style="width:100%;margin-top:4px">
           </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>网络监听（主机/端口保存后需重启生效）</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
           <div>
             <label class="muted">监听地址</label>
-            <input id="setHost" style="width:100%;margin-top:4px" placeholder="0.0.0.0（重启生效）">
+            <input id="setHost" style="width:100%;margin-top:4px" placeholder="0.0.0.0">
           </div>
           <div>
             <label class="muted">监听端口</label>
-            <input id="setPort" type="number" style="width:100%;margin-top:4px" placeholder="8710（重启生效）">
+            <input id="setPort" type="number" style="width:100%;margin-top:4px" placeholder="8710">
           </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>更新与完整性</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
           <div style="grid-column:1/-1">
             <label class="muted">版本顺序（逗号分隔，用于更新链排序）</label>
             <input id="setOrder" style="width:100%;margin-top:4px" placeholder="1.0,1.2,1.3,1.4">
@@ -345,6 +375,11 @@
             <label class="muted">清单排除模式（每行一个，fnmatch 风格）</label>
             <textarea id="setExcludes" rows="4" style="width:100%;margin-top:4px;font-family:Consolas,monospace;font-size:12px"></textarea>
           </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>安全</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
           <div>
             <label class="muted">管理员令牌（留空保持当前；填新值则覆盖）</label>
             <input id="setToken" type="password" style="width:100%;margin-top:4px" placeholder="已设置: 是/否">
@@ -504,7 +539,7 @@ function fmtSize(bytes) {
   return v.toFixed(1) + ' ' + u[i];
 }
 
-const TAB_TITLES = { versions: '版本管理', manifest: '完整性清单', storage: '存储配置', files: '云端文件', settings: '服务器设置', control: '服务器控制', launcher: '启动器管理', api: 'API 说明' };
+const TAB_TITLES = { overview: '总览', versions: '版本管理', manifest: '完整性清单', dirs: '目录位置', oss: '对象存储', files: '云端文件', settings: '基本设置', control: '运行状态', launcher: '启动器管理', api: 'API 说明' };
 function switchTab(name) {
   document.querySelectorAll('.nav-item[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
@@ -827,7 +862,7 @@ async function saveSettings() {
   } catch (e) { toast(e.message, 'err'); }
 }
 
-async function saveStorageSettings() {
+async function saveDirSettings() {
   const { basePackages, rowError } = collectBasePackages();
   if (rowError) { toast(rowError, 'err'); return; }
   const payload = {
@@ -835,7 +870,6 @@ async function saveStorageSettings() {
     versionLibraryDir: $('setVersionLib').value.trim(),
     basePackages,
     patchSourceDir: $('setPatchSource').value.trim(),
-    storage: collectStorageConfig(),
   };
   try {
     const r = await api('/api/config/update', {
@@ -845,7 +879,21 @@ async function saveStorageSettings() {
     });
     toast(r.message, 'ok');
     await loadAll();
-    switchTab('storage');
+    switchTab('dirs');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveStorageSettings() {
+  const payload = { storage: collectStorageConfig() };
+  try {
+    const r = await api('/api/config/update', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify(payload),
+    });
+    toast(r.message, 'ok');
+    await loadAll();
+    switchTab('oss');
   } catch (e) { toast(e.message, 'err'); }
 }
 
