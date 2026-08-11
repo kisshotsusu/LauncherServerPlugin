@@ -49,6 +49,7 @@ def _revoked_entry_from_descriptor(cfg, version_id):
             continue
         files.append({
             "fileName": fn,
+            "targetRelativePath": f.get("targetRelativePath", ""),
             "hash": f.get("hash", ""),
             "size": f.get("size", 0),
             "kind": f.get("kind", ""),

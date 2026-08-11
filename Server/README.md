@@ -5,43 +5,68 @@
 - 托管打包目录（作为云端文件仓库，客户端缺失/损坏文件从这里下载修复）
 - 生成并托管**完整性清单**（路径 / 大小 / MD5）
 - 导入并索引 **HotPatcher 产物**（PatchConfig / Release / PakFilesInfo / Diff / Pak），生成客户端可用的更新描述
-- 提供**网页管理控制台**与 REST API（版本管理、云端文件浏览/上传、清单生成、一键导入 HotPatcher）
+- 支持 **本地磁盘 / 阿里云 OSS / 腾讯云 COS / AWS S3 / 自建 MinIO** 存储
+- 提供**网页管理控制台**（白主题左右布局）与 REST API（版本管理、存储配置、
+  云端文件浏览/上传、清单生成、一键导入 HotPatcher、启动器发布）
 
 ## 目录结构
 
 ```
 Server/
   run_server.py                HTTP 服务（纯标准库）
+  build_exe.bat / build_exe.spec   PyInstaller 单文件打包（产物在 dist/）
   config.json                  配置
+  config.py / storage.py / versions.py / manifest.py / importer.py / certgen.py
+  web/index.html               管理页面（左侧分类导航 + 右侧详情）
   data/
     versions.json              版本索引（自动生成）
     versions/<版本>/            导入的 HotPatcher 产物 + descriptor.json
     manifests/                 完整性清单缓存
+    revoked.json               已删除版本的撤销快照（客户端回滚依据）
+    launcher/                  启动器资源（Launcher.exe / SelfUpdater.exe / ui/）
+    trash/                     删除版本的回收站
   scripts/
     import_hotpatcher.py       导入 HotPatcher 产物
     generate_manifest.py       重新生成完整性清单
-  web/
-    index.html                 管理页面
+  build_venv/ / build/ / dist/ 构建虚拟环境与打包产物（已被忽略，不提交）
 ```
 
 ## 启动
 
 ```bat
-cd /d D:\test\CodeBuild\Server
+cd /d E:\SVN\LauncherServerPlugin\Server
 python run_server.py
 ```
 
 默认监听 `http://0.0.0.0:8710`，**网页管理控制台**：`http://127.0.0.1:8710/`
 
+也可以打包成单文件运行：
+
+```bat
+build_exe.bat
+dist\CloudUpdateServer.exe --config config.json --host 0.0.0.0 --port 8710 serve
+```
+
+> `D:\test\CodeBuild\Server` 是指向本目录的符号链接，两个路径等价。
+
 控制台功能：
 
-- 概览：项目、当前版本、更新链、版本数、清单状态
-- 版本管理：查看更新描述、删除版本（移入 `data/trash` 回收站）、上传新版本文件、一键导入 HotPatcher
-- 云端文件：按平台浏览打包目录、上传文件到任意目录、复制下载链接
-- 完整性清单：按基础包版本查看/重新生成/下载清单
-- 服务器设置：项目名、平台、监听地址/端口、数据目录、版本文件库/补丁包位置、**基础包多版本（每平台可增删多个版本目录）**、版本顺序、清单哈希与排除模式、上传上限、管理员令牌，全部可在网页上修改并保存
-- 网页一键重启服务器（修改监听地址/端口后无需手动重启）
-- API 说明：内置全部接口速查
+左侧分类导航：
+
+- **总览**：项目/当前版本/版本数/清单状态卡片 + 快捷操作（刷新、重建索引、一键导入、生成清单、重启）
+- **游戏版本**：
+  - 版本管理：开放下载开关、查看更新描述、删除版本（移入 `data/trash`）、上传新版本文件、一键导入
+  - 完整性清单：按基础包版本查看/重新生成/下载
+- **存储管理**：
+  - 目录位置：数据目录、版本文件库、补丁包位置、**基础包多版本**；所有路径输入框带「选择」
+    按钮，可弹窗浏览服务器目录（`/api/dirs/list`）
+  - 对象存储：本地磁盘 / OSS / COS / S3 / MinIO 切换、服务商自动填充、测试连接
+  - 云端文件：按平台浏览打包目录、上传文件、复制下载链接
+- **服务器管理**：
+  - 基本设置：基础信息、网络监听、更新与完整性、安全（管理员令牌）四组卡片
+  - 运行状态：PID / 运行时长 / 监听地址 / 数据目录 + 重启与重建索引
+- **启动器管理**：启动器历史版本发布、背景序列帧目录与 FPS
+- **API 说明**：内置全部接口速查
 
 若 `config.json` 配置了 `admin_token`，控制台右上角填写令牌后管理操作自动携带认证头。
 
@@ -62,13 +87,15 @@ python run_server.py
 | `max_upload_mb` | 网页上传大小上限（MB），默认 2048 |
 | `hotpatcher_order` | 一键导入时的版本顺序 |
 
-这些设置在网页管理控制台的 **服务器设置** 页修改（保存后立即生效并写回 `config.json`），
-或通过 `POST /api/config/update` 修改；监听地址/端口保存后点击“重启服务器”即可生效。
+这些设置在网页管理控制台的 **服务器管理 → 基本设置** 与 **存储管理 → 目录位置** 页修改
+（保存后立即生效并写回 `config.json`），或通过 `POST /api/config/update` 修改；
+监听地址/端口保存后点击“重启服务器”即可生效。
 
 ## 对象存储（OSS / S3 兼容）
 
-默认使用本地磁盘。需要阿里云 OSS、腾讯云 COS 或任意 S3 兼容存储时，在管理页面「服务器设置」
-选择 **OSS / S3 对象存储**，再选服务商即可自动填充 endpoint / region / service / 寻址方式：
+默认使用本地磁盘。需要阿里云 OSS、腾讯云 COS 或任意 S3 兼容存储时，在管理页面
+「存储管理 → 对象存储」选择 **OSS / S3 对象存储**，再选服务商即可自动填充
+endpoint / region / service / 寻址方式：
 
 | 服务商 | provider | endpoint | region 示例 | service | 寻址方式 |
 | --- | --- | --- | --- | --- | --- |
@@ -140,10 +167,12 @@ POST /api/manifest/generate?platform=Windows&baseVersion=1.0
 | GET | `/` | 管理页面 |
 | GET | `/api/status` | 服务器状态、版本数、清单状态 |
 | GET | `/api/versions` | 版本索引与更新链 |
+| GET | `/api/versions`（`revoked`） | 被删除/关闭的补丁版本文件快照（客户端回滚依据） |
 | GET | `/api/version/{id}?platform=Windows` | 更新描述；基础包版本返回整包文件列表（客户端整包替换） |
 | GET | `/api/manifest.json?platform=Windows&baseVersion=1.0` | 按基础包版本的完整性清单 |
 | GET | `/api/files?platform=Windows&baseVersion=1.0&path=CodeBuild/Content` | 云端文件目录浏览（按基础包版本） |
 | GET | `/api/config` | 服务器配置（不含令牌） |
+| GET | `/api/dirs/list?path=...` | 服务器目录浏览（管理台文件夹选择器，需令牌） |
 | GET | `/api/launcher/version` | 启动器自升级版本信息（data/launcher/version.json） |
 | GET | `/files/packages/{平台}/{基础包版本}/{路径}` | 打包目录文件（修复下载源，兼容无版本号的旧式路径） |
 | GET | `/files/versions/{版本}/{文件名}` | 更新包文件 |
@@ -152,7 +181,8 @@ POST /api/manifest/generate?platform=Windows&baseVersion=1.0
 | POST | `/api/manifest/generate?platform=Windows` | 重新生成清单（需令牌，若配置） |
 | POST | `/api/upload?target=package|version&platform=&baseVersion=&path=&versionId=` | 上传文件（multipart，字段名 file） |
 | POST | `/api/import/hotpatcher` | 一键导入 HotPatcher 产物（需配置 hotpatcher_source） |
-| POST | `/api/config/update` | 修改全部设置，含基础包多版本 `basePackages`（JSON，需令牌，若配置） |
+| POST | `/api/config/update` | 修改全部设置，含 `basePackages` 与 `storage`（JSON，需令牌，若配置） |
+| POST | `/api/storage/test` | 测试对象存储连接（HEAD bucket，需令牌） |
 | POST | `/api/server/restart` | 网页重启服务器（自动重试端口） |
 | DELETE | `/api/version/{id}` | 删除版本（移入 data/trash 回收站） |
 
@@ -163,14 +193,17 @@ UE 插件 `CloudUpdate`（`Plugins/CloudUpdate`）直接使用上述 API：
 1. `Check For Updates` -> `GET /api/versions`：**先比较基础包版本**（`baseVersions`，有更新的整包排在结果最前），**再比较补丁链**（`updateChain`）；
 2. `Apply Update("2.0")` -> 基础包整包更新：按描述符 `files` 下载全部文件并替换本地，`restartRequired=true`；`Apply Update("1.4")` -> 补丁更新：ContentPak 进 `Content/Paks`，ExternFile 替换本地文件，IoStore 重启生效；
 3. `Check Integrity` -> `GET /api/manifest.json?baseVersion=本地基础包版本`，`Repair Issues` -> `GET /files/packages/Windows/{基础包版本}/{路径}`。
+4. `Check For Updates` 同时检测 `revoked`：本地版本被服务器删除/关闭时自动删除
+   本地更新文件并回退版本号（基础包整包不回滚），详见下文「版本撤销与本地回滚」。
 
 插件也支持直连 HotPatcher JSON 模式（不经过管理服务器描述文件），在项目设置中填写
 `HotPatcherBaseUrl` 为版本文件所在 HTTP 根地址即可。
 
 ## 启动器（Luncher）
 
-`D:\test\CodeBuild\Luncher` 为 C++ 启动器工程（Win32 + GDI+ + WinHTTP），
+`E:\SVN\LauncherServerPlugin\Luncher` 为 C++ 启动器工程（Win32 + WebView2 + WinHTTP），
 支持序列帧背景、限速下载、自定义游戏位置、基础包整包更新/补丁更新/修复、自升级。
+本地版本被服务器删除或关闭开放时，启动器检查更新会自动删除对应更新文件并回退版本号。
 发布新启动器版本时把 `Launcher.exe`、`SelfUpdater.exe` 复制到
 `data/launcher/`，并更新 `data/launcher/version.json` 即可。
 
@@ -180,6 +213,10 @@ UE 插件 `CloudUpdate`（`Plugins/CloudUpdate`）直接使用上述 API：
 - `admin_token` 为空时管理接口可直接调用，仅建议内网使用。
 - 基础包版本与补丁版本重名时，以基础包整包为准：索引会移除同名补丁条目，
   更新链也不会包含基础包版本，避免客户端整包后又重复打同名补丁
+- `config.json` 里的相对路径以 **config.json 所在目录** 为基准；仓库迁移到
+  `E:\SVN\LauncherServerPlugin` 后，`base_packages` / `hotpatcher_source` 需同步
+  指向真实目录（当前机器上为 `D:\test\CodeBuild\HotPatherPack\...` 与
+  `D:\test\CodeBuild\Saved\HotPatcher`）
 
 ## 开放版本控制（管理页面「版本管理」）
 
@@ -191,6 +228,17 @@ UE 插件 `CloudUpdate`（`Plugins/CloudUpdate`）直接使用上述 API：
 - 专用接口：`GET /api/enabled_versions`（查询）、
   `POST /api/enabled_versions`（设置，请求体 `{platform, versions:[...]}`）
 - 新增基础包会自动加入开放列表（客户端立即可下载）；删除基础包时自动移出
+
+## 版本撤销与本地回滚
+
+**删除版本**或**关闭开放**后，客户端 `/api/versions` 的 `revoked` 列表会携带被撤销
+补丁版本的文件快照（`fileName` / `targetRelativePath` / `kind` / `hash` / `size`）：
+
+- 删除版本：快照持久化到 `data/revoked.json`，版本目录移入 `data/trash/` 回收站；
+- 关闭开放：隐藏的补丁版本自动从描述文件生成快照注入 `revoked`；
+- 客户端（Luncher / UE 插件）检查更新时若本地版本号命中 `revoked`，会删除该版本下载的
+  Pak / IoStore / 外部文件，并回退到上一可用版本（基础包整包不回滚）；
+- 版本被重新发布后自动从撤销库移除，客户端不再回滚。
 
 ## 服务器控制（管理页面「服务器控制」）
 

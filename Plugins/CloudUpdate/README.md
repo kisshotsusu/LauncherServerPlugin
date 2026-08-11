@@ -5,6 +5,9 @@ UE 5.8 运行时插件，与项目中的 HotPatcher 配合使用：
 - **运行时完整性检查**：从管理服务器下载文件清单（路径 / 大小 / MD5），与本地安装文件逐一对账，报告缺失、大小不符、哈希不符的文件。
 - **云端修复**：把有问题的文件从服务器下载并替换回本地；下载后再次校验哈希。
 - **HotPatcher 更新管理**：根据 HotPatcher 生成的 JSON（`*_PatchConfig.json` / `*_PakFilesInfo.json` / `*_Release.json`）解析更新包，下载内容 Pak / IoStore 容器 / 外部文件，挂载 Pak 并记录本地版本。
+- **版本撤销自动回滚**：`Check For Updates` 检测到本地版本出现在服务器 `revoked` 列表
+  （版本被删除或关闭开放）时，自动删除该版本下载的 Pak / IoStore / 外部文件，并把本地
+  版本回退到上一可用版本（基础包整包不回滚）。
 - 蓝图可直接调用，见下方 API。
 
 ## 目录
@@ -18,7 +21,11 @@ Plugins/CloudUpdate/
       CloudUpdateSettings.h     项目设置
       CloudUpdateSubsystem.h    蓝图 API 与事件
     Private/
-      CloudUpdateService.cpp    核心实现（HTTP、哈希、比对、更新）
+      CloudUpdateService.*      核心服务（URL / 版本记录 / 取消 / 回滚）
+      CloudUpdateHttp.cpp       HTTP 请求与下载
+      CloudUpdateIntegrity.cpp  完整性检查与修复
+      CloudUpdateUpdate.cpp     更新检测、应用与撤销回滚
+      CloudUpdateUtil.*         通用工具
 ```
 
 ## 项目设置

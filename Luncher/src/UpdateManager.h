@@ -2,6 +2,7 @@
 
 #include "Config.h"
 #include "Network.h"
+#include "Json.h"
 
 #include <windows.h>
 
@@ -75,6 +76,9 @@ private:
     std::string versionUrl(const std::string& id) const;
     bool downloadFile(const UpdateFileItem& item, const ProgressFn& progress,
                       const std::atomic<bool>& cancel, std::string& err);
+
+    // 服务器撤销/关闭版本时：删除本地更新文件并回退版本号，返回提示文本
+    std::string rollbackIfRevoked(const Json& root);
 };
 
 // 简易版本号比较：a > b

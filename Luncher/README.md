@@ -26,6 +26,10 @@
 - **整包更新自动清理旧补丁包**：升级到新的基础包整包后，会自动删除
   `Paks` 目录中不属于新版本的旧 HotPatcher 补丁包（`*_P.pak/ucas/utoc`）和下载残留；
   「完整性修复」也会同步清理，避免旧补丁与新整包冲突
+- **版本撤销自动回滚**：检查更新时读取 `/api/versions` 的 `revoked` 列表，若本地版本
+  已被服务器删除或关闭开放，自动删除该版本下载的 Pak / IoStore / 外部文件，并把本地
+  版本回退到上一可用版本（基础包整包不回滚）；版本号同时写回 `launcher_state.json`
+  与 UE 插件的 `Saved/CloudUpdate/local_version.json`；文件被占用时提示重启后再检查
 - **更新链修正**：本地已是整包版本（如 1.4）时不再误列旧补丁（如 1.3）；
   存在更新整包时跳过其中已包含的补丁；全新安装直接下载最新整包
 - **进度全部上主按钮**：下载/检查/修复/自检的进度都直接显示在主按钮上
@@ -81,7 +85,7 @@ Luncher/
 ## 构建
 
 ```bat
-cd /d D:\test\CodeBuild\Luncher
+cd /d E:\SVN\LauncherServerPlugin\Luncher
 build.bat
 ```
 
@@ -145,12 +149,13 @@ C++ 推送事件：`init`、`status`、`busy`、`progress`、`pending`、`result
 ## 对接服务器接口
 
 - `GET /api/versions`：版本索引（含 `baseVersions` 与 `updateChain`）
+- `GET /api/versions` 的 `revoked`：被删除/关闭的补丁版本文件快照（回滚依据）
 - `GET /api/version/{id}?platform=Windows`：基础包整包 / 补丁更新描述
 - `GET /api/manifest.json?platform=Windows&baseVersion=1.0`：完整性清单
 - `GET /files/packages/Windows/{基础包版本}/{路径}`：修复下载源
 - `GET /api/launcher/version` 与 `/files/launcher/...`：自升级
 
-本项目的本地管理服务器即 `D:\test\CodeBuild\Server`（Python，端口 8710），
+本项目的本地管理服务器即 `E:\SVN\LauncherServerPlugin\Server`（Python，端口 8710），
 启动器默认通过 `http://127.0.0.1:8710` 对接。
 
 ## 注意事项

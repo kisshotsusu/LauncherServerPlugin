@@ -186,12 +186,22 @@ bool UpdateManager::loadLocalVersion() {
 }
 
 void UpdateManager::saveLocalVersion(const std::string& version) {
-    const std::string path = joinPath(gameRoot_, "launcher_state.json");
     Json root = Json::object();
     root.obj["versionId"] = Json::string(version);
     root.obj["updatedAt"] = Json::string("now");
-    std::ofstream out(path, std::ios::binary);
-    out << root.dump(2);
+    const std::string statePath = joinPath(gameRoot_, "launcher_state.json");
+    {
+        std::ofstream out(statePath, std::ios::binary);
+        out << root.dump(2);
+    }
+    // 同步 UE 插件读取的版本文件，保持两边版本号一致
+    const std::string pluginDir = joinPath(joinPath(gameRoot_, "CodeBuild\\Saved"), "CloudUpdate");
+    createDirectories(pluginDir);
+    const std::string pluginPath = joinPath(pluginDir, "local_version.json");
+    {
+        std::ofstream out(pluginPath, std::ios::binary);
+        out << root.dump(2);
+    }
     localVersion_ = version;
 }
 
@@ -259,6 +269,9 @@ bool UpdateManager::checkUpdates(UpdateCheckResult& out, std::string& err) {
         std::string id = v.asString();
         if (!id.empty()) chain.push_back(id);
     }
+
+    // 回滚检测：本地版本被服务器撤销（隐藏/删除）时删除本地更新文件并回退
+    std::string rollbackNote = rollbackIfRevoked(root);
 
     out.latestVersion = root.getString("current");
     const std::string local = localVersion();
@@ -329,7 +342,93 @@ bool UpdateManager::checkUpdates(UpdateCheckResult& out, std::string& err) {
     } else {
         out.message = "已是最新版本";
     }
+    if (!rollbackNote.empty()) {
+        out.message = rollbackNote + "；" + out.message;
+    }
     return true;
+}
+
+std::string UpdateManager::rollbackIfRevoked(const Json& root) {
+    const std::string local = localVersion();
+    if (local.empty()) return "";
+    const Json& revoked = root.get("revoked");
+    if (revoked.type != Json::Type::Array) return "";
+
+    std::vector<UpdateFileItem> files;
+    std::string revokedVersion;
+    for (const Json& r : revoked.array()) {
+        const std::string rid = r.getString("versionId");
+        if (rid.empty() || rid != local) continue;
+        if (r.getString("type") == "full") return "";  // 基础包整包不回滚
+        revokedVersion = rid;
+        for (const Json& f : r.get("files").array()) {
+            UpdateFileItem item;
+            item.fileName = f.getString("fileName");
+            item.url = f.getString("url");
+            item.targetRelativePath = f.getString("targetRelativePath");
+            item.hash = f.getString("hash");
+            item.kind = f.getString("kind");
+            item.size = static_cast<int64_t>(f.getNumber("size"));
+            if (!item.fileName.empty()) files.push_back(item);
+        }
+        break;
+    }
+    if (revokedVersion.empty()) return "";
+
+    // 回退目标：比被撤销版本低的最高可用版本；没有则取最新基础包
+    std::vector<std::string> candidates;
+    for (const Json& v : root.get("versions").array()) {
+        const std::string id = v.getString("versionId");
+        if (!id.empty()) candidates.push_back(id);
+    }
+    std::vector<std::string> baseVersions;
+    const Json& bvObj = root.get("baseVersions");
+    if (bvObj.type == Json::Type::Object) {
+        const Json& plat = bvObj.get(platform_);
+        if (plat.type == Json::Type::Array) {
+            for (const Json& v : plat.array()) {
+                const std::string id = v.asString();
+                if (!id.empty()) {
+                    baseVersions.push_back(id);
+                    candidates.push_back(id);
+                }
+            }
+        }
+    }
+    std::string previous;
+    for (const std::string& c : candidates) {
+        if (versionNewer(revokedVersion, c) && (previous.empty() || versionNewer(c, previous))) {
+            previous = c;
+        }
+    }
+    if (previous.empty()) {
+        for (const std::string& b : baseVersions) {
+            if (previous.empty() || versionNewer(b, previous)) previous = b;
+        }
+    }
+
+    int deleted = 0, locked = 0;
+    for (const UpdateFileItem& item : files) {
+        std::string target;
+        if (item.kind == "ExternFile") {
+            target = joinPath(gameRoot_, item.targetRelativePath);
+        } else {
+            target = joinPath(joinPath(joinPath(gameRoot_, "CodeBuild\\Content"), "Paks"), item.fileName);
+        }
+        if (target.empty() || GetFileAttributesA(target.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+        if (DeleteFileA(target.c_str())) {
+            ++deleted;
+        } else {
+            ++locked;
+        }
+    }
+
+    setLocalVersion(previous);
+    std::string note = "本地版本 " + revokedVersion + " 已被服务器撤销，已删除本地更新文件";
+    if (deleted > 0) note += "（删除 " + std::to_string(deleted) + " 个文件）";
+    if (!previous.empty()) note += "，版本回退至 " + previous;
+    if (locked > 0) note += "；" + std::to_string(locked) + " 个文件被占用未删除，重启后再检查一次即可";
+    return note;
 }
 
 bool UpdateManager::downloadFile(const UpdateFileItem& item, const ProgressFn& progress,

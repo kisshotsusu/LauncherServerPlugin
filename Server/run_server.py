@@ -22,7 +22,7 @@ CloudUpdate 管理服务器（独立程序）。
 
 启动示例：
   python run_server.py --config config.json serve
-  python run_server.py --config config.json serve --host 0.0.0.0 --port 8711
+  python run_server.py --config config.json --host 0.0.0.0 --port 8711 serve
 """
 import argparse
 import contextlib
@@ -1061,7 +1061,8 @@ def cmd_reindex(args, cfg):
 
 
 def cmd_gen_manifest(args, cfg):
-    for platform in cfg["platforms"]:
+    platforms = [args.platform] if getattr(args, "platform", None) else cfg["platforms"]
+    for platform in platforms:
         m = generate_manifest(cfg, platform, force=True)
         print(f"已生成清单 {platform}：{m['fileCount']} 个文件")
 
@@ -1273,7 +1274,8 @@ def main():
     p_serve = sub.add_parser("serve", help="启动 HTTP/HTTPS 服务（供启动器读取版本与下载）")
     p_serve.add_argument("--open", action="store_true", help="启动后自动打开网页管理控制台")
     sub.add_parser("reindex", help="重建版本索引")
-    sub.add_parser("gen-manifest", help="重新生成完整性清单")
+    p_gen = sub.add_parser("gen-manifest", help="重新生成完整性清单")
+    p_gen.add_argument("--platform", default=None, help="平台，默认全部")
     p_up = sub.add_parser("upload", help="上传文件到存储（local 写磁盘 / s3 传对象）")
     p_up.add_argument("--target", required=True, choices=["package", "version", "launcher", "background"])
     p_up.add_argument("--file", required=True, help="本地文件路径")
