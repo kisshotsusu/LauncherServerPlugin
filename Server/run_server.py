@@ -170,6 +170,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._api_launcher_versions()
         elif path == "/api/launcher/runtime":
             self._api_launcher_runtime()
+        elif path == "/api/dirs/list":
+            self._api_dirs_list(query)
         elif path.startswith("/files/packages/"):
             self._serve_package_file(path[len("/files/packages/"):])
         elif path.startswith("/files/versions/"):
@@ -306,6 +308,71 @@ class UpdateHandler(BaseHTTPRequestHandler):
     def _api_enabled_versions(self):
         self._send_json({"ok": True, "enabledVersions": self.cfg.get("enabled_versions", {})})
 
+    def _api_dirs_list(self, query):
+        """列出服务器本地目录，供管理页面文件夹选择器使用。"""
+        if not self._auth_ok():
+            self._send_json({"ok": False, "error": "未授权：需要 Bearer 管理令牌"}, status=401)
+            return
+        raw = (query.get("path") or [""])[0].strip()
+        try:
+            p = os.path.abspath(os.path.expanduser(raw)) if raw else ""
+        except Exception as exc:
+            self._send_json({"ok": False, "error": f"路径无效：{exc}"}, status=400)
+            return
+        if not p:
+            if os.name == "nt":
+                drives = []
+                for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+                    d = letter + ":\\"
+                    if os.path.isdir(d):
+                        drives.append({"name": d.rstrip("\\") + "\\", "path": d, "isDir": True})
+                self._send_json({"ok": True, "path": "", "parent": None, "entries": drives})
+                return
+            p = "/"
+        if not os.path.isdir(p):
+            self._send_json({"ok": False, "error": f"路径不存在或不是目录：{p}"}, status=400)
+            return
+        try:
+            names = sorted(os.listdir(p), key=str.lower)
+        except OSError as exc:
+            self._send_json({"ok": False, "error": f"无法读取目录：{exc}"}, status=400)
+            return
+        entries = []
+        for name in names:
+            if name.startswith("."):
+                continue
+            full = os.path.join(p, name)
+            try:
+                if os.path.isdir(full):
+                    entries.append({"name": name, "path": full, "isDir": True})
+            except OSError:
+                pass
+        stripped = p.rstrip("\\/")
+        parent = os.path.dirname(stripped) if stripped else None
+        if parent == p or not parent:
+            parent = None
+        self._send_json({"ok": True, "path": p, "parent": parent, "entries": entries})
+
+    def _public_storage_config(self):
+        storage = self.cfg.get("storage") or {}
+        s3 = storage.get("s3") or {}
+        return {
+            "backend": (storage.get("backend") or "local"),
+            "s3": {
+                "provider": s3.get("provider", "oss"),
+                "endpoint": s3.get("endpoint", ""),
+                "region": s3.get("region", ""),
+                "service": s3.get("service", "s3"),
+                "bucket": s3.get("bucket", ""),
+                "accessKeyId": s3.get("accessKeyId", ""),
+                "secretKeySet": bool(s3.get("secretAccessKey")),
+                "prefix": s3.get("prefix", ""),
+                "publicBaseUrl": s3.get("publicBaseUrl", ""),
+                "addressingStyle": s3.get("addressingStyle", "virtual"),
+                "presignExpires": s3.get("presignExpires", 3600),
+            },
+        }
+
     def _public_config(self):
         return {
             "host": self.cfg.get("host"),
@@ -325,6 +392,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "launcherVersions": self.cfg.get("launcher_versions", {}),
             "backgroundDir": self.cfg.get("background_dir", ""),
             "storageBackend": "s3" if get_storage(self.cfg).is_remote else "local",
+            "storage": self._public_storage_config(),
             "adminTokenSet": bool(self.cfg.get("admin_token")),
         }
 
@@ -525,6 +593,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._admin_launcher_bg()
         elif path == "/api/config/update":
             self._admin_config_update()
+        elif path == "/api/storage/test":
+            self._admin_storage_test()
         elif path == "/api/server/restart":
             self._admin_restart()
         else:
@@ -750,6 +820,12 @@ class UpdateHandler(BaseHTTPRequestHandler):
         if data is None:
             return
         updates = {}
+        try:
+            if "storage" in data:
+                updates["storage"] = self._storage_from_payload(data)
+        except Exception as exc:
+            self._send_json({"ok": False, "error": str(exc)}, status=400)
+            return
         if "project" in data:
             updates["project"] = str(data["project"])
         if "platforms" in data:
@@ -787,6 +863,71 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": str(exc)}, status=500)
             return
         self._send_json({"ok": True, "message": "配置已保存并重新加载（host/port/https 等需重启服务器生效）"})
+
+    def _storage_from_payload(self, data):
+        """把管理页面提交的 storage 负载整理为可写入 config.json 的规范化配置。
+
+        secretAccessKey 不会随 GET /api/config 返回，因此提交为空时沿用磁盘旧值，
+        避免前端拿不到旧密钥导致误清空。
+        """
+        raw = data.get("storage")
+        if raw is None:
+            return None
+        if not isinstance(raw, dict):
+            raise ValueError("storage 必须是对象")
+        backend = str(raw.get("backend") or "local").strip()
+        if backend not in ("local", "s3"):
+            raise ValueError("storage.backend 仅支持 local 或 s3")
+        s3 = raw.get("s3") or {}
+        if not isinstance(s3, dict):
+            raise ValueError("storage.s3 必须是对象")
+        disk = _read_json(self.cfg.get("_config_path")) or {}
+        cur_s3 = ((disk.get("storage") or {}).get("s3") or {}) if isinstance(disk, dict) else {}
+        merged = {k: v for k, v in cur_s3.items()}
+        for key in ("provider", "endpoint", "region", "service", "bucket", "accessKeyId",
+                    "prefix", "publicBaseUrl", "addressingStyle", "presignExpires"):
+            if key in s3:
+                merged[key] = s3[key]
+        secret = str(s3.get("secretAccessKey") or "").strip()
+        if secret:
+            merged["secretAccessKey"] = secret
+        if not str(merged.get("accessKeyId") or "").strip() and cur_s3.get("accessKeyId"):
+            merged["accessKeyId"] = cur_s3["accessKeyId"]
+        if backend == "s3":
+            try:
+                merged["presignExpires"] = max(60, int(merged.get("presignExpires") or 3600))
+            except (TypeError, ValueError):
+                raise ValueError("presignExpires 必须是数字")
+            if not str(merged.get("endpoint") or "").strip():
+                raise ValueError("OSS/S3 模式必须填写 Endpoint")
+            if not str(merged.get("bucket") or "").strip():
+                raise ValueError("OSS/S3 模式必须填写 Bucket")
+            if not str(merged.get("accessKeyId") or "").strip():
+                raise ValueError("OSS/S3 模式必须填写 AccessKey ID")
+            if not str(merged.get("secretAccessKey") or "").strip():
+                raise ValueError("OSS/S3 模式必须填写 AccessKey Secret（首次配置）")
+        return {"backend": backend, "s3": merged}
+
+    def _admin_storage_test(self):
+        data = self._json_body()
+        if data is None:
+            return
+        try:
+            storage_cfg = self._storage_from_payload(data)
+            if storage_cfg is None:
+                self._send_json({"ok": False, "error": "缺少 storage 配置"}, status=400)
+                return
+            test_cfg = dict(self.cfg)
+            test_cfg["_storage"] = None
+            test_cfg["storage"] = storage_cfg
+            st = get_storage(test_cfg)
+            if not st.is_remote:
+                self._send_json({"ok": True, "message": "本地磁盘模式无需测试"})
+                return
+            st.test_connection()
+            self._send_json({"ok": True, "message": "连接成功：endpoint / bucket / 凭据有效"})
+        except Exception as exc:
+            self._send_json({"ok": False, "error": f"连接失败：{exc}"}, status=400)
 
     def _admin_restart(self):
         try:

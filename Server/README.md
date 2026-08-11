@@ -65,6 +65,32 @@ python run_server.py
 这些设置在网页管理控制台的 **服务器设置** 页修改（保存后立即生效并写回 `config.json`），
 或通过 `POST /api/config/update` 修改；监听地址/端口保存后点击“重启服务器”即可生效。
 
+## 对象存储（OSS / S3 兼容）
+
+默认使用本地磁盘。需要阿里云 OSS、腾讯云 COS 或任意 S3 兼容存储时，在管理页面「服务器设置」
+选择 **OSS / S3 对象存储**，再选服务商即可自动填充 endpoint / region / service / 寻址方式：
+
+| 服务商 | provider | endpoint | region 示例 | service | 寻址方式 |
+| --- | --- | --- | --- | --- | --- |
+| 阿里云 OSS | `oss` | `s3.oss-<region>.aliyuncs.com` | `cn-hangzhou` | `s3` | virtual-hosted |
+| 腾讯云 COS | `cos` | `cos.<region>.myqcloud.com` | `ap-guangzhou` | `s3` | virtual-hosted |
+| AWS S3 | `aws` | `s3.<region>.amazonaws.com` | `us-east-1` | `s3` | virtual-hosted |
+| 自建 MinIO | `minio` | `http://127.0.0.1:9000` | `us-east-1` | `s3` | path-style |
+
+OSS / COS 均走 AWS S3 兼容接口（SigV4），`service` 固定为 `s3`；endpoint 与桶所在地域必须一致。
+其余字段：
+
+| 配置项 | 说明 |
+| --- | --- |
+| `bucket` | 存储桶名 |
+| `accessKeyId` / `secretAccessKey` | 云厂商密钥；页面不回显 Secret，留空表示保持不变 |
+| `prefix` | 对象 key 前缀，如 `cloudupdate` |
+| `publicBaseUrl` | 可选 CDN / 自定义域名；填写后下载直接使用该地址而非 presigned URL（2025-03 后中国大陆 OSS 新用户的数据访问建议使用自定义域名） |
+| `presignExpires` | 下载链接有效期（秒），默认 3600 |
+
+保存后立即生效并写回 `config.json`，可先点「测试连接」验证 endpoint / bucket / 凭据。
+启用后客户端下载 URL 变为对象存储 presigned URL，网页上传与发布操作会自动同步到远端。
+
 ## 导入 HotPatcher 版本
 
 HotPatcher 打包/补丁后，产物位于 `D:\test\CodeBuild\Saved\HotPatcher\`，执行：

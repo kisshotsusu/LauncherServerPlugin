@@ -35,9 +35,9 @@
     "backend": "s3",
     "s3": {
       "provider": "oss",
-      "endpoint": "oss-cn-hangzhou.aliyuncs.com",
+      "endpoint": "s3.oss-cn-hangzhou.aliyuncs.com",
       "region": "cn-hangzhou",
-      "service": "oss",
+      "service": "s3",
       "bucket": "your-bucket",
       "accessKeyId": "YOUR_ACCESS_KEY_ID",
       "secretAccessKey": "YOUR_ACCESS_KEY_SECRET",

@@ -6,301 +6,450 @@
 <title>CloudUpdate 管理控制台</title>
 <style>
   :root {
-    --bg:#0d1117; --panel:#161c27; --panel2:#1c2432; --line:#2a3444;
-    --text:#e6edf6; --dim:#8b9bb0; --accent:#4da3ff; --accent2:#38d996;
-    --warn:#ffb454; --danger:#ff6b6b; --radius:12px;
+    --bg:#f5f7fb; --panel:#ffffff; --line:#e5e9f2; --text:#1f2937; --dim:#64748b;
+    --accent:#2563eb; --accent2:#16a34a; --warn:#d97706; --danger:#dc2626;
+    --radius:12px; --shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);
   }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:"Microsoft YaHei","Segoe UI",sans-serif; background:var(--bg); color:var(--text); font-size:14px; }
-  header { display:flex; align-items:center; gap:14px; padding:14px 26px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:10; }
-  header h1 { font-size:17px; margin:0; }
-  .badge { border-radius:20px; padding:3px 12px; font-size:12px; font-weight:700; }
-  .badge.online { background:#123a26; color:var(--accent2); }
-  .badge.offline { background:#3a1a1a; color:var(--danger); }
-  .spacer { flex:1; }
-  main { max-width:1200px; margin:0 auto; padding:22px 26px 80px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; }
-  .card h3 { margin:0 0 8px; font-size:12px; color:var(--dim); font-weight:600; letter-spacing:.5px; }
-  .card .value { font-size:22px; font-weight:700; }
+  body { margin:0; font-family:"Microsoft YaHei","Segoe UI",-apple-system,sans-serif; background:var(--bg); color:var(--text); font-size:14px; }
+  .layout { display:flex; min-height:100vh; }
+  .sidebar { width:248px; flex:0 0 248px; background:#fff; border-right:1px solid var(--line); position:sticky; top:0; height:100vh; overflow-y:auto; padding:18px 14px 14px; display:flex; flex-direction:column; }
+  .brand { display:flex; align-items:center; gap:12px; padding:4px 6px 16px; border-bottom:1px solid var(--line); }
+  .logo { width:38px; height:38px; border-radius:11px; background:linear-gradient(135deg,#2563eb,#7c3aed); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; letter-spacing:-.5px; box-shadow:0 4px 10px rgba(37,99,235,.25); }
+  .brand-name { font-size:16px; font-weight:800; }
+  .brand-sub { font-size:11px; color:var(--dim); }
+  .nav-group { margin-top:18px; }
+  .group-title { font-size:11px; font-weight:700; color:#94a3b8; letter-spacing:.08em; padding:0 10px 6px; }
+  .nav-item { display:flex; align-items:center; gap:9px; width:100%; background:transparent; border:none; border-radius:10px; padding:9px 12px; font-size:13px; font-weight:600; color:var(--text); text-align:left; cursor:pointer; margin-bottom:2px; transition:background .15s,color .15s; }
+  .nav-item:hover { background:#f1f5f9; }
+  .nav-item.active { background:#eef2ff; color:var(--accent); }
+  .sidebar-footer { margin-top:auto; padding:14px 8px 2px; border-top:1px solid var(--line); font-size:12px; color:var(--dim); line-height:1.8; word-break:break-all; }
+  .content { flex:1; min-width:0; padding:22px 30px 70px; }
+  .topbar { display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .topbar h2 { font-size:20px; margin:0; font-weight:800; }
+  .status-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin-bottom:22px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; }
+  .card h3 { margin:0 0 8px; font-size:12px; color:var(--dim); font-weight:700; letter-spacing:.5px; }
+  .card .value { font-size:22px; font-weight:800; }
   .card .sub { font-size:12px; color:var(--dim); margin-top:6px; word-break:break-all; }
-  .section { margin-top:26px; }
-  .section > h2 { font-size:15px; margin:0 0 10px; display:flex; align-items:center; gap:10px; }
-  .section > h2 .hint { font-size:12px; color:var(--dim); font-weight:400; }
+  .badge { border-radius:20px; padding:3px 12px; font-size:12px; font-weight:700; }
+  .badge.online { background:#dcfce7; color:var(--accent2); }
+  .badge.offline { background:#fee2e2; color:var(--danger); }
+  .spacer { flex:1; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
-  th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); }
-  th { color:var(--dim); font-weight:600; white-space:nowrap; }
-  tr:hover td { background:var(--panel2); }
+  th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); }
+  th { color:var(--dim); font-weight:600; white-space:nowrap; background:#f8fafc; }
+  tr:hover td { background:#f8fafc; }
   a { color:var(--accent); text-decoration:none; }
   a:hover { text-decoration:underline; }
-  button { background:var(--accent); color:#06121f; border:none; font-weight:700; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
-  button:hover { filter:brightness(1.1); }
+  button { background:var(--accent); color:#fff; border:none; font-weight:600; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:13px; transition:filter .15s,background .15s; }
+  button:hover { filter:brightness(1.05); }
   button:disabled { opacity:.45; cursor:not-allowed; }
-  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
-  button.green { background:var(--accent2); color:#061c12; }
-  button.red { background:transparent; color:var(--danger); border:1px solid var(--danger); }
-  input,select { background:#0b1119; border:1px solid var(--line); color:var(--text); padding:8px 10px; border-radius:8px; font-size:13px; outline:none; }
-  input:focus,select:focus { border-color:var(--accent); }
-  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:14px 0 6px; }
+  button.ghost { background:#fff; color:var(--text); border:1px solid var(--line); }
+  button.green { background:var(--accent2); }
+  button.red { background:#fff; color:var(--danger); border:1px solid #fecaca; }
+  input,select { background:#fff; border:1px solid var(--line); color:var(--text); padding:8px 10px; border-radius:8px; font-size:13px; outline:none; transition:border-color .15s,box-shadow .15s; }
+  input:focus,select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
   .toolbar label { font-size:12px; color:var(--dim); }
-  #toast { position:fixed; right:20px; top:70px; z-index:99; display:flex; flex-direction:column; gap:8px; }
-  .toast { padding:10px 16px; border-radius:10px; font-size:13px; background:var(--panel2); border:1px solid var(--line); box-shadow:0 6px 24px rgba(0,0,0,.4); max-width:420px; white-space:pre-wrap; }
-  .toast.ok { border-color:var(--accent2); color:var(--accent2); }
-  .toast.err { border-color:var(--danger); color:var(--danger); }
-  .muted { color:var(--dim); font-size:12px; }
-  code,pre { background:#0b1018; border:1px solid var(--line); border-radius:8px; padding:2px 6px; font-size:12px; color:#9fd0ff; }
-  pre { padding:12px; overflow:auto; max-height:60vh; white-space:pre-wrap; word-break:break-all; }
-  .empty { color:var(--dim); padding:22px; text-align:center; }
-  .breadcrumb { font-size:13px; margin:8px 0; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
-  .breadcrumb a { color:var(--accent); }
   .btn-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
-  .modal-mask.show { display:flex; }
-  .modal { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); max-width:900px; width:100%; max-height:85vh; display:flex; flex-direction:column; }
-  .modal-head { display:flex; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
-  .modal-head h3 { margin:0; font-size:14px; flex:1; }
-  .modal-body { padding:14px 16px; overflow:auto; }
-  .modal-body table { font-size:12px; }
+  .muted { color:var(--dim); font-size:12px; }
+  .empty { color:var(--dim); padding:24px; text-align:center; }
+  .breadcrumb { font-size:13px; margin:10px 0; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .breadcrumb a { color:var(--accent); }
+  code,pre { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:2px 6px; font-size:12px; color:#1e40af; }
+  pre { padding:12px; overflow:auto; max-height:60vh; white-space:pre-wrap; word-break:break-all; }
   .file-row { display:flex; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); }
   .file-row .fname { flex:1; word-break:break-all; }
-  .progress { height:6px; background:#0b1018; border-radius:6px; overflow:hidden; margin-top:8px; }
+  .progress { height:6px; background:#eef2f7; border-radius:6px; overflow:hidden; margin-top:8px; }
   .progress > div { height:100%; background:var(--accent2); width:0; transition:width .2s; }
-  .tabs { display:flex; gap:6px; border-bottom:1px solid var(--line); margin-bottom:14px; }
-  .tabs button { background:transparent; color:var(--dim); border:none; border-bottom:2px solid transparent; border-radius:0; padding:9px 14px; font-weight:600; }
-  .tabs button.active { color:var(--accent); border-bottom-color:var(--accent); }
-  .hidden { display:none; }
   .switch { position:relative; width:38px; height:20px; display:inline-block; vertical-align:middle; }
   .switch input { display:none; }
-  .switch .track { position:absolute; inset:0; background:#0b1019; border:1px solid var(--line); border-radius:20px; transition:.2s; cursor:pointer; }
-  .switch .track::after { content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--dim); transition:.2s; }
-  .switch input:checked + .track { background:var(--accent2); border-color:var(--accent2); }
-  .switch input:checked + .track::after { left:20px; background:#fff; }
+  .switch .track { position:absolute; inset:0; background:#e2e8f0; border-radius:20px; transition:.2s; cursor:pointer; }
+  .switch .track::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:.2s; }
+  .switch input:checked + .track { background:var(--accent2); }
+  .switch input:checked + .track::after { left:20px; }
   .switch input:disabled + .track { opacity:.4; cursor:not-allowed; }
+  .modal-mask { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .modal-mask.show { display:flex; }
+  .modal { background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 20px 50px rgba(15,23,42,.2); max-width:900px; width:100%; max-height:85vh; display:flex; flex-direction:column; }
+  .modal-head { display:flex; align-items:center; padding:14px 18px; border-bottom:1px solid var(--line); }
+  .modal-head h3 { margin:0; font-size:15px; flex:1; }
+  .modal-body { padding:16px 18px; overflow:auto; }
+  .modal-body table { font-size:12px; }
+  .dir-current { font-weight:700; font-size:13px; word-break:break-all; background:#f8fafc; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .dir-actions { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  .dir-list { max-height:46vh; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:6px; }
+  .dir-item { display:flex; align-items:center; gap:8px; width:100%; background:transparent; border:none; border-radius:8px; padding:8px 10px; font-size:13px; font-weight:500; color:var(--text); text-align:left; cursor:pointer; }
+  .dir-item:hover { background:#f1f5f9; }
+  #toast { position:fixed; right:20px; top:70px; z-index:99; display:flex; flex-direction:column; gap:8px; }
+  .toast { padding:10px 16px; border-radius:10px; font-size:13px; background:#fff; border:1px solid var(--line); box-shadow:0 6px 24px rgba(15,23,42,.12); max-width:420px; white-space:pre-wrap; }
+  .toast.ok { border-color:#bbf7d0; color:var(--accent2); }
+  .toast.err { border-color:#fecaca; color:var(--danger); }
+  .hidden { display:none; }
 </style>
 </head>
 <body>
-<header>
-  <h1>CloudUpdate 管理控制台</h1>
-  <span class="badge offline" id="serverBadge">连接中...</span>
-  <span class="muted" id="serverTime"></span>
-  <div class="spacer"></div>
-  <label class="muted">管理员令牌</label>
-  <input type="password" id="tokenInput" placeholder="留空则不需要" style="width:180px" onchange="saveToken()">
-</header>
-
-<main>
-  <div class="grid" id="statusGrid">
-    <div class="card"><h3>项目</h3><div class="value" id="stProject">-</div><div class="sub" id="stPlatforms"></div></div>
-    <div class="card"><h3>当前版本</h3><div class="value" id="stCurrent">-</div><div class="sub" id="stChain"></div></div>
-    <div class="card"><h3>版本数量</h3><div class="value" id="stCount">-</div><div class="sub" id="stHotpatcher"></div></div>
-    <div class="card"><h3>完整性清单</h3><div class="value" id="stManifest">-</div><div class="sub" id="stManifestSub"></div></div>
-  </div>
-
-  <div class="toolbar">
-    <button onclick="loadAll()">刷新</button>
-    <button class="ghost" onclick="reindex()">重建版本索引</button>
-    <button class="ghost" onclick="importHotPatcher()" id="btnImport">一键导入 HotPatcher</button>
-    <span class="muted" id="manifestLinks"></span>
-  </div>
-
-  <div class="tabs">
-    <button class="active" data-tab="versions" onclick="switchTab('versions')">版本管理</button>
-    <button data-tab="files" onclick="switchTab('files')">云端文件</button>
-    <button data-tab="manifest" onclick="switchTab('manifest')">完整性清单</button>
-    <button data-tab="control" onclick="switchTab('control')">服务器控制</button>
-    <button data-tab="launcher" onclick="switchTab('launcher')">启动器管理</button>
-    <button data-tab="settings" onclick="switchTab('settings')">服务器设置</button>
-    <button data-tab="api" onclick="switchTab('api')">API 说明</button>
-  </div>
-
-  <div id="tab-versions" class="tab-panel">
-    <div class="toolbar">
-      <label>平台</label>
-      <select id="managePlatform" onchange="state.managePlatform=this.value;renderVersions()"></select>
-      <button class="ghost" onclick="setAllVersions(true)">全部开放</button>
-      <button class="ghost" onclick="setAllVersions(false)">全部关闭</button>
-      <span class="muted" id="enabledHint"></span>
-      <span class="spacer"></span>
-      <button class="green" onclick="openUploadVersion()">上传新版本文件</button>
-    </div>
-    <table>
-      <thead><tr>
-        <th>开放下载</th><th>版本</th><th>基础版本</th><th>时间</th><th>类型</th><th>变更/删除资产</th><th>更新包大小</th><th>操作</th>
-      </tr></thead>
-      <tbody id="versionsBody"><tr><td colspan="8" class="empty">加载中...</td></tr></tbody>
-    </table>
-    <div class="muted" style="margin-top:10px">“开放下载”控制客户端可见与可下载的版本（客户端 /api/versions 只返回开放的版本）；未做过任何设置时默认全部开放。</div>
-  </div>
-
-  <div id="tab-files" class="tab-panel hidden">
-    <div class="toolbar">
-      <label>平台</label>
-      <select id="filePlatform" onchange="state.platform=this.value;state.filePath='';refreshBaseVersionSelect();loadFiles()"></select>
-      <label>基础包版本</label>
-      <select id="fileBaseVersion" onchange="state.baseVersion=this.value;state.filePath='';loadFiles()"></select>
-      <button class="green" onclick="openUploadPackage()">上传到当前目录</button>
-      <span class="muted">上传的文件会进入打包目录，成为客户端修复/下载的数据源</span>
-    </div>
-    <div class="breadcrumb" id="fileBreadcrumb"></div>
-    <table>
-      <thead><tr><th>名称</th><th>类型</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead>
-      <tbody id="filesBody"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
-    </table>
-  </div>
-
-  <div id="tab-manifest" class="tab-panel hidden">
-    <div class="card" id="manifestCard"></div>
-  </div>
-
-  <div id="tab-control" class="tab-panel hidden">
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
-      <div class="card"><h3>进程 PID</h3><div class="value" id="ctlPid">-</div><div class="sub" id="ctlPython"></div></div>
-      <div class="card"><h3>运行时长</h3><div class="value" id="ctlUptime">-</div><div class="sub" id="ctlStarted"></div></div>
-      <div class="card"><h3>监听地址</h3><div class="value" id="ctlListen">-</div><div class="sub" id="ctlConfigPath"></div></div>
-      <div class="card"><h3>数据目录</h3><div class="value" id="ctlDataDir" style="font-size:15px">-</div><div class="sub" id="ctlVersionLib"></div></div>
-    </div>
-    <div class="card" style="margin-top:16px">
-      <h3>控制操作</h3>
-      <div class="btn-row" style="margin-top:8px">
-        <button class="red" onclick="restartServer()">重启服务器</button>
-        <button class="ghost" onclick="reindex()">重建版本索引</button>
-        <button class="ghost" onclick="regenerateAllManifests()">重新生成全部完整性清单</button>
-        <button class="ghost" onclick="loadAll()">刷新状态</button>
-      </div>
-      <div class="muted" style="margin-top:10px">重启会先拉起新进程再关闭旧进程（约 3 秒），页面会自动刷新；监听地址/端口等配置在重启后生效。</div>
-    </div>
-  </div>
-
-  <div id="tab-launcher" class="tab-panel hidden">
-    <div class="card">
-      <h3>启动器版本（历史管理）</h3>
-      <div class="muted">像游戏基础包一样维护“版本文件夹”历史；发布时把所选文件夹中的 Launcher.exe / SelfUpdater.exe / ui/ 快照到 data/launcher，客户端启动自检自动升级。客户端只需 Launcher.exe，界面资源与 SelfUpdater 首次运行时会自动从服务器拉取到 app/ 子目录。当前发布：<span id="launcherVerSub" style="color:var(--accent2)">-</span></div>
-      <table style="margin-top:10px">
-        <thead><tr><th>版本</th><th>文件夹</th><th>文件</th><th>Launcher.exe 大小</th><th>操作</th></tr></thead>
-        <tbody id="launcherVersionsBody"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
-      </table>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
-        <input id="addLauncherVersion" placeholder="版本号 如 1.1.0" style="width:130px">
-        <input id="addLauncherDir" placeholder="版本文件夹路径，如 D:/Release/Launcher_1.1.0（须含 Launcher.exe）" style="flex:1;min-width:280px">
-        <button class="green" onclick="addLauncherVersion()">添加 / 更新版本</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
-        <label class="muted">发布说明（可选）</label>
-        <input id="setLauncherNote" placeholder="写入当前发布版本" style="flex:1;min-width:240px">
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">CU</div>
+      <div>
+        <div class="brand-name">CloudUpdate</div>
+        <div class="brand-sub">管理控制台</div>
       </div>
     </div>
-    <div class="card" style="margin-top:16px">
-      <h3>背景序列帧（指定文件夹）</h3>
-      <div class="muted">选择服务器上的背景图文件夹（PNG 序列帧，按文件名排序），客户端启动自检自动下载新版背景。当前版本：<span id="bgVersion" style="color:var(--accent2)">-</span> · <span id="bgInfo">-</span></div>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
-        <input id="setBgDir" placeholder="背景文件夹路径，如 D:/LauncherAssets/Background" style="flex:1;min-width:280px">
-        <button class="green" onclick="saveBgDir()">保存背景目录</button>
-        <button class="red" onclick="clearBgDir()">清除配置</button>
+    <nav>
+      <div class="nav-group">
+        <div class="group-title">游戏版本管理</div>
+        <button class="nav-item active" data-tab="versions" onclick="switchTab('versions')">📦 版本管理</button>
+        <button class="nav-item" data-tab="manifest" onclick="switchTab('manifest')">✅ 完整性清单</button>
       </div>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
-        <label class="muted">序列帧 FPS</label>
-        <input id="setBgFps" type="number" min="1" style="width:90px">
-        <button class="ghost" onclick="saveBgFps()">保存 FPS</button>
+      <div class="nav-group">
+        <div class="group-title">存储位置管理</div>
+        <button class="nav-item" data-tab="storage" onclick="switchTab('storage')">🗄️ 存储配置</button>
+        <button class="nav-item" data-tab="files" onclick="switchTab('files')">☁️ 云端文件</button>
       </div>
-      <div id="bgFileList" style="margin-top:12px"></div>
+      <div class="nav-group">
+        <div class="group-title">服务器配置管理</div>
+        <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">⚙️ 服务器设置</button>
+        <button class="nav-item" data-tab="control" onclick="switchTab('control')">🖥️ 服务器控制</button>
+      </div>
+      <div class="nav-group">
+        <div class="group-title">启动器管理</div>
+        <button class="nav-item" data-tab="launcher" onclick="switchTab('launcher')">🚀 启动器管理</button>
+      </div>
+      <div class="nav-group">
+        <div class="group-title">其他</div>
+        <button class="nav-item" data-tab="api" onclick="switchTab('api')">📖 API 说明</button>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="sideProject">项目：-</div>
+      <div id="sideStorage">存储：-</div>
+      <div id="sideServerTime"></div>
     </div>
-  </div>
+  </aside>
 
-  <div id="tab-api" class="tab-panel hidden">
-    <div class="card" style="line-height:1.9">
-      <div><strong>状态</strong>　<code>GET /api/status</code></div>
-      <div><strong>版本索引</strong>　<code>GET /api/versions</code></div>
-      <div><strong>更新描述</strong>　<code>GET /api/version/&lt;id&gt;</code></div>
-      <div><strong>完整性清单</strong>　<code>GET /api/manifest.json?platform=Windows</code></div>
-      <div><strong>云端文件浏览</strong>　<code>GET /api/files?platform=Windows&amp;path=CodeBuild/Content</code></div>
-      <div><strong>云端文件下载</strong>　<code>GET /files/packages/&lt;平台&gt;/&lt;相对路径&gt;</code></div>
-      <div><strong>更新包下载</strong>　<code>GET /files/versions/&lt;版本&gt;/&lt;文件名&gt;</code></div>
-      <div><strong>重建索引</strong>　<code>POST /api/versions/reindex</code></div>
-      <div><strong>重新生成清单</strong>　<code>POST /api/manifest/generate?platform=Windows</code></div>
-      <div><strong>上传文件</strong>　<code>POST /api/upload?target=package|version&amp;platform=Windows&amp;path=&amp;versionId=</code>（multipart，字段名 file）</div>
-      <div><strong>一键导入</strong>　<code>POST /api/import/hotpatcher</code></div>
-      <div><strong>开放版本（查询）</strong>　<code>GET /api/enabled_versions</code></div>
-      <div><strong>开放版本（设置）</strong>　<code>POST /api/enabled_versions</code>　<code>{platform, versions:[...]}</code>，客户端仅可见列表内版本</div>
-      <div><strong>删除版本</strong>　<code>DELETE /api/version/&lt;id&gt;</code>（移入 data/trash 回收站）</div>
-      <div><strong>重启服务器</strong>　<code>POST /api/server/restart</code></div>
-      <div><strong>启动器历史版本</strong>　<code>GET /api/launcher/versions</code>／<code>POST {version, dir}</code>／<code>DELETE /api/launcher/versions/&lt;版本&gt;</code></div>
-      <div><strong>启动器版本发布</strong>　<code>POST /api/launcher/publish</code>　<code>{version, note}</code>（从版本文件夹快照 exe）</div>
-      <div><strong>背景资源清单</strong>　<code>GET /api/launcher/background</code>（客户端自检用，指定文件夹）</div>
-      <div><strong>背景目录设置</strong>　<code>POST /api/launcher/background/dir</code>　<code>{dir}</code></div>
-      <div><strong>背景 FPS / 清除配置</strong>　<code>POST /api/launcher/background</code>　<code>{frameFps}</code>／<code>POST /api/launcher/background/clear</code></div>
-      <div class="muted" style="margin-top:8px">配置了 admin_token 时，管理操作需携带 <code>Authorization: Bearer &lt;token&gt;</code>。</div>
+  <main class="content">
+    <div class="topbar">
+      <h2 id="pageTitle">版本管理</h2>
+      <span class="badge offline" id="serverBadge">连接中...</span>
+      <span class="muted" id="serverTime"></span>
+      <div class="spacer"></div>
+      <label class="muted">管理员令牌</label>
+      <input type="password" id="tokenInput" placeholder="留空则不需要" style="width:180px" onchange="saveToken()">
     </div>
-  </div>
 
-  <div id="tab-settings" class="tab-panel hidden">
-    <div class="card">
-      <h3>服务器设置（保存后立即生效并写入 config.json；主机/端口需重启生效）</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
-        <div>
-          <label class="muted">项目名</label>
-          <input id="setProject" style="width:100%;margin-top:4px">
+    <div class="status-strip" id="statusGrid">
+      <div class="card"><h3>项目</h3><div class="value" id="stProject">-</div><div class="sub" id="stPlatforms"></div></div>
+      <div class="card"><h3>当前版本</h3><div class="value" id="stCurrent">-</div><div class="sub" id="stChain"></div></div>
+      <div class="card"><h3>版本数量</h3><div class="value" id="stCount">-</div><div class="sub" id="stHotpatcher"></div></div>
+      <div class="card"><h3>完整性清单</h3><div class="value" id="stManifest">-</div><div class="sub" id="stManifestSub"></div></div>
+    </div>
+
+    <div id="tab-versions" class="tab-panel">
+      <div class="card">
+        <div class="toolbar">
+          <label>平台</label>
+          <select id="managePlatform" onchange="state.managePlatform=this.value;renderVersions()"></select>
+          <button class="ghost" onclick="setAllVersions(true)">全部开放</button>
+          <button class="ghost" onclick="setAllVersions(false)">全部关闭</button>
+          <span class="muted" id="enabledHint"></span>
+          <span class="spacer"></span>
+          <button class="ghost" onclick="loadAll()">刷新</button>
+          <button class="ghost" onclick="reindex()">重建索引</button>
+          <button class="ghost" onclick="importHotPatcher()" id="btnImport">一键导入 HotPatcher</button>
+          <button class="green" onclick="openUploadVersion()">上传新版本文件</button>
         </div>
-        <div>
-          <label class="muted">平台（逗号分隔）</label>
-          <input id="setPlatforms" style="width:100%;margin-top:4px">
-        </div>
-        <div>
-          <label class="muted">监听地址</label>
-          <input id="setHost" style="width:100%;margin-top:4px" placeholder="0.0.0.0（重启生效）">
-        </div>
-        <div>
-          <label class="muted">监听端口</label>
-          <input id="setPort" type="number" style="width:100%;margin-top:4px" placeholder="8710（重启生效）">
-        </div>
-        <div style="grid-column:1/-1">
-          <label class="muted">数据目录（清单缓存 / 索引 / 回收站）</label>
-          <input id="setDataDir" style="width:100%;margin-top:4px">
-        </div>
-        <div style="grid-column:1/-1">
-          <label class="muted">版本文件库位置（存储导入的版本 JSON / Pak / 描述文件）</label>
-          <input id="setVersionLib" style="width:100%;margin-top:4px" placeholder="data/versions 或绝对路径">
-        </div>
-        <div id="setPackageRoots" style="grid-column:1/-1"></div>
-        <div style="grid-column:1/-1">
-          <label class="muted">补丁包位置（HotPatcher 产物目录，一键导入的数据源）</label>
-          <input id="setPatchSource" style="width:100%;margin-top:4px" placeholder="例如 D:/test/CodeBuild/Saved/HotPatcher">
-        </div>
-        <div style="grid-column:1/-1">
-          <label class="muted">版本顺序（逗号分隔，用于更新链排序）</label>
-          <input id="setOrder" style="width:100%;margin-top:4px" placeholder="1.0,1.2,1.3,1.4">
-        </div>
-        <div>
-          <label class="muted">清单哈希算法</label>
-          <select id="setHash" style="width:100%;margin-top:4px">
-            <option value="md5">MD5</option>
-            <option value="sha1">SHA1</option>
-          </select>
-        </div>
-        <div>
-          <label class="muted">上传大小上限（MB）</label>
-          <input id="setMaxUpload" type="number" style="width:100%;margin-top:4px">
-        </div>
-        <div style="grid-column:1/-1">
-          <label class="muted">清单排除模式（每行一个，fnmatch 风格）</label>
-          <textarea id="setExcludes" rows="4" style="width:100%;margin-top:4px;font-family:Consolas,monospace;font-size:12px"></textarea>
-        </div>
-        <div>
-          <label class="muted">管理员令牌（留空保持当前；填新值则覆盖）</label>
-          <input id="setToken" type="password" style="width:100%;margin-top:4px" placeholder="已设置: 是/否">
-          <label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="setClearToken"> 清除当前令牌</label>
-        </div>
-        <div>
-          <label class="muted">&nbsp;</label>
-          <div class="btn-row" style="margin-top:4px">
-            <button class="green" onclick="saveSettings()">保存设置</button>
-            <button class="red" onclick="restartServer()">重启服务器</button>
+        <table>
+          <thead><tr>
+            <th>开放下载</th><th>版本</th><th>基础版本</th><th>时间</th><th>类型</th><th>变更/删除资产</th><th>更新包大小</th><th>操作</th>
+          </tr></thead>
+          <tbody id="versionsBody"><tr><td colspan="8" class="empty">加载中...</td></tr></tbody>
+        </table>
+        <div class="muted" style="margin-top:10px">“开放下载”控制客户端可见与可下载的版本（客户端 /api/versions 只返回开放的版本）；未做过任何设置时默认全部开放。</div>
+        <div class="muted" id="manifestLinks" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div id="tab-manifest" class="tab-panel hidden">
+      <div class="card" id="manifestCard"></div>
+    </div>
+
+    <div id="tab-storage" class="tab-panel hidden">
+      <div class="card">
+        <h3>目录位置</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+          <div>
+            <label class="muted">数据目录（清单缓存 / 索引 / 回收站）</label>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <input id="setDataDir" style="flex:1">
+              <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+            </div>
           </div>
-          <span class="muted" id="settingsHint"></span>
+          <div>
+            <label class="muted">版本文件库位置（存储导入的版本 JSON / Pak / 描述文件）</label>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <input id="setVersionLib" style="flex:1" placeholder="data/versions 或绝对路径">
+              <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+            </div>
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="muted">补丁包位置（HotPatcher 产物目录，一键导入的数据源）</label>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <input id="setPatchSource" style="flex:1" placeholder="例如 D:/test/CodeBuild/Saved/HotPatcher">
+              <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+            </div>
+          </div>
+          <div id="setPackageRoots" style="grid-column:1/-1"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>对象存储（OSS / S3 兼容）</h3>
+        <div class="muted" style="margin-top:2px">启用后客户端直连对象存储下载，上传与发布会同步到远端</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px">
+          <div>
+            <label class="muted">存储后端</label>
+            <select id="setStorageBackend" style="width:100%;margin-top:4px" onchange="toggleStorageFields()">
+              <option value="local">本地磁盘</option>
+              <option value="s3">OSS / S3 对象存储</option>
+            </select>
+          </div>
+          <div class="s3-field">
+            <label class="muted">服务商</label>
+            <select id="setS3Provider" style="width:100%;margin-top:4px" onchange="applyProviderPresets()">
+              <option value="oss">阿里云 OSS</option>
+              <option value="cos">腾讯云 COS</option>
+              <option value="aws">AWS S3</option>
+              <option value="minio">自建 / MinIO</option>
+              <option value="custom">其他 S3 兼容</option>
+            </select>
+          </div>
+          <div class="s3-field" style="grid-column:1/-1">
+            <span class="muted" id="storageProviderHint"></span>
+          </div>
+          <div class="s3-field">
+            <label class="muted">Endpoint</label>
+            <input id="setS3Endpoint" style="width:100%;margin-top:4px" oninput="endpointAuto=false" placeholder="s3.oss-cn-hangzhou.aliyuncs.com">
+          </div>
+          <div class="s3-field">
+            <label class="muted">Region</label>
+            <input id="setS3Region" style="width:100%;margin-top:4px" oninput="onRegionInput()" placeholder="cn-hangzhou">
+          </div>
+          <div class="s3-field">
+            <label class="muted">Service 标识</label>
+            <input id="setS3Service" style="width:100%;margin-top:4px" placeholder="s3">
+          </div>
+          <div class="s3-field">
+            <label class="muted">Bucket</label>
+            <input id="setS3Bucket" style="width:100%;margin-top:4px">
+          </div>
+          <div class="s3-field">
+            <label class="muted">AccessKey ID</label>
+            <input id="setS3AccessKey" style="width:100%;margin-top:4px" autocomplete="off">
+          </div>
+          <div class="s3-field">
+            <label class="muted">AccessKey Secret（留空保持不变）</label>
+            <input id="setS3Secret" type="password" style="width:100%;margin-top:4px" autocomplete="new-password">
+          </div>
+          <div class="s3-field">
+            <label class="muted">对象前缀（可选）</label>
+            <input id="setS3Prefix" style="width:100%;margin-top:4px" placeholder="cloudupdate">
+          </div>
+          <div class="s3-field">
+            <label class="muted">公开下载地址（可选，有则优先）</label>
+            <input id="setS3PublicUrl" style="width:100%;margin-top:4px" placeholder="https://cdn.example.com">
+          </div>
+          <div class="s3-field">
+            <label class="muted">寻址方式</label>
+            <select id="setS3Addressing" style="width:100%;margin-top:4px">
+              <option value="virtual">virtual-hosted（bucket.endpoint）</option>
+              <option value="path">path-style（endpoint/bucket/）</option>
+            </select>
+          </div>
+          <div class="s3-field">
+            <label class="muted">下载链接有效期（秒）</label>
+            <input id="setS3Expires" type="number" style="width:100%;margin-top:4px" value="3600">
+          </div>
+          <div class="s3-field" style="grid-column:1/-1">
+            <div class="btn-row">
+              <button class="ghost" onclick="testStorage()">测试连接</button>
+              <span class="muted" id="storageTestHint"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="btn-row">
+          <button class="green" onclick="saveStorageSettings()">保存存储配置</button>
+          <span class="muted">保存后立即生效并写回 config.json</span>
         </div>
       </div>
     </div>
-  </div>
-</main>
+
+    <div id="tab-files" class="tab-panel hidden">
+      <div class="card">
+        <div class="toolbar">
+          <label>平台</label>
+          <select id="filePlatform" onchange="state.platform=this.value;state.filePath='';refreshBaseVersionSelect();loadFiles()"></select>
+          <label>基础包版本</label>
+          <select id="fileBaseVersion" onchange="state.baseVersion=this.value;state.filePath='';loadFiles()"></select>
+          <button class="green" onclick="openUploadPackage()">上传到当前目录</button>
+          <span class="muted">上传的文件会进入打包目录，成为客户端修复/下载的数据源</span>
+        </div>
+        <div class="breadcrumb" id="fileBreadcrumb"></div>
+        <table>
+          <thead><tr><th>名称</th><th>类型</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead>
+          <tbody id="filesBody"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-settings" class="tab-panel hidden">
+      <div class="card">
+        <h3>服务器设置（保存后立即生效并写入 config.json；主机/端口需重启生效）</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+          <div>
+            <label class="muted">项目名</label>
+            <input id="setProject" style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label class="muted">平台（逗号分隔）</label>
+            <input id="setPlatforms" style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label class="muted">监听地址</label>
+            <input id="setHost" style="width:100%;margin-top:4px" placeholder="0.0.0.0（重启生效）">
+          </div>
+          <div>
+            <label class="muted">监听端口</label>
+            <input id="setPort" type="number" style="width:100%;margin-top:4px" placeholder="8710（重启生效）">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="muted">版本顺序（逗号分隔，用于更新链排序）</label>
+            <input id="setOrder" style="width:100%;margin-top:4px" placeholder="1.0,1.2,1.3,1.4">
+          </div>
+          <div>
+            <label class="muted">清单哈希算法</label>
+            <select id="setHash" style="width:100%;margin-top:4px">
+              <option value="md5">MD5</option>
+              <option value="sha1">SHA1</option>
+            </select>
+          </div>
+          <div>
+            <label class="muted">上传大小上限（MB）</label>
+            <input id="setMaxUpload" type="number" style="width:100%;margin-top:4px">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="muted">清单排除模式（每行一个，fnmatch 风格）</label>
+            <textarea id="setExcludes" rows="4" style="width:100%;margin-top:4px;font-family:Consolas,monospace;font-size:12px"></textarea>
+          </div>
+          <div>
+            <label class="muted">管理员令牌（留空保持当前；填新值则覆盖）</label>
+            <input id="setToken" type="password" style="width:100%;margin-top:4px" placeholder="已设置: 是/否">
+            <label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="setClearToken"> 清除当前令牌</label>
+          </div>
+          <div>
+            <label class="muted">&nbsp;</label>
+            <div class="btn-row" style="margin-top:4px">
+              <button class="green" onclick="saveSettings()">保存设置</button>
+              <button class="red" onclick="restartServer()">重启服务器</button>
+            </div>
+            <span class="muted" id="settingsHint"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-control" class="tab-panel hidden">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
+        <div class="card"><h3>进程 PID</h3><div class="value" id="ctlPid">-</div><div class="sub" id="ctlPython"></div></div>
+        <div class="card"><h3>运行时长</h3><div class="value" id="ctlUptime">-</div><div class="sub" id="ctlStarted"></div></div>
+        <div class="card"><h3>监听地址</h3><div class="value" id="ctlListen">-</div><div class="sub" id="ctlConfigPath"></div></div>
+        <div class="card"><h3>数据目录</h3><div class="value" id="ctlDataDir" style="font-size:15px">-</div><div class="sub" id="ctlVersionLib"></div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>控制操作</h3>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="red" onclick="restartServer()">重启服务器</button>
+          <button class="ghost" onclick="reindex()">重建版本索引</button>
+          <button class="ghost" onclick="regenerateAllManifests()">重新生成全部完整性清单</button>
+          <button class="ghost" onclick="loadAll()">刷新状态</button>
+        </div>
+        <div class="muted" style="margin-top:10px">重启会先拉起新进程再关闭旧进程（约 3 秒），页面会自动刷新；监听地址/端口等配置在重启后生效。</div>
+      </div>
+    </div>
+
+    <div id="tab-launcher" class="tab-panel hidden">
+      <div class="card">
+        <h3>启动器版本（历史管理）</h3>
+        <div class="muted">像游戏基础包一样维护“版本文件夹”历史；发布时把所选文件夹中的 Launcher.exe / SelfUpdater.exe / ui/ 快照到 data/launcher，客户端启动自检自动升级。客户端只需 Launcher.exe，界面资源与 SelfUpdater 首次运行时会自动从服务器拉取到 app/ 子目录。当前发布：<span id="launcherVerSub" style="color:var(--accent2)">-</span></div>
+        <table style="margin-top:10px">
+          <thead><tr><th>版本</th><th>文件夹</th><th>文件</th><th>Launcher.exe 大小</th><th>操作</th></tr></thead>
+          <tbody id="launcherVersionsBody"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
+        </table>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+          <input id="addLauncherVersion" placeholder="版本号 如 1.1.0" style="width:130px">
+          <div style="display:flex;gap:6px;flex:1;min-width:280px;align-items:center">
+            <input id="addLauncherDir" placeholder="版本文件夹路径，如 D:/Release/Launcher_1.1.0（须含 Launcher.exe）" style="flex:1">
+            <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+          </div>
+          <button class="green" onclick="addLauncherVersion()">添加 / 更新版本</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+          <label class="muted">发布说明（可选）</label>
+          <input id="setLauncherNote" placeholder="写入当前发布版本" style="flex:1;min-width:240px">
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>背景序列帧（指定文件夹）</h3>
+        <div class="muted">选择服务器上的背景图文件夹（PNG 序列帧，按文件名排序），客户端启动自检自动下载新版背景。当前版本：<span id="bgVersion" style="color:var(--accent2)">-</span> · <span id="bgInfo">-</span></div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+          <div style="display:flex;gap:6px;flex:1;min-width:280px;align-items:center">
+            <input id="setBgDir" placeholder="背景文件夹路径，如 D:/LauncherAssets/Background" style="flex:1">
+            <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+          </div>
+          <button class="green" onclick="saveBgDir()">保存背景目录</button>
+          <button class="red" onclick="clearBgDir()">清除配置</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+          <label class="muted">序列帧 FPS</label>
+          <input id="setBgFps" type="number" min="1" style="width:90px">
+          <button class="ghost" onclick="saveBgFps()">保存 FPS</button>
+        </div>
+        <div id="bgFileList" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <div id="tab-api" class="tab-panel hidden">
+      <div class="card" style="line-height:1.9">
+        <div><strong>状态</strong>　<code>GET /api/status</code></div>
+        <div><strong>版本索引</strong>　<code>GET /api/versions</code></div>
+        <div><strong>更新描述</strong>　<code>GET /api/version/&lt;id&gt;</code></div>
+        <div><strong>完整性清单</strong>　<code>GET /api/manifest.json?platform=Windows</code></div>
+        <div><strong>云端文件浏览</strong>　<code>GET /api/files?platform=Windows&amp;path=CodeBuild/Content</code></div>
+        <div><strong>云端文件下载</strong>　<code>GET /files/packages/&lt;平台&gt;/&lt;相对路径&gt;</code></div>
+        <div><strong>更新包下载</strong>　<code>GET /files/versions/&lt;版本&gt;/&lt;文件名&gt;</code></div>
+        <div><strong>重建索引</strong>　<code>POST /api/versions/reindex</code></div>
+        <div><strong>重新生成清单</strong>　<code>POST /api/manifest/generate?platform=Windows</code></div>
+        <div><strong>上传文件</strong>　<code>POST /api/upload?target=package|version&amp;platform=Windows&amp;path=&amp;versionId=</code>（multipart，字段名 file）</div>
+        <div><strong>一键导入</strong>　<code>POST /api/import/hotpatcher</code></div>
+        <div><strong>开放版本（查询）</strong>　<code>GET /api/enabled_versions</code></div>
+        <div><strong>开放版本（设置）</strong>　<code>POST /api/enabled_versions</code>　<code>{platform, versions:[...]}</code>，客户端仅可见列表内版本</div>
+        <div><strong>删除版本</strong>　<code>DELETE /api/version/&lt;id&gt;</code>（移入 data/trash 回收站）</div>
+        <div><strong>重启服务器</strong>　<code>POST /api/server/restart</code></div>
+        <div><strong>存储测试</strong>　<code>POST /api/storage/test</code>　<code>{storage:{...}}</code></div>
+        <div><strong>启动器历史版本</strong>　<code>GET /api/launcher/versions</code>／<code>POST {version, dir}</code>／<code>DELETE /api/launcher/versions/&lt;版本&gt;</code></div>
+        <div><strong>启动器版本发布</strong>　<code>POST /api/launcher/publish</code>　<code>{version, note}</code>（从版本文件夹快照 exe）</div>
+        <div><strong>背景资源清单</strong>　<code>GET /api/launcher/background</code>（客户端自检用，指定文件夹）</div>
+        <div><strong>背景目录设置</strong>　<code>POST /api/launcher/background/dir</code>　<code>{dir}</code></div>
+        <div><strong>背景 FPS / 清除配置</strong>　<code>POST /api/launcher/background</code>　<code>{frameFps}</code>／<code>POST /api/launcher/background/clear</code></div>
+        <div class="muted" style="margin-top:8px">配置了 admin_token 时，管理操作需携带 <code>Authorization: Bearer &lt;token&gt;</code>。</div>
+      </div>
+    </div>
+  </main>
+</div>
 
 <div id="toast"></div>
 
@@ -314,6 +463,14 @@
 <script>
 const state = { token: localStorage.getItem('cu_token') || '', status: null, versions: [], files: [], filePath: '', platform: '', baseVersion: '', baseContainers: {}, enabledMap: {}, managePlatform: '', uptimeBase: 0, uptimeAt: 0, launcherVer: null, launcherVersions: [], launcherPublished: '', bg: null };
 const $ = id => document.getElementById(id);
+let endpointAuto = false;
+const STORAGE_PRESETS = {
+  oss: { service: 's3', endpointPattern: 's3.oss-{region}.aliyuncs.com', region: 'cn-hangzhou', addressing: 'virtual', hint: '阿里云 OSS：使用 S3 兼容域名 s3.oss-<region>.aliyuncs.com，region 如 cn-hangzhou' },
+  cos: { service: 's3', endpointPattern: 'cos.{region}.myqcloud.com', region: 'ap-guangzhou', addressing: 'virtual', hint: '腾讯云 COS：endpoint 为 cos.<region>.myqcloud.com，region 如 ap-guangzhou' },
+  aws: { service: 's3', endpointPattern: 's3.{region}.amazonaws.com', region: 'us-east-1', addressing: 'virtual', hint: 'AWS S3：endpoint 可用 s3.<region>.amazonaws.com，region 如 us-east-1' },
+  minio: { service: 's3', endpointPattern: 'http://127.0.0.1:9000', region: 'us-east-1', addressing: 'path', hint: '自建/MinIO：endpoint 填服务地址（如 http://127.0.0.1:9000），寻址方式建议 path-style' },
+  custom: { service: 's3', endpointPattern: '', region: '', addressing: 'virtual', hint: '其他 S3 兼容存储：请按服务商文档填写 endpoint / region / service' },
+};
 
 function saveToken() { state.token = $('tokenInput').value.trim(); localStorage.setItem('cu_token', state.token); toast('令牌已保存', 'ok'); }
 
@@ -347,10 +504,12 @@ function fmtSize(bytes) {
   return v.toFixed(1) + ' ' + u[i];
 }
 
+const TAB_TITLES = { versions: '版本管理', manifest: '完整性清单', storage: '存储配置', files: '云端文件', settings: '服务器设置', control: '服务器控制', launcher: '启动器管理', api: 'API 说明' };
 function switchTab(name) {
-  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.nav-item[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
   $('tab-' + name).classList.remove('hidden');
+  $('pageTitle').textContent = TAB_TITLES[name] || name;
 }
 
 async function loadAll() {
@@ -365,6 +524,9 @@ async function loadAll() {
     $('serverBadge').textContent = '在线';
     $('serverBadge').className = 'badge online';
     $('serverTime').textContent = status.serverTime || '';
+    $('sideServerTime').textContent = status.serverTime || '';
+    $('sideProject').textContent = '项目：' + (status.project || '-');
+    $('sideStorage').textContent = '存储：' + (config.storageBackend === 's3' ? 'OSS / S3' : '本地磁盘');
     $('stProject').textContent = status.project || '-';
     $('stPlatforms').textContent = (status.platforms || []).join(', ');
     $('stCurrent').textContent = index.current || '-';
@@ -572,9 +734,34 @@ function renderSettings() {
   $('setHash').value = cfg.manifestHash || 'md5';
   $('setMaxUpload').value = cfg.maxUploadMb || 2048;
   $('setExcludes').value = (cfg.manifestExcludePatterns || []).join('\n');
+  const st = cfg.storage || {};
+  $('setStorageBackend').value = st.backend || cfg.storageBackend || 'local';
+  const s3 = st.s3 || {};
+  const providerSel = $('setS3Provider');
+  const savedProvider = s3.provider || 'oss';
+  if (!['oss', 'cos', 'aws', 'minio', 'custom'].includes(savedProvider)) {
+    const opt = document.createElement('option');
+    opt.value = savedProvider;
+    opt.textContent = savedProvider + '（自定义）';
+    providerSel.appendChild(opt);
+  }
+  providerSel.value = savedProvider;
+  $('setS3Endpoint').value = s3.endpoint || '';
+  $('setS3Region').value = s3.region || '';
+  $('setS3Service').value = s3.service || '';
+  $('setS3Bucket').value = s3.bucket || '';
+  $('setS3AccessKey').value = s3.accessKeyId || '';
+  $('setS3Secret').value = '';
+  $('setS3Prefix').value = s3.prefix || '';
+  $('setS3PublicUrl').value = s3.publicBaseUrl || '';
+  $('setS3Addressing').value = s3.addressingStyle || 'virtual';
+  $('setS3Expires').value = s3.presignExpires || 3600;
+  $('storageTestHint').textContent = s3.secretKeySet ? '已配置 Secret（输入新值可覆盖）' : '未配置 Secret';
+  applyProviderPresets(true);
+  toggleStorageFields();
   $('setToken').value = '';
   $('setClearToken').checked = false;
-  $('settingsHint').textContent = cfg.adminTokenSet ? '当前已启用管理令牌' : '当前未启用管理令牌';
+  $('settingsHint').textContent = cfg.adminTokenSet ? '已启用管理令牌' : '未启用管理令牌';
 }
 
 function addBaseRow(platform, version, path, focus = true) {
@@ -585,13 +772,16 @@ function addBaseRow(platform, version, path, focus = true) {
   div.style.cssText = 'display:flex;gap:8px;margin-top:6px;align-items:center';
   div.innerHTML = `
     <input class="base-ver" style="width:100px" placeholder="版本号" value="${esc(version || '')}">
-    <input class="base-path" style="flex:1" placeholder="例如 D:/test/CodeBuild/HotPatherPack/Windows_1.0" value="${esc(path || '')}">
+    <div style="display:flex;gap:6px;flex:1;min-width:0">
+      <input class="base-path" style="flex:1" placeholder="例如 D:/test/CodeBuild/HotPatherPack/Windows_1.0" value="${esc(path || '')}">
+      <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+    </div>
     <button class="red" onclick="this.closest('.base-row').remove()">删除</button>`;
   container.appendChild(div);
   if (focus && version) div.querySelector('.base-path').focus();
 }
 
-async function saveSettings() {
+function collectBasePackages() {
   const basePackages = {};
   let rowError = '';
   document.querySelectorAll('.base-rows').forEach(group => {
@@ -608,16 +798,15 @@ async function saveSettings() {
     });
     if (Object.keys(map).length) basePackages[platform] = map;
   });
-  if (rowError) { toast(rowError, 'err'); return; }
+  return { basePackages, rowError };
+}
+
+async function saveSettings() {
   const payload = {
     project: $('setProject').value.trim(),
     platforms: $('setPlatforms').value.split(',').map(s => s.trim()).filter(Boolean),
     host: $('setHost').value.trim(),
     port: parseInt($('setPort').value, 10) || 8710,
-    dataDir: $('setDataDir').value.trim(),
-    versionLibraryDir: $('setVersionLib').value.trim(),
-    basePackages,
-    patchSourceDir: $('setPatchSource').value.trim(),
     hotpatcherOrder: $('setOrder').value.trim(),
     manifestHash: $('setHash').value,
     maxUploadMb: parseInt($('setMaxUpload').value, 10) || 2048,
@@ -634,8 +823,112 @@ async function saveSettings() {
     });
     toast(r.message, 'ok');
     await loadAll();
-    switchTab('versions');
+    switchTab('settings');
   } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveStorageSettings() {
+  const { basePackages, rowError } = collectBasePackages();
+  if (rowError) { toast(rowError, 'err'); return; }
+  const payload = {
+    dataDir: $('setDataDir').value.trim(),
+    versionLibraryDir: $('setVersionLib').value.trim(),
+    basePackages,
+    patchSourceDir: $('setPatchSource').value.trim(),
+    storage: collectStorageConfig(),
+  };
+  try {
+    const r = await api('/api/config/update', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify(payload),
+    });
+    toast(r.message, 'ok');
+    await loadAll();
+    switchTab('storage');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+
+function collectStorageConfig() {
+  const storage = {
+    backend: $('setStorageBackend').value,
+    s3: {
+      provider: $('setS3Provider').value.trim(),
+      endpoint: $('setS3Endpoint').value.trim(),
+      region: $('setS3Region').value.trim(),
+      service: $('setS3Service').value.trim(),
+      bucket: $('setS3Bucket').value.trim(),
+      accessKeyId: $('setS3AccessKey').value.trim(),
+      prefix: $('setS3Prefix').value.trim(),
+      publicBaseUrl: $('setS3PublicUrl').value.trim(),
+      addressingStyle: $('setS3Addressing').value,
+      presignExpires: parseInt($('setS3Expires').value, 10) || 3600,
+    },
+  };
+  const secret = $('setS3Secret').value.trim();
+  if (secret) storage.s3.secretAccessKey = secret;
+  return storage;
+}
+
+function toggleStorageFields() {
+  const remote = $('setStorageBackend').value === 's3';
+  document.querySelectorAll('.s3-field').forEach(el => {
+    el.style.display = remote ? '' : 'none';
+  });
+}
+
+function applyProviderPresets(init) {
+  const preset = STORAGE_PRESETS[$('setS3Provider').value] || STORAGE_PRESETS.custom;
+  $('storageProviderHint').textContent = preset.hint;
+  $('setS3Endpoint').placeholder = preset.endpointPattern || '按服务商文档填写';
+  $('setS3Region').placeholder = preset.region || '例如 cn-hangzhou / ap-guangzhou';
+  if (init) {
+    if (!$('setS3Service').value) $('setS3Service').value = preset.service;
+    if (!$('setS3Region').value) $('setS3Region').value = preset.region;
+    if (!$('setS3Endpoint').value && preset.endpointPattern) {
+      $('setS3Endpoint').value = preset.endpointPattern.replace('{region}', $('setS3Region').value || preset.region);
+      endpointAuto = true;
+    } else {
+      endpointAuto = false;
+    }
+    if (!$('setS3Addressing').value) $('setS3Addressing').value = preset.addressing;
+    return;
+  }
+  $('setS3Service').value = preset.service;
+  $('setS3Region').value = preset.region || '';
+  $('setS3Addressing').value = preset.addressing;
+  if (preset.endpointPattern) {
+    $('setS3Endpoint').value = preset.endpointPattern.replace('{region}', $('setS3Region').value);
+    endpointAuto = true;
+  } else {
+    $('setS3Endpoint').value = '';
+    endpointAuto = false;
+  }
+}
+
+function onRegionInput() {
+  const preset = STORAGE_PRESETS[$('setS3Provider').value];
+  if (endpointAuto && preset && preset.endpointPattern) {
+    $('setS3Endpoint').value = preset.endpointPattern.replace('{region}', $('setS3Region').value.trim());
+  }
+}
+
+async function testStorage() {
+  const hint = $('storageTestHint');
+  hint.textContent = '测试中...';
+  try {
+    const r = await api('/api/storage/test', {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({ storage: collectStorageConfig() }),
+    });
+    hint.textContent = '✓ ' + (r.message || '连接成功');
+    toast(r.message || '连接成功', 'ok');
+  } catch (e) {
+    hint.textContent = '✗ ' + e.message;
+    toast(e.message, 'err');
+  }
 }
 
 async function restartServer() {
@@ -931,6 +1224,60 @@ async function doUpload(target) {
 }
 
 function closeModal() { $('modalMask').classList.remove('show'); }
+
+let folderTarget = null;
+let folderPath = '';
+let folderParent = null;
+
+function openFolderPicker(btn) {
+  const input = btn.previousElementSibling;
+  if (!input) { toast('未找到路径输入框', 'err'); return; }
+  folderTarget = input;
+  folderPath = input.value.trim();
+  folderParent = null;
+  $('modalTitle').textContent = '选择文件夹';
+  $('modalBody').innerHTML = `
+    <div class="dir-current" id="dirCurrent">加载中...</div>
+    <div class="dir-actions">
+      <button class="ghost" onclick="dirPickerUp()" id="dirUpBtn">上一级</button>
+      <button class="green" onclick="dirPickerChoose()">选择当前文件夹</button>
+      <span class="muted">仅显示服务器本地目录</span>
+    </div>
+    <div class="dir-list" id="dirList"><div class="empty">加载中...</div></div>`;
+  loadDirPicker(folderPath);
+  $('modalMask').classList.add('show');
+}
+
+async function loadDirPicker(path) {
+  try {
+    const data = await api('/api/dirs/list?path=' + encodeURIComponent(path));
+    folderPath = data.path || '';
+    folderParent = data.parent || null;
+    $('dirCurrent').textContent = folderPath || '选择磁盘';
+    $('dirUpBtn').style.visibility = folderParent ? 'visible' : 'hidden';
+    const list = $('dirList');
+    if (!data.entries.length) {
+      list.innerHTML = '<div class="empty">此目录下没有子文件夹</div>';
+    } else {
+      list.innerHTML = data.entries.map(e =>
+        `<button class="dir-item" data-path="${esc(JSON.stringify(e.path))}" onclick="loadDirPicker(JSON.parse(this.dataset.path))">📁 ${esc(e.name)}</button>`).join('');
+    }
+  } catch (e) {
+    $('dirList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
+  }
+}
+
+function dirPickerUp() {
+  if (folderParent) loadDirPicker(folderParent);
+}
+
+function dirPickerChoose() {
+  if (!folderTarget) { toast('未找到目标输入框', 'err'); return; }
+  folderTarget.value = folderPath;
+  toast('已选择：' + (folderPath || '(根目录)'), 'ok');
+  closeModal();
+}
+
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 $('tokenInput').value = state.token;

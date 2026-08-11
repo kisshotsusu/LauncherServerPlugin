@@ -157,6 +157,7 @@ class S3Storage(StorageBackend):
 
     def __init__(self, cfg):
         s = (cfg.get("storage") or {}).get("s3") or {}
+        self.scheme = "http" if (s.get("endpoint") or "").strip().lower().startswith("http://") else "https"
         ep = (s.get("endpoint") or "").strip()
         if ep.startswith("https://"):
             ep = ep[len("https://"):]
@@ -232,7 +233,7 @@ class S3Storage(StorageBackend):
             "AWS4-HMAC-SHA256", amzdate, scope, _sha256_hex(canon_req.encode("utf-8"))
         ])
         sig = hmac.new(self._signing_key(datestamp), string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
-        return f"https://{host}{canon_uri}?{canon_query}&X-Amz-Signature={sig}"
+        return f"{self.scheme}://{host}{canon_uri}?{canon_query}&X-Amz-Signature={sig}"
 
     def _sign_v4_headers(self, method: str, key: str, data: bytes):
         t = datetime.datetime.now(datetime.timezone.utc)
@@ -268,7 +269,10 @@ class S3Storage(StorageBackend):
             path = "/" + _uri_encode(self.bucket) + "/" + _uri_encode(key, safe_slash=True)
         else:
             path = "/" + _uri_encode(key, safe_slash=True)
-        conn = http.client.HTTPSConnection(host, self.port, timeout=600)
+        if self.scheme == "http":
+            conn = http.client.HTTPConnection(host, self.port, timeout=600)
+        else:
+            conn = http.client.HTTPSConnection(host, self.port, timeout=600)
         try:
             conn.request(method, path, body=body, headers=headers)
             resp = conn.getresponse()
@@ -296,6 +300,16 @@ class S3Storage(StorageBackend):
             # 404 视为已删除，忽略
             if "404" not in str(exc):
                 raise
+
+    def test_connection(self):
+        """对 bucket 根路径执行 HEAD 请求，验证 endpoint / bucket / 凭据是否可用。"""
+        if not self.endpoint_host or not self.bucket:
+            raise RuntimeError("storage.s3 未配置 endpoint / bucket")
+        if not self.ak or not self.sk:
+            raise RuntimeError("storage.s3 未配置 accessKeyId / secretAccessKey")
+        headers = self._sign_v4_headers("HEAD", "", b"")
+        self._do_request("HEAD", "", b"", headers)
+        return True
 
 
 _STORAGE_CACHE = {}
