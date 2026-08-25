@@ -8,7 +8,25 @@
 #include "Features/IModularFeatures.h"
 #include "Misc/FileHelper.h"
 #include "HAL/PlatformFileManager.h"
+#include "HAL/CriticalSection.h"
 #include "Misc/Paths.h"
+
+// 合并锁静态成员定义（见头文件 GetMergeLock 备注）
+FCriticalSection FCloudBinaryMerge::MergeMapLock;
+TMap<FString, TSharedPtr<FCriticalSection>> FCloudBinaryMerge::MergeLocks;
+
+FCriticalSection& FCloudBinaryMerge::GetMergeLock(const FString& InBaseFilePath)
+{
+	FScopeLock MapScope(&MergeMapLock);
+	if (TSharedPtr<FCriticalSection>* Found = MergeLocks.Find(InBaseFilePath))
+	{
+		return *Found->Get();
+	}
+	TSharedPtr<FCriticalSection> NewLock = MakeShared<FCriticalSection>();
+	FCriticalSection& Ref = *NewLock.Get();
+	MergeLocks.Add(InBaseFilePath, MoveTemp(NewLock));
+	return Ref;
+}
 
 bool FCloudBinaryMerge::IsHDiffPatchAvailable()
 {

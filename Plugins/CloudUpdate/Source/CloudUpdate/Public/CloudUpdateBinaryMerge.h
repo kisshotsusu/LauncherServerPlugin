@@ -94,4 +94,19 @@ public:
 
 	/** 由补丁文件名推导基础文件名（去掉末尾 .patch） */
 	static FString GetBaseFileName(const FString& InPatchFileName);
+
+private:
+	/**
+	 * 跨流程（下载流程 / 自动合并 / .pending 交换）合并锁：
+	 * 以「基础文件绝对路径」为 key 的细粒度锁，保证对同一基础文件的合并/交换操作串行，
+	 * 避免下载流程（HandleBinaryPatchEntry）与后台自动合并（AutoMergeDirectory）并发写
+	 * "<base>.merged.tmp" / "<base>.pending" 导致结果互相覆盖的竞态。
+	 * 不同基础文件使用各自独立的锁，互不阻塞，不造成全局串行瓶颈。
+	 */
+	static FCriticalSection& GetMergeLock(const FString& InBaseFilePath);
+
+	/** 保护 MergeLocks 映射的全局锁 */
+	static FCriticalSection MergeMapLock;
+	/** 每个基础文件路径对应的临界区（进程生命周期内持续存活） */
+	static TMap<FString, TSharedPtr<FCriticalSection>> MergeLocks;
 };
