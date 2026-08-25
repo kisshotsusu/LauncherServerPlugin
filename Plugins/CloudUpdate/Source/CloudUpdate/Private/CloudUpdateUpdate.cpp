@@ -787,6 +787,9 @@ void FCloudUpdateService::HandleBinaryPatchEntry(const FCloudDownloadFile& InFil
 		const FString PatchDir = FPaths::ProjectSavedDir() / TEXT("CloudUpdate") / TEXT("patches");
 		IFileManager::Get().MakeDirectory(*PatchDir, true);
 		const FString PatchTemp = PatchDir / InFile.FileName;
+		// 备注：真正合并时写的中间文件是 BasePath + ".merged.tmp" 与 BasePath + ".pending"，
+		// 这两者与 AutoMergePatches（后台线程）使用的是同一对命名。若更新与自动合并并发执行，
+		// 存在同名临时文件互相覆盖的竞态（详见 AutoMergePatches / AutoMergeDirectory 备注）。
 		const int32 Retries = Settings ? Settings->DownloadRetryCount : 2;
 		TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
 		UE_LOG(LogCloudUpdate, Log, TEXT("二进制补丁合并：下载 %s 并应用到 %s"), *InFile.Url, *BasePath);
@@ -877,6 +880,11 @@ void FCloudUpdateService::OnBinaryPatchApplied(bool bSuccess, const FCloudDownlo
 		}
 		if (InFile.Kind == ECloudDownloadKind::ContentPak)
 		{
+			// 备注（潜在问题）：此处 bSuccess 由调用方在 Success 与 StagedForRestart 两种情况下都传 true。
+			// 对 StagedForRestart（基础文件被占用、已暂存 .pending 待重启）而言，BasePath 此刻仍是「旧内容」且被锁定，
+			// 把它加入 MergedPakPaths 会让后续 MountPendingPaks 尝试挂载一个旧/已挂载文件，属于冗余甚至错误挂载。
+			// 该 pak 真正变为新版本要等下次启动、.pending 交换后由引擎重新挂载，无需在此挂载。
+			// 建议：仅在合并结果确为「立即生效（Success）」时才加入 MergedPakPaths。
 			MergedPakPaths.AddUnique(BasePath);
 		}
 	}

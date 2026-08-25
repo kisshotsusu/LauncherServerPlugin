@@ -9,6 +9,8 @@
 
 #include "CoreMinimal.h"
 #include "Templates/Function.h"
+// EBinaryMergeResult 定义于此；显式包含，避免依赖包含顺序（该头被多个翻译单元间接引用）。
+#include "CloudUpdateTypes.h"
 
 class IBinariesDiffPatchFeature;
 
@@ -57,6 +59,9 @@ public:
 	 * - Failed：无法合并（无 HDiffPatch / 基础或补丁缺失 / 补丁损坏）。
 	 * - StagedForRestart：基础文件被占用（如运行中 pak 已挂载，Move 失败），
 	 *   已把重建结果暂存为 InBaseFilePath + ".pending"，需重启后由 FinalizePendingMerges 交换生效。
+	 *   注意：此分支仅在「基础文件尚未被引擎挂载」时有效（见 FinalizePendingMerges 备注）。
+	 *   若基础文件在交换时已处于挂载状态（如项目自带 Paks 目录的 pak/utoc），交换会失败，
+	 *   该补丁将不会生效，需改用启动前（引擎挂载前）的交换机制（见 FinalizePendingMerges）。
 	 */
 	static EBinaryMergeResult ApplyPatchToFileEx(const FString& InBaseFilePath,
 	                                             const FString& InPatchFilePath,

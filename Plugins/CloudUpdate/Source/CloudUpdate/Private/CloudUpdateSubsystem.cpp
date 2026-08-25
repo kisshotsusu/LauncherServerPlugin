@@ -20,7 +20,13 @@ void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	FHttpModule::Get().SetAllowSelfSignedCertificates(true);
 	Service = MakeShared<FCloudUpdateService>(this);
 
-	// 启动早期、pak 尚未挂载前，交换上一轮因文件被占用而暂存的补丁（.pending -> 基础文件）
+	// 交换上一轮因文件被占用而暂存的补丁（.pending -> 基础文件）。
+	// 备注（时序硬伤，务必知悉）：UEngineSubsystem::Initialize 的调用时机晚于引擎对项目
+	// Paks 目录的自动挂载（FPakPlatformFile 在 FEngineLoop::Init 期间已挂载 pak/utoc）。
+	// 因此当本行执行时，项目自带 pak/utoc 往往已被锁定，Move 交换会失败，
+	// StagedForRestart 的补丁在这里通常「交换不成功」。对 IoStore(utoc/ucas) 几乎必然失效。
+	// 该调用作为「尽力而为」的安全网保留；可靠的交换须放在引擎挂载之前（启动器/Launcher 侧、
+	// 自定义 FPlatformFile、或插件模块更早的 StartupModule 中）。详见 FinalizePendingMerges 实现备注。
 	FCloudBinaryMerge::FinalizePendingMerges(FPaths::ProjectContentDir() / TEXT("Paks"), true);
 
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
@@ -151,6 +157,9 @@ bool UCloudUpdateSubsystem::ApplyBinaryPatchToBase(const FString& BaseFilePath, 
 	{
 		return false;
 	}
+	// 备注：本函数返回 bool，会丢失 ApplyPatchToFileEx 的「StagedForRestart（需重启生效）」语义——
+	// 若合并结果是暂存待重启，调用方仅得到 true，却不知道需要重启才能真正生效。
+	// 若蓝图需要区分，可改用返回 EBinaryMergeResult 的接口（FCloudBinaryMerge::ApplyPatchToFileEx）。
 	return FCloudBinaryMerge::ApplyPatchToFile(BaseFilePath, PatchFilePath, OutMergedPath, FeatureName);
 }
 
@@ -185,6 +194,11 @@ void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bInc
 
 	bAutoMergeRunning = true;
 	TWeakObjectPtr<UCloudUpdateSubsystem> Self = this;
+	// 备注（并发风险）：bAutoMergeRunning 仅防止「两次 AutoMergePatches 并发」。
+	// 但更新下载流程（FCloudUpdateService::HandleBinaryPatchEntry）也会在游戏线程/HTTP 回调中
+	// 对同一基础文件做合并，二者不共享该标志。若更新进行中用户又触发自动合并，
+	// 两条路径会同时写 Foo.merged.tmp / Foo.pending，存在临时文件互相覆盖的竞态。
+	// 如需严格安全，应引入跨流程的合并锁或将自动合并与更新合并纳入同一串行队列。
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [Self, Dir, bIncludeSubdirectories, FeatureName, Total]()
 	{
 		FCloudBinaryMerge::FBinaryMergeResult Result = FCloudBinaryMerge::AutoMergeDirectory(

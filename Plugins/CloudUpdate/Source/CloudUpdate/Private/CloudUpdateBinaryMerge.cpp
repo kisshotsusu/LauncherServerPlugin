@@ -61,6 +61,16 @@ EBinaryMergeResult FCloudBinaryMerge::ApplyPatchToFileEx(const FString& InBaseFi
 {
 	OutMergedFilePath = InBaseFilePath;
 
+	// 备注（潜在问题）：
+	// 1) 若当前生效的不是 HDiffPatchUE 而是其它 IBinariesDiffPatchFeature 实现，
+	//    其 PatchDiffToFile 可能退化为「整文件读入内存」的默认实现（见 HotPatcher BinariesPatchFeature.cpp），
+	//    对几个 GiB 的大 pak 会造成显著内存峰值。HDiffPatchUE 走真正的流式实现（约 1 MiB 峰值），不受影响。
+	// 2) 本函数只依赖 PatchDiffToFile 返回的 bool 判断成功，未对重建结果做内容哈希校验。
+	//    若需要端到端完整性保障，应在合并后用 InFile.Hash 校验 OutMergedFilePath（调用方负责）。
+	// 3) StagedForRestart 分支的成功前提是：重启后、引擎挂载该基础文件「之前」能把它交换回去。
+	//    详见 FinalizePendingMerges 的备注——项目自带 Paks 在引擎启动时已被自动挂载，
+	//    因此 UEngineSubsystem::Initialize 里调用 FinalizePendingMerges 常常来不及（文件已锁）。
+
 	IBinariesDiffPatchFeature* Feature = GetFeature(InFeatureName);
 	if (!Feature)
 	{
@@ -105,6 +115,18 @@ int32 FCloudBinaryMerge::FinalizePendingMerges(const FString& InDirectory, bool 
 {
 	TArray<FString> Pending;
 	IFileManager::Get().FindFilesRecursive(Pending, *InDirectory, TEXT("*.pending"), /*Files=*/true, /*Dirs=*/false, bIncludeSubdirectories);
+
+	// 备注（重要潜在问题 / 时序硬伤）：
+	// 本函数只有在「目标基础文件当前未被占用（未挂载、未打开）」时才能交换成功。
+	// 但项目的 Paks 目录（ProjectContentDir/Paks）下的 pak/utoc 会在引擎启动极早期被
+	// FPakPlatformFile 自动挂载；UEngineSubsystem::Initialize 的调用时机晚于该挂载，
+	// 此时文件已被锁，Move 必然失败，.pending 不会被交换，补丁因而「永不生效」。
+	// 尤其 IoStore 的 utoc/ucas 挂载得更早、几乎必然处于锁定状态，StagedForRestart 机制对其基本无效。
+	// 可靠做法（当前未实现，需后续补充）：在引擎挂载之前完成交换，例如
+	//   - 启动器在拉起游戏进程前先做 .pending 交换；或
+	//   - 用自定义 FPlatformFile wrapper，在其 Mount 前拦截并完成交换；或
+	//   - 插件模块 StartupModule（早于 pak 挂载）中执行交换。
+	// 调用方应检查返回值：若返回 0 但期望 >0，说明有暂存补丁因文件占用未交换，需提示用户重启或换路径。
 
 	int32 Swapped = 0;
 	for (const FString& PendingPath : Pending)
@@ -151,6 +173,20 @@ FBinaryMergeResult FCloudBinaryMerge::AutoMergeDirectory(
 	const TArray<FString> Patches = FindPatchFiles(InDirectory, bIncludeSubdirectories);
 	const int32 Total = Patches.Num();
 	int32 Completed = 0;
+
+	// 备注（潜在问题）：
+	// a) 并发冲突：AutoMergeDirectory 在后台线程执行，而更新下载流程的 HandleBinaryPatchEntry
+	//    也会对相同基础文件调用 ApplyPatchToFileEx（写 Foo.merged.tmp / Foo.pending）。
+	//    若用户在更新进行中手动触发 AutoMergePatches，两条路径可能同时操作同一临时文件，造成结果互相覆盖。
+	//    当前仅用 bAutoMergeRunning 防止「两次自动合并」并发，未与下载流程互斥——如需严格安全，
+	//    应引入一个跨流程的合并锁（如 FCriticalSection 或统一的合并队列）。
+	// b) Total 与最终实际处理列表来自同一次 FindPatchFiles，本函数内一致；
+	//    但子系统 AutoMergePatches 在进入后台前另算了一次 Total（用于先广播一次进度），
+	//    两次扫描之间若目录变化，进度总数可能和实际不符（仅 UI 显示问题，不影响正确性）。
+	// c) 后台线程内调用 GetFeature -> IModularFeatures::Get()：通常安全（读取已注册列表 + 内部加锁），
+	//    但 ModularFeatures 的注册发生在主线程，假设「注册已完成、仅读取」成立；若在极早期模块加载阶段并发调用需谨慎。
+	// d) 若某基础文件在合并时已被占用（运行中 pak 已挂载），会得到 StagedForRestart：
+	//    结果暂存为 .pending，且仅在本次自动合并里计入「成功」，但需重启后才能真正生效（见 FinalizePendingMerges 时序备注）。
 
 	for (const FString& PatchPath : Patches)
 	{
@@ -200,5 +236,8 @@ FString FCloudBinaryMerge::GetBaseFileName(const FString& InPatchFileName)
 	{
 		Result.LeftChopInline(6); // strlen(".patch") == 6
 	}
+	// 备注（边界情况）：本函数只剥离「末尾一个」.patch 后缀。
+	// 若补丁文件名为 Foo.patch.patch，则推导结果为 Foo.patch（而非预期的 Foo），
+	// 会导致找不到基础文件而被跳过。常规 HotPatcher 产物为 Foo.pak.patch / Foo.utoc.patch，不受影响。
 	return Result;
 }
