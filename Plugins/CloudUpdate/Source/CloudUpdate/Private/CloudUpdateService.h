@@ -65,7 +65,9 @@ private:
 	// ---------- 完整性检查 ----------
 	void ParseManifest(const TSharedPtr<FJsonObject>& InJson);
 	void RunLocalComparison();
-	void CompareLocalResults(const TArray<TPair<int32, FString>>& InResults);
+
+	struct FCompareResult;
+	void CompareLocalResults(const TArray<struct FCompareResult>& InResults);
 	void FinishIntegrityCheck(bool bSuccess, const TArray<FCloudFileIssue>& InIssues, const FString& InMessage);
 
 	// ---------- 修复 ----------
@@ -99,7 +101,7 @@ private:
 	/** 合并失败/无法合并时的整文件回退下载 */
 	void TryBinaryPatchFallback(const FCloudDownloadFile& InFile, const FString& BasePath, const FString& PatchTemp);
 	/** 补丁合并或回退下载完成后的统一收尾 */
-	void OnBinaryPatchApplied(bool bSuccess, const FCloudDownloadFile& InFile, const FString& BasePath);
+	void OnBinaryPatchApplied(bool bSuccess, const FCloudDownloadFile& InFile, const FString& BasePath, bool bStagedForRestart = false);
 
 	// ---------- 版本记录 ----------
 	FString LoadLocalVersion() const;

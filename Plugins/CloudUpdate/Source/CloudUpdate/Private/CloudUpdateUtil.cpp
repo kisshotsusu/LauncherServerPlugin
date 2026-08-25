@@ -25,7 +25,7 @@ namespace CloudUpdatePrivate
 	{
 		OutSize = 0;
 		OutHash.Empty();
-		IFileHandle* Handle = FPlatformFileManager::Get().GetPlatformFile().OpenRead(*InPath);
+		TUniquePtr<IFileHandle> Handle(FPlatformFileManager::Get().GetPlatformFile().OpenRead(*InPath));
 		if (!Handle)
 		{
 			return false;
@@ -38,7 +38,6 @@ namespace CloudUpdatePrivate
 			OutSize += ReadBytes;
 			Md5.Update(Buffer, static_cast<int32>(ReadBytes));
 		}
-		delete Handle;
 		uint8 Digest[16];
 		Md5.Final(Digest);
 		OutHash = BytesToHex(Digest, 16);
@@ -50,6 +49,31 @@ namespace CloudUpdatePrivate
 		FString Result = InPath;
 		Result.ReplaceInline(TEXT("\\"), TEXT("/"));
 		return Result;
+	}
+
+	bool IsSafeRelativePath(const FString& InPath)
+	{
+		if (InPath.IsEmpty())
+		{
+			return false;
+		}
+
+		const FString Normalized = NormalizeSlashes(InPath);
+		if (Normalized.StartsWith(TEXT("/")) || Normalized.Contains(TEXT("..")))
+		{
+			return false;
+		}
+
+		TArray<FString> Segments;
+		Normalized.ParseIntoArray(Segments, TEXT("/"), true);
+		for (const FString& Segment : Segments)
+		{
+			if (Segment.IsEmpty() || Segment == TEXT(".") || Segment == TEXT(".."))
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	TArray<FString> SplitVersionParts(const FString& InVersion)

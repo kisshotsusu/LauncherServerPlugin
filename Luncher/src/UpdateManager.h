@@ -52,6 +52,11 @@ public:
     // 完整性修复（按当前基础包版本清单）
     bool repair(const ProgressFn& progress, const std::atomic<bool>& cancel, std::string& err);
 
+    // 扫描 Paks 目录中的 "*.pending" 暂存补丁，在游戏未运行（文件未被锁定）时交换回基础文件。
+    // 返回成功交换的数量；outTotal 为发现的暂存补丁总数。
+    // 应在启动游戏进程之前调用，确保基础文件未被引擎锁定。
+    int finalizePendingMerges(int* outTotal = nullptr) const;
+
     // 启动游戏；outProcess 非空时返回进程句柄（调用方负责 CloseHandle）
     bool launchGame(std::string& err, HANDLE* outProcess = nullptr) const;
 
@@ -76,6 +81,8 @@ private:
     std::string versionUrl(const std::string& id) const;
     bool downloadFile(const UpdateFileItem& item, const ProgressFn& progress,
                       const std::atomic<bool>& cancel, std::string& err);
+
+    std::string paksDirectory() const;
 
     // 服务器撤销/关闭版本时：删除本地更新文件并回退版本号，返回提示文本
     std::string rollbackIfRevoked(const Json& root);

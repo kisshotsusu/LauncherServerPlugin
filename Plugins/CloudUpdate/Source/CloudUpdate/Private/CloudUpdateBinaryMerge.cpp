@@ -25,6 +25,7 @@ FCriticalSection& FCloudBinaryMerge::GetMergeLock(const FString& InBaseFilePath)
 	TSharedPtr<FCriticalSection> NewLock = MakeShared<FCriticalSection>();
 	FCriticalSection& Ref = *NewLock.Get();
 	MergeLocks.Add(InBaseFilePath, MoveTemp(NewLock));
+	MergeLocks.Compact(); // 防止后续 rehash 导致 TSharedPtr 拷贝移动后引用失效
 	return Ref;
 }
 
@@ -77,6 +78,8 @@ EBinaryMergeResult FCloudBinaryMerge::ApplyPatchToFileEx(const FString& InBaseFi
                                                         FString& OutMergedFilePath,
                                                         const FString& InFeatureName)
 {
+	FScopeLock MergeScope(&GetMergeLock(InBaseFilePath));
+
 	OutMergedFilePath = InBaseFilePath;
 
 	// 备注（潜在问题）：
@@ -155,6 +158,9 @@ int32 FCloudBinaryMerge::FinalizePendingMerges(const FString& InDirectory, bool 
 		{
 			continue;
 		}
+		// 与 ApplyPatchToFileEx 共用同一把锁，防止交换与合并并发写同一基础文件
+		FScopeLock MergeScope(&GetMergeLock(BasePath));
+
 		// 基础文件一般不存在（已被 .pending 取代前已被删除/移动），直接重命名即可；
 		// 若存在（极端情况），ReplaceExisting 覆盖它。
 		if (IFileManager::Get().Move(*BasePath, *PendingPath, /*ReplaceExisting=*/true, /*EvenIfReadOnly=*/true, /*Attributes=*/false))

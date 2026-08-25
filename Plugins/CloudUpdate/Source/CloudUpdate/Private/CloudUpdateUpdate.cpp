@@ -544,15 +544,37 @@ void FCloudUpdateService::OnPakFilesInfoFetched(const TSharedPtr<FJsonObject>& I
 			BaseName.RemoveFromEnd(TEXT(".pak"));
 			const FString Utoc = BaseName + TEXT(".utoc");
 			const FString Ucas = BaseName + TEXT(".ucas");
-			PendingFiles.Add(FCloudDownloadFile{ Utoc, Base / PendingVersionId / TEXT("Windows") / Utoc, Utoc, TEXT(""), 0, ECloudDownloadKind::IoStoreContainer });
-			PendingFiles.Add(FCloudDownloadFile{ Ucas, Base / PendingVersionId / TEXT("Windows") / Ucas, Ucas, TEXT(""), 0, ECloudDownloadKind::IoStoreContainer });
+			FCloudDownloadFile UtocFile;
+			UtocFile.FileName = Utoc;
+			UtocFile.Url = Base / PendingVersionId / TEXT("Windows") / Utoc;
+			UtocFile.TargetRelativePath = Utoc;
+			UtocFile.Kind = ECloudDownloadKind::IoStoreContainer;
+			PendingFiles.Add(MoveTemp(UtocFile));
+
+			FCloudDownloadFile UcasFile;
+			UcasFile.FileName = Ucas;
+			UcasFile.Url = Base / PendingVersionId / TEXT("Windows") / Ucas;
+			UcasFile.TargetRelativePath = Ucas;
+			UcasFile.Kind = ECloudDownloadKind::IoStoreContainer;
+			PendingFiles.Add(MoveTemp(UcasFile));
 		}
 	}
 
 	if (bDirectIoStore)
 	{
-		PendingFiles.Add(FCloudDownloadFile{ TEXT("global.utoc"), Base / PendingVersionId / TEXT("Windows") / TEXT("global.utoc"), TEXT("global.utoc"), TEXT(""), 0, ECloudDownloadKind::IoStoreContainer });
-		PendingFiles.Add(FCloudDownloadFile{ TEXT("global.ucas"), Base / PendingVersionId / TEXT("Windows") / TEXT("global.ucas"), TEXT("global.ucas"), TEXT(""), 0, ECloudDownloadKind::IoStoreContainer });
+		FCloudDownloadFile GlobalUtoc;
+		GlobalUtoc.FileName = TEXT("global.utoc");
+		GlobalUtoc.Url = Base / PendingVersionId / TEXT("Windows") / TEXT("global.utoc");
+		GlobalUtoc.TargetRelativePath = TEXT("global.utoc");
+		GlobalUtoc.Kind = ECloudDownloadKind::IoStoreContainer;
+		PendingFiles.Add(MoveTemp(GlobalUtoc));
+
+		FCloudDownloadFile GlobalUcas;
+		GlobalUcas.FileName = TEXT("global.ucas");
+		GlobalUcas.Url = Base / PendingVersionId / TEXT("Windows") / TEXT("global.ucas");
+		GlobalUcas.TargetRelativePath = TEXT("global.ucas");
+		GlobalUcas.Kind = ECloudDownloadKind::IoStoreContainer;
+		PendingFiles.Add(MoveTemp(GlobalUcas));
 	}
 
 	UE_LOG(LogCloudUpdate, Log, TEXT("根据 HotPatcher JSON 生成 %d 个待下载文件"), PendingFiles.Num());
@@ -633,7 +655,8 @@ void FCloudUpdateService::ParseDescriptor(const TSharedPtr<FJsonObject>& InJson)
 					}
 				}
 			}
-			if (!File.FileName.IsEmpty() && !File.Url.IsEmpty())
+			if (!File.FileName.IsEmpty() && !File.Url.IsEmpty()
+				&& (File.TargetRelativePath.IsEmpty() || IsSafeRelativePath(File.TargetRelativePath)))
 			{
 				PendingFiles.Add(File);
 				if (File.Kind == ECloudDownloadKind::IoStoreContainer)
@@ -812,7 +835,8 @@ void FCloudUpdateService::HandleBinaryPatchEntry(const FCloudDownloadFile& InFil
 					// 基础文件被占用（运行中 pak 已挂载），已暂存为 .pending，需重启后由 FinalizePendingMerges 交换
 					bRestartRequired = true;
 				}
-				Service->OnBinaryPatchApplied(true, InFile, BasePath);
+				Service->OnBinaryPatchApplied(true, InFile, BasePath,
+					MergeResult == EBinaryMergeResult::StagedForRestart);
 			}
 			else
 			{
@@ -867,7 +891,7 @@ void FCloudUpdateService::TryBinaryPatchFallback(const FCloudDownloadFile& InFil
 	}
 }
 
-void FCloudUpdateService::OnBinaryPatchApplied(bool bSuccess, const FCloudDownloadFile& InFile, const FString& BasePath)
+void FCloudUpdateService::OnBinaryPatchApplied(bool bSuccess, const FCloudDownloadFile& InFile, const FString& BasePath, bool bStagedForRestart)
 {
 	if (bSuccess)
 	{
@@ -880,12 +904,12 @@ void FCloudUpdateService::OnBinaryPatchApplied(bool bSuccess, const FCloudDownlo
 		}
 		if (InFile.Kind == ECloudDownloadKind::ContentPak)
 		{
-			// 备注（潜在问题）：此处 bSuccess 由调用方在 Success 与 StagedForRestart 两种情况下都传 true。
-			// 对 StagedForRestart（基础文件被占用、已暂存 .pending 待重启）而言，BasePath 此刻仍是「旧内容」且被锁定，
-			// 把它加入 MergedPakPaths 会让后续 MountPendingPaks 尝试挂载一个旧/已挂载文件，属于冗余甚至错误挂载。
-			// 该 pak 真正变为新版本要等下次启动、.pending 交换后由引擎重新挂载，无需在此挂载。
-			// 建议：仅在合并结果确为「立即生效（Success）」时才加入 MergedPakPaths。
-			MergedPakPaths.AddUnique(BasePath);
+			// 仅在合并立即生效时才加入挂载列表；StagedForRestart 时基础文件仍是旧内容且被锁定，
+			// 需等重启后由 FinalizePendingMerges 交换，不应在此重复挂载。
+			if (!bStagedForRestart)
+			{
+				MergedPakPaths.AddUnique(BasePath);
+			}
 		}
 	}
 	else

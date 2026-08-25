@@ -29,6 +29,14 @@
 #include "CloudUpdateUtil.h"
 using namespace CloudUpdatePrivate;
 
+// 完整性检查的后台哈希计算结果（由 RunLocalComparison 产出，CompareLocalResults 消费）
+struct FCompareResult
+{
+	int32 Index = 0;
+	bool bExists = false;
+	int64 Size = 0;
+	FString Hash;
+};
 void FCloudUpdateService::ParseManifest(const TSharedPtr<FJsonObject>& InJson)
 {
 	ServerManifest = FCloudUpdateManifest();
@@ -54,9 +62,14 @@ void FCloudUpdateService::ParseManifest(const TSharedPtr<FJsonObject>& InJson)
 			{
 				Entry.HashType = TEXT("md5");
 			}
-			if (!Entry.RelativePath.IsEmpty())
+			if (IsSafeRelativePath(Entry.RelativePath))
 			{
 				ServerManifest.Files.Add(Entry);
+			}
+			else
+			{
+				UE_LOG(LogCloudUpdate, Warning,
+					TEXT("清单中包含不安全的相对路径，已跳过：%s"), *Entry.RelativePath);
 			}
 		}
 	}
@@ -89,14 +102,14 @@ void FCloudUpdateService::RunLocalComparison()
 	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
 	Async(EAsyncExecution::ThreadPool, [WorkItems, WeakThis]()
 	{
-		TArray<TPair<int32, FString>> Results;
+		TArray<FCompareResult> Results;
 		Results.Reserve(WorkItems.Num());
 		for (const FWorkItem& Item : WorkItems)
 		{
 			int64 Size = 0;
 			FString Hash;
-			ComputeFileHash(Item.FullPath, Size, Hash);
-			Results.Emplace(Item.Index, Hash);
+			const bool bExists = ComputeFileHash(Item.FullPath, Size, Hash);
+			Results.Add({ Item.Index, bExists, Size, Hash });
 		}
 		AsyncTask(ENamedThreads::GameThread, [Results, WeakThis]()
 		{
@@ -109,43 +122,37 @@ void FCloudUpdateService::RunLocalComparison()
 	});
 }
 
-void FCloudUpdateService::CompareLocalResults(const TArray<TPair<int32, FString>>& InResults)
+void FCloudUpdateService::CompareLocalResults(const TArray<FCompareResult>& InResults)
 {
 	TArray<FCloudFileIssue> Issues;
 	const bool bFullHash = (IntegrityMode == ECloudCheckMode::FullHash);
-	const FString LocalRoot = GetLocalRoot();
 
-	for (const TPair<int32, FString>& Result : InResults)
+	for (const FCompareResult& Result : InResults)
 	{
-		const int32 Index = Result.Key;
+		const int32 Index = Result.Index;
 		if (!ServerManifest.Files.IsValidIndex(Index))
 		{
 			continue;
 		}
 		const FCloudFileEntry& Expected = ServerManifest.Files[Index];
-		const FString LocalPath = LocalRoot / Expected.RelativePath;
 		FCloudFileIssue Issue;
 		Issue.RelativePath = Expected.RelativePath;
 		Issue.ExpectedHash = Expected.Hash;
 		Issue.ExpectedSize = Expected.FileSize;
+		Issue.ActualSize = Result.Size;
+		Issue.ActualHash = Result.Hash;
 
-		int64 LocalSize = 0;
-		FString LocalHash;
-		const bool bExists = ComputeFileHash(LocalPath, LocalSize, LocalHash);
-		Issue.ActualSize = LocalSize;
-		Issue.ActualHash = LocalHash;
-
-		if (!bExists)
+		if (!Result.bExists)
 		{
 			Issue.IssueType = ECloudFileIssueType::Missing;
 			Issues.Add(Issue);
 		}
-		else if (LocalSize != Expected.FileSize)
+		else if (Result.Size != Expected.FileSize)
 		{
 			Issue.IssueType = ECloudFileIssueType::SizeMismatch;
 			Issues.Add(Issue);
 		}
-		else if (bFullHash && !Expected.Hash.IsEmpty() && !LocalHash.IsEmpty() && !LocalHash.Equals(Expected.Hash, ESearchCase::IgnoreCase))
+		else if (bFullHash && !Expected.Hash.IsEmpty() && !Result.Hash.IsEmpty() && !Result.Hash.Equals(Expected.Hash, ESearchCase::IgnoreCase))
 		{
 			Issue.IssueType = ECloudFileIssueType::HashMismatch;
 			Issues.Add(Issue);
@@ -155,9 +162,10 @@ void FCloudUpdateService::CompareLocalResults(const TArray<TPair<int32, FString>
 	UE_LOG(LogCloudUpdate, Log, TEXT("完整性检查完成，发现 %d 个问题"), Issues.Num());
 	FinishIntegrityCheck(true, Issues, FString::Printf(TEXT("检查完成，共发现 %d 个问题文件"), Issues.Num()));
 }
-
 void FCloudUpdateService::FinishIntegrityCheck(bool bSuccess, const TArray<FCloudFileIssue>& InIssues, const FString& InMessage)
 {
+	PendingIssues = InIssues;
+
 	if (Owner)
 	{
 		Owner->OnIntegrityCheckFinished.Broadcast(bSuccess, InIssues, InMessage);

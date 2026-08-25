@@ -826,6 +826,17 @@ void App::startLaunch() {
         pushUiEvent(3, "游戏已在运行", 0, true);
         return;
     }
+
+    // 启动游戏前交换上一轮因文件被占用而暂存的补丁（.pending -> 基础文件）。
+    // 此时游戏进程尚未运行，pak/utoc 未被引擎锁定，Move 必然成功。
+    int pendingTotal = 0;
+    const int swapped = updater_->finalizePendingMerges(&pendingTotal);
+    if (swapped > 0) {
+        pushUiEvent(0, "已应用暂存更新（" + std::to_string(swapped) + " 个文件）");
+    } else if (pendingTotal > 0) {
+        pushUiEvent(0, "有 " + std::to_string(pendingTotal) + " 个暂存更新待下次启动时生效");
+    }
+
     std::string err;
     HANDLE proc = nullptr;
     if (updater_->launchGame(err, &proc)) {

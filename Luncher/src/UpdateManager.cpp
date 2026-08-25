@@ -73,6 +73,23 @@ void cleanupStalePatchPaks(const std::string& paksDir, const std::set<std::strin
 
 }  // namespace
 
+// 检查文件是否被其他进程锁定（尝试以独占方式打开）
+static bool isFileLocked(const std::string& path) {
+    HANDLE h = CreateFileA(path.c_str(),
+                           GENERIC_READ | GENERIC_WRITE,
+                           0,               // 不共享 = 独占访问
+                           nullptr,
+                           OPEN_EXISTING,
+                           FILE_ATTRIBUTE_NORMAL,
+                           nullptr);
+    if (h == INVALID_HANDLE_VALUE) {
+        const DWORD err = GetLastError();
+        return err == ERROR_SHARING_VIOLATION || err == ERROR_LOCK_VIOLATION;
+    }
+    CloseHandle(h);
+    return false;
+}
+
 bool versionNewer(const std::string& a, const std::string& b) {
     std::string aa = a, bb = b;
     std::replace(aa.begin(), aa.end(), '-', '.');
@@ -215,6 +232,51 @@ std::string UpdateManager::manifestUrl() const {
     return httpUrlJoin(cfg_.serverUrl,
                        "api/manifest.json?platform=" + urlEncode(platform_) +
                        "&baseVersion=" + urlEncode(bv));
+}
+
+std::string UpdateManager::paksDirectory() const {
+    return joinPath(joinPath(gameRoot_, "CodeBuild\\Content"), "Paks");
+}
+
+int UpdateManager::finalizePendingMerges(int* outTotal) const {
+    if (outTotal) *outTotal = 0;
+    const std::string paksDir = paksDirectory();
+
+    WIN32_FIND_DATAA fd;
+    const std::string pattern = joinPath(paksDir, "*.pending");
+    HANDLE h = FindFirstFileA(pattern.c_str(), &fd);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    int swapped = 0;
+    do {
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+        if (outTotal) ++(*outTotal);
+
+        // "<base>.pending" -> "<base>"
+        std::string name = fd.cFileName;
+        const size_t suffixLen = strlen(".pending");
+        if (name.size() <= suffixLen ||
+            _stricmp(name.c_str() + name.size() - suffixLen, ".pending") != 0) {
+            continue;  // 不应发生，防御性检查
+        }
+        std::string baseName = name.substr(0, name.size() - suffixLen);
+        const std::string basePath = joinPath(paksDir, baseName);
+        const std::string pendingPath = joinPath(paksDir, name);
+
+        // 基础文件被占用（游戏运行中）则跳过，等下次启动器启动前再交换
+        if (GetFileAttributesA(basePath.c_str()) != INVALID_FILE_ATTRIBUTES &&
+            isFileLocked(basePath)) {
+            continue;
+        }
+
+        DeleteFileA(basePath.c_str());
+        if (MoveFileExA(pendingPath.c_str(), basePath.c_str(),
+                        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+            ++swapped;
+        }
+    } while (FindNextFileA(h, &fd));
+    FindClose(h);
+    return swapped;
 }
 
 std::string UpdateManager::versionsUrl() const {
@@ -549,8 +611,11 @@ bool UpdateManager::applyVersion(const std::string& versionId, const ProgressFn&
 
     // 完整包更新：清理旧版本遗留的补丁包（如 1.3_Windows_001_P.pak）
     if (updateType == "full") {
-        cleanupStalePatchPaks(joinPath(joinPath(gameRoot_, "CodeBuild\\Content"), "Paks"), keepNames);
+        cleanupStalePatchPaks(paksDirectory(), keepNames);
     }
+
+    // 更新完成后立即尝试交换暂存补丁（游戏未运行时文件未被锁定，可直接替换）
+    finalizePendingMerges();
 
     setLocalVersion(versionId);
     if (restartRequired && progress) progress("更新完成（需要重启游戏生效）", totalCount, totalCount, "");
