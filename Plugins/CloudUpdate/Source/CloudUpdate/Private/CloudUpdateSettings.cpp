@@ -13,6 +13,8 @@ UCloudUpdateSettings::UCloudUpdateSettings()
 	bVerifyDownloadHash = true;
 	HttpTimeoutSeconds = 60;
 	DownloadRetryCount = 2;
+	bEnableBinaryMerge = true;
+	BinaryPatchFeatureName = TEXT("");
 }
 
 const UCloudUpdateSettings* UCloudUpdateSettings::Get()

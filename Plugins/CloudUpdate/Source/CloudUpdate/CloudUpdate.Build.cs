@@ -21,7 +21,9 @@ public class CloudUpdate : ModuleRules
 			"JsonUtilities",
 			"PakFile",
 			"Projects",
-			"HotPatcherRuntime"
+			"HotPatcherRuntime",
+			// HotPatcher 的二进制补丁特性接口（IBinariesDiffPatchFeature），由 HDiffPatchUE 在运行时注册实现
+			"BinariesPatchFeature"
 		});
 	}
 }

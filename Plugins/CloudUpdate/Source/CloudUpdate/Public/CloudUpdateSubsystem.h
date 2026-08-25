@@ -15,6 +15,14 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudUpdateProgress, float, Pro
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudUpdateFinished, bool, bSuccess, bool, bRestartRequired, const FString&, VersionId, const FString&, Message);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudRollbackFinished, bool, bSuccess, bool, bRestartRequired, const FString&, VersionId, const FString&, Message);
 
+/** 二进制补丁合并（或回退）完成事件，供蓝图显示「合并中/合并完成」状态 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCloudBinaryPatchFinished, bool, bSuccess, const FString&, BaseFilePath, const FString&, Message);
+
+/** 目录级自动合并进度：已完成数、总数、当前补丁路径、该补丁是否成功 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudAutoMergeProgress, int32, Completed, int32, Total, const FString&, CurrentPatch, bool, bSuccess);
+/** 目录级自动合并完成：是否全部成功、成功数、失败数 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCloudAutoMergeFinished, bool, bAllSucceeded, int32, SucceededCount, int32, FailedCount);
+
 /**
  * 云更新运行时子系统
  * 提供：完整性检查、损坏文件云端修复、基于 HotPatcher JSON 的更新包下载与应用。
@@ -70,6 +78,49 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void SetServerUrl(const FString& InUrl);
 
+	// ---------- 二进制补丁合并（蓝图控制） ----------
+
+	/** 运行时是否有可用的二进制补丁实现（HDiffPatch 已注册）。UI 可据此判断能否走增量更新 */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate|二进制补丁")
+	bool IsBinaryMergeAvailable() const;
+
+	/** 读取设置项：是否启用了二进制补丁合并 */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate|二进制补丁")
+	bool IsBinaryMergeEnabled() const;
+
+	/** 运行时开关二进制补丁合并，并写入配置（下次启动仍生效） */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate|二进制补丁")
+	void SetBinaryMergeEnabled(bool bEnable);
+
+	/** 返回当前会使用的二进制补丁特性名（如 HDiffPatchUE）；无可用实现时返回空 */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate|二进制补丁")
+	FString GetBinaryPatchFeatureName() const;
+
+	/**
+	 * 手动将补丁应用到本地基础文件（高级/调试用）：把 InPatchFilePath 合并到 InBaseFilePath，
+	 * 成功时基础文件被重建为新版本，OutMergedPath 等于 InBaseFilePath。
+	 * 失败（无 HDiffPatch / 基础或补丁文件缺失）返回 false。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate|二进制补丁")
+	bool ApplyBinaryPatchToBase(const FString& BaseFilePath, const FString& PatchFilePath, const FString& FeatureName, FString& OutMergedPath);
+
+	/** 查找目录中的所有 .patch 文件（递归由 bIncludeSubdirectories 控制），供自动合并前预览 */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate|二进制补丁")
+	TArray<FString> FindPatchFiles(const FString& Directory, bool bIncludeSubdirectories = true) const;
+
+	/**
+	 * 自动合并：扫描目录中所有 .patch 并依次应用到相邻基础文件（X.patch -> X）。
+	 * 在后台线程执行以避免阻塞游戏线程，过程中持续广播 OnAutoMergeProgress，
+	 * 全部完成后广播 OnAutoMergeFinished。HDiffPatch 不可用时直接广播完成（全部失败）。
+	 * 基础文件缺失的补丁会被跳过并计入失败。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate|二进制补丁")
+	void AutoMergePatches(const FString& Directory, bool bIncludeSubdirectories = true);
+
+	/** AutoMergePatches 的便捷版：直接扫描项目 Paks 目录（与下载流程同一目录） */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate|二进制补丁")
+	void AutoMergePatchesInPaksDir(bool bIncludeSubdirectories = true);
+
 	/** 完整性检查完成 */
 	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate")
 	FOnCloudIntegrityCheckFinished OnIntegrityCheckFinished;
@@ -98,6 +149,20 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate")
 	FOnCloudRollbackFinished OnRollbackFinished;
 
+	/** 二进制补丁合并（或回退整文件）完成 */
+	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate|二进制补丁")
+	FOnCloudBinaryPatchFinished OnBinaryPatchFinished;
+
+	/** 目录级自动合并进度 */
+	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate|二进制补丁")
+	FOnCloudAutoMergeProgress OnAutoMergeProgress;
+
+	/** 目录级自动合并完成 */
+	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate|二进制补丁")
+	FOnCloudAutoMergeFinished OnAutoMergeFinished;
+
 private:
 	TSharedPtr<FCloudUpdateService> Service;
+	/** 防止同一目录被并发自动合并（仅由游戏线程读写，安全） */
+	bool bAutoMergeRunning = false;
 };

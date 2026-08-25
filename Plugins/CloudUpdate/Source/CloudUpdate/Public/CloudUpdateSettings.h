@@ -68,5 +68,16 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "下载失败重试次数", ClampMin = "0"))
 	int32 DownloadRetryCount;
 
+	/**
+	 * 启用二进制补丁合并：下载 .patch 后通过 HotPatcher 的 HDiffPatch（IBinariesDiffPatchFeature）
+	 * 把本地基础 pak/utoc 重建为更新版本。HDiffPatch 不可用、或基础文件缺失时，自动回退到整文件下载。
+	 */
+	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "启用二进制补丁合并"))
+	bool bEnableBinaryMerge;
+
+	/** 指定使用的二进制补丁特性名（对应 HDiffPatchUE 注册名）；留空自动选第一个可用特性 */
+	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "二进制补丁特性名（可选）"))
+	FString BinaryPatchFeatureName;
+
 	static const UCloudUpdateSettings* Get();
 };

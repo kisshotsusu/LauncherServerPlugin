@@ -45,6 +45,9 @@ private:
 	bool bDirectIoStore = false;
 	bool bRestartRequired = false;
 
+	/** 经二进制补丁合并后生成/更新的 ContentPak 基础文件路径，供最终挂载 */
+	TArray<FString> MergedPakPaths;
+
 	// ---------- URL / 路径 ----------
 	FString GetProjectName() const;
 	FString GetPlatform() const;
@@ -86,6 +89,17 @@ private:
 	void OnUpdateFileDownloaded(bool bSuccess, const FCloudDownloadFile& InFile);
 	void MountPendingPaks();
 	void FinishUpdate(bool bSuccess, const FString& InMessage);
+
+	// ---------- 二进制补丁合并 ----------
+	bool IsBinaryPatchEntry(const FCloudDownloadFile& InFile) const;
+	/** 计算补丁条目的合并目标（基础文件）路径 */
+	FString ResolveBaseTargetPath(const FCloudDownloadFile& InFile) const;
+	/** 处理一个二进制补丁条目：下载 .patch 并合并，或回退整文件 */
+	void HandleBinaryPatchEntry(const FCloudDownloadFile& InFile);
+	/** 合并失败/无法合并时的整文件回退下载 */
+	void TryBinaryPatchFallback(const FCloudDownloadFile& InFile, const FString& BasePath, const FString& PatchTemp);
+	/** 补丁合并或回退下载完成后的统一收尾 */
+	void OnBinaryPatchApplied(bool bSuccess, const FCloudDownloadFile& InFile, const FString& BasePath);
 
 	// ---------- 版本记录 ----------
 	FString LoadLocalVersion() const;

@@ -44,6 +44,18 @@ enum class ECloudDownloadKind : uint8
 	ExternFile UMETA(DisplayName = "外部文件")
 };
 
+/** 二进制补丁合并结果（供蓝图区分「需重启生效」的场景） */
+UENUM(BlueprintType)
+enum class EBinaryMergeResult : uint8
+{
+	/** 已就地重建并替换基础文件，立即可用 */
+	Success UMETA(DisplayName = "成功"),
+	/** 合并失败（无 HDiffPatch / 基础或补丁缺失 / 补丁损坏） */
+	Failed UMETA(DisplayName = "失败"),
+	/** 基础文件被占用（如 pak 已挂载），已暂存为 .pending，需重启后由 FinalizePendingMerges 交换生效 */
+	StagedForRestart UMETA(DisplayName = "已暂存，需重启")
+};
+
 /** 服务端清单中的文件条目 */
 USTRUCT(BlueprintType)
 struct CLOUDUPDATE_API FCloudFileEntry
@@ -113,6 +125,18 @@ struct CLOUDUPDATE_API FCloudDownloadFile
 
 	UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
 	ECloudDownloadKind Kind = ECloudDownloadKind::ExternFile;
+
+	/**
+	 * 是否为二进制补丁条目：下载的是 .patch 增量文件，需先经 HDiffPatch
+	 * 合并到本地基础文件（pak/utoc）后，基础文件即为更新后的版本。
+	 * 此时 TargetRelativePath/FileName 代表补丁文件，合并目标为基础文件（去掉 .patch）。
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+	bool bBinaryPatch = false;
+
+	/** 无法应用二进制补丁（无 HDiffPatch 或基础文件缺失）时，用于整文件回退下载的地址 */
+	UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+	FString FallbackUrl;
 };
 
 /** 版本信息（来自管理服务器索引） */

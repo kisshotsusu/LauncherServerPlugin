@@ -27,6 +27,7 @@
 #include "FlibPakHelper.h"
 
 #include "CloudUpdateUtil.h"
+#include "CloudUpdateBinaryMerge.h"
 using namespace CloudUpdatePrivate;
 
 void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJson)
@@ -501,6 +502,35 @@ void FCloudUpdateService::OnPakFilesInfoFetched(const TSharedPtr<FJsonObject>& I
 		for (const FString& PakName : PakNames)
 	{
 		const FString PakUrl = Base / PendingVersionId / TEXT("Windows") / PakName;
+
+		// 二进制补丁条目：下载 .patch 并合并到基础容器；缺失 HDiffPatch 时回退整文件
+		if (FCloudBinaryMerge::IsPatchFile(PakName))
+		{
+			FCloudDownloadFile File;
+			File.FileName = PakName;
+			File.Url = PakUrl;
+			File.TargetRelativePath = PakName;
+			File.bBinaryPatch = true;
+			// 根据基础名后缀推断容器类型，避免把 .utoc.patch / .ucas.patch 误判为 ContentPak
+			const FString BaseName = FCloudBinaryMerge::GetBaseFileName(PakName);
+			if (BaseName.EndsWith(TEXT(".pak"), ESearchCase::IgnoreCase))
+			{
+				File.Kind = ECloudDownloadKind::ContentPak;
+			}
+			else if (BaseName.EndsWith(TEXT(".utoc"), ESearchCase::IgnoreCase)
+				|| BaseName.EndsWith(TEXT(".ucas"), ESearchCase::IgnoreCase))
+			{
+				File.Kind = ECloudDownloadKind::IoStoreContainer;
+			}
+			else
+			{
+				File.Kind = ECloudDownloadKind::ExternFile;
+			}
+			File.FallbackUrl = Base / PendingVersionId / TEXT("Windows") / BaseName;
+			PendingFiles.Add(File);
+			continue;
+		}
+
 		FCloudDownloadFile File;
 		File.FileName = PakName;
 		File.Url = PakUrl;
@@ -548,6 +578,8 @@ void FCloudUpdateService::ParseDescriptor(const TSharedPtr<FJsonObject>& InJson)
 			Obj->TryGetStringField(TEXT("targetRelativePath"), File.TargetRelativePath);
 			Obj->TryGetStringField(TEXT("hash"), File.Hash);
 			Obj->TryGetNumberField(TEXT("size"), File.FileSize);
+			Obj->TryGetBoolField(TEXT("binaryPatch"), File.bBinaryPatch);
+			Obj->TryGetStringField(TEXT("fallbackUrl"), File.FallbackUrl);
 			FString KindStr;
 			if (Obj->TryGetStringField(TEXT("kind"), KindStr))
 			{
@@ -559,9 +591,46 @@ void FCloudUpdateService::ParseDescriptor(const TSharedPtr<FJsonObject>& InJson)
 				{
 					File.Kind = ECloudDownloadKind::IoStoreContainer;
 				}
+				else if (KindStr == TEXT("BinaryPatch"))
+				{
+					// 二进制补丁条目：根据基础文件名后缀推断容器类型
+					File.bBinaryPatch = true;
+					const FString BaseName = FCloudBinaryMerge::GetBaseFileName(File.FileName);
+					if (BaseName.EndsWith(TEXT(".pak"), ESearchCase::IgnoreCase))
+					{
+						File.Kind = ECloudDownloadKind::ContentPak;
+					}
+					else if (BaseName.EndsWith(TEXT(".utoc"), ESearchCase::IgnoreCase)
+						|| BaseName.EndsWith(TEXT(".ucas"), ESearchCase::IgnoreCase))
+					{
+						File.Kind = ECloudDownloadKind::IoStoreContainer;
+					}
+					else
+					{
+						File.Kind = ECloudDownloadKind::ExternFile;
+					}
+				}
 				else
 				{
 					File.Kind = ECloudDownloadKind::ExternFile;
+				}
+			}
+			// 兼容：文件名以 .patch 结尾但服务端未显式标注 kind/flag
+			if (!File.bBinaryPatch && FCloudBinaryMerge::IsPatchFile(File.FileName))
+			{
+				File.bBinaryPatch = true;
+				if (File.Kind == ECloudDownloadKind::ExternFile)
+				{
+					const FString BaseName = FCloudBinaryMerge::GetBaseFileName(File.FileName);
+					if (BaseName.EndsWith(TEXT(".pak"), ESearchCase::IgnoreCase))
+					{
+						File.Kind = ECloudDownloadKind::ContentPak;
+					}
+					else if (BaseName.EndsWith(TEXT(".utoc"), ESearchCase::IgnoreCase)
+						|| BaseName.EndsWith(TEXT(".ucas"), ESearchCase::IgnoreCase))
+					{
+						File.Kind = ECloudDownloadKind::IoStoreContainer;
+					}
 				}
 			}
 			if (!File.FileName.IsEmpty() && !File.Url.IsEmpty())
@@ -620,6 +689,14 @@ void FCloudUpdateService::DownloadNextUpdateFile()
 	}
 
 	const FCloudDownloadFile& File = PendingFiles[CurrentFileIndex];
+
+	// 二进制补丁条目：下载 .patch 并合并到基础文件（或回退整文件下载）
+	if (IsBinaryPatchEntry(File))
+	{
+		HandleBinaryPatchEntry(File);
+		return;
+	}
+
 	FString TargetPath;
 	if (File.Kind == ECloudDownloadKind::ExternFile)
 	{
@@ -666,6 +743,161 @@ void FCloudUpdateService::OnUpdateFileDownloaded(bool bSuccess, const FCloudDown
 	DownloadNextUpdateFile();
 }
 
+bool FCloudUpdateService::IsBinaryPatchEntry(const FCloudDownloadFile& InFile) const
+{
+	if (InFile.bBinaryPatch)
+	{
+		return true;
+	}
+	// 兼容服务器直接以 .patch 结尾的文件名标识补丁
+	return FCloudBinaryMerge::IsPatchFile(InFile.FileName);
+}
+
+FString FCloudUpdateService::ResolveBaseTargetPath(const FCloudDownloadFile& InFile) const
+{
+	// 合并目标为基础文件（去掉末尾 .patch）。
+	// pak/utoc 落在 Paks 目录；外部文件按 TargetRelativePath 去掉 .patch。
+	if (InFile.Kind == ECloudDownloadKind::ExternFile)
+	{
+		const FString BaseRel = FCloudBinaryMerge::GetBaseFileName(InFile.TargetRelativePath);
+		return GetLocalRoot() / BaseRel;
+	}
+	const FString BaseName = FCloudBinaryMerge::GetBaseFileName(InFile.FileName);
+	return GetPakDir() / BaseName;
+}
+
+void FCloudUpdateService::HandleBinaryPatchEntry(const FCloudDownloadFile& InFile)
+{
+	const FString BasePath = ResolveBaseTargetPath(InFile);
+	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+	const bool bEnabled = Settings ? Settings->bEnableBinaryMerge : true;
+	const FString FeatureName = Settings ? Settings->BinaryPatchFeatureName : TEXT("");
+	const bool bCanApply = bEnabled && FCloudBinaryMerge::IsHDiffPatchAvailable() && FPaths::FileExists(BasePath);
+
+	if (Owner)
+	{
+		Owner->OnUpdateProgress.Broadcast(
+			PendingFiles.Num() > 0 ? static_cast<float>(CurrentFileIndex) / static_cast<float>(PendingFiles.Num()) : 0.0f,
+			CurrentFileIndex, PendingFiles.Num(), InFile.FileName);
+	}
+
+	if (bCanApply)
+	{
+		// 下载 .patch 到临时目录，再合并到基础文件
+		const FString PatchDir = FPaths::ProjectSavedDir() / TEXT("CloudUpdate") / TEXT("patches");
+		IFileManager::Get().MakeDirectory(*PatchDir, true);
+		const FString PatchTemp = PatchDir / InFile.FileName;
+		const int32 Retries = Settings ? Settings->DownloadRetryCount : 2;
+		TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
+		UE_LOG(LogCloudUpdate, Log, TEXT("二进制补丁合并：下载 %s 并应用到 %s"), *InFile.Url, *BasePath);
+		DownloadFileTo(InFile.Url, PatchTemp, Retries, [WeakThis, InFile, BasePath, PatchTemp, FeatureName](bool bOk)
+		{
+			auto Service = WeakThis.Pin();
+			if (!Service.IsValid())
+			{
+				return;
+			}
+			FString MergedPath;
+			const EBinaryMergeResult MergeResult = bOk
+				? FCloudBinaryMerge::ApplyPatchToFileEx(BasePath, PatchTemp, MergedPath, FeatureName)
+				: EBinaryMergeResult::Failed;
+			IFileManager::Get().Delete(*PatchTemp, false, true);
+			if (MergeResult == EBinaryMergeResult::Success || MergeResult == EBinaryMergeResult::StagedForRestart)
+			{
+				if (MergeResult == EBinaryMergeResult::StagedForRestart)
+				{
+					// 基础文件被占用（运行中 pak 已挂载），已暂存为 .pending，需重启后由 FinalizePendingMerges 交换
+					bRestartRequired = true;
+				}
+				Service->OnBinaryPatchApplied(true, InFile, BasePath);
+			}
+			else
+			{
+				// 合并失败：尝试整文件回退
+				Service->TryBinaryPatchFallback(InFile, BasePath, TEXT(""));
+			}
+		});
+	}
+	else
+	{
+		if (!bEnabled)
+		{
+			UE_LOG(LogCloudUpdate, Log, TEXT("二进制补丁合并已关闭，回退整文件下载：%s"), *InFile.FileName);
+		}
+		else if (!FCloudBinaryMerge::IsHDiffPatchAvailable())
+		{
+			UE_LOG(LogCloudUpdate, Log, TEXT("HDiffPatch 不可用，回退整文件下载：%s"), *InFile.FileName);
+		}
+		else
+		{
+			UE_LOG(LogCloudUpdate, Log, TEXT("基础文件缺失，回退整文件下载：%s"), *BasePath);
+		}
+		TryBinaryPatchFallback(InFile, BasePath, TEXT(""));
+	}
+}
+
+void FCloudUpdateService::TryBinaryPatchFallback(const FCloudDownloadFile& InFile, const FString& BasePath, const FString& PatchTemp)
+{
+	if (!PatchTemp.IsEmpty())
+	{
+		IFileManager::Get().Delete(*PatchTemp, false, true);
+	}
+	if (!InFile.FallbackUrl.IsEmpty())
+	{
+		const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+		const int32 Retries = Settings ? Settings->DownloadRetryCount : 2;
+		TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
+		UE_LOG(LogCloudUpdate, Log, TEXT("二进制补丁回退：整文件下载 %s -> %s"), *InFile.FallbackUrl, *BasePath);
+		DownloadFileTo(InFile.FallbackUrl, BasePath, Retries, [WeakThis, InFile, BasePath](bool bOk)
+		{
+			auto Service = WeakThis.Pin();
+			if (Service.IsValid())
+			{
+				Service->OnBinaryPatchApplied(bOk, InFile, BasePath);
+			}
+		});
+	}
+	else
+	{
+		UE_LOG(LogCloudUpdate, Error, TEXT("无法应用二进制补丁且无回退地址，更新将不完整：%s"), *InFile.FileName);
+		OnBinaryPatchApplied(false, InFile, BasePath);
+	}
+}
+
+void FCloudUpdateService::OnBinaryPatchApplied(bool bSuccess, const FCloudDownloadFile& InFile, const FString& BasePath)
+{
+	if (bSuccess)
+	{
+		++CompletedFiles;
+		UE_LOG(LogCloudUpdate, Log, TEXT("二进制补丁合并完成：%s -> %s"), *InFile.FileName, *BasePath);
+		if (InFile.Kind == ECloudDownloadKind::IoStoreContainer)
+		{
+			// IoStore 容器无法运行时热替换，重建后需重启生效
+			bRestartRequired = true;
+		}
+		if (InFile.Kind == ECloudDownloadKind::ContentPak)
+		{
+			MergedPakPaths.AddUnique(BasePath);
+		}
+	}
+	else
+	{
+		++FailedFiles;
+		UE_LOG(LogCloudUpdate, Error, TEXT("二进制补丁合并/回退失败：%s"), *InFile.FileName);
+	}
+
+	if (Owner)
+	{
+		const FString Msg = bSuccess
+			? FString::Printf(TEXT("二进制补丁合并完成：%s"), *BasePath)
+			: FString::Printf(TEXT("二进制补丁合并/回退失败：%s"), *InFile.FileName);
+		Owner->OnBinaryPatchFinished.Broadcast(bSuccess, BasePath, Msg);
+	}
+
+	++CurrentFileIndex;
+	DownloadNextUpdateFile();
+}
+
 void FCloudUpdateService::MountPendingPaks()
 {
 	for (const FCloudDownloadFile& File : PendingFiles)
@@ -683,6 +915,19 @@ void FCloudUpdateService::MountPendingPaks()
 		const bool bMounted = UFlibPakHelper::MountPak(PakPath, Order, TEXT(""));
 		UE_LOG(LogCloudUpdate, Log, TEXT("挂载 %s (Order=%d) -> %s"), *PakPath, Order, bMounted ? TEXT("成功") : TEXT("失败/编辑器下跳过"));
 	}
+
+	// 经二进制补丁合并后生成/更新的基础 pak（如 Game.pak 被原地重建）也需要挂载
+	for (const FString& PakPath : MergedPakPaths)
+	{
+		if (!FPaths::FileExists(PakPath) || FPaths::GetExtension(PakPath) != TEXT("pak"))
+		{
+			continue;
+		}
+		const int32 Order = UFlibPakHelper::GetPakOrderByPakPath(PakPath);
+		const bool bMounted = UFlibPakHelper::MountPak(PakPath, Order, TEXT(""));
+		UE_LOG(LogCloudUpdate, Log, TEXT("挂载(补丁合并) %s (Order=%d) -> %s"), *PakPath, Order, bMounted ? TEXT("成功") : TEXT("失败/编辑器下跳过"));
+	}
+
 	if (bRestartRequired)
 	{
 		UE_LOG(LogCloudUpdate, Log, TEXT("本次更新包含 IoStore 容器，重启后由引擎自动挂载"));
