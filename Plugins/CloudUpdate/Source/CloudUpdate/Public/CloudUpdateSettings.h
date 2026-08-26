@@ -17,8 +17,13 @@ public:
 	UCloudUpdateSettings();
 
 	virtual FName GetCategoryName() const override { return TEXT("Game"); }
+#if WITH_EDITOR
+	// GetSectionText / GetSectionDescription 仅在编辑器构建中由 UDeveloperSettings 提供
+	// （引擎 DeveloperSettings.h 中位于 #if WITH_EDITOR 内）。打包（Game/Shipping）构建
+	// 里基类没有这两个虚函数，必须一并条件编译，否则 override 会因“无可重写基类方法”而 C3668。
 	virtual FText GetSectionText() const override { return NSLOCTEXT("CloudUpdate", "SettingsSection", "云更新"); }
 	virtual FText GetSectionDescription() const override { return NSLOCTEXT("CloudUpdate", "SettingsDesc", "配置更新服务器、本地路径与更新行为"); }
+#endif
 
 	/** 管理服务器地址，例如 http://127.0.0.1:8710 */
 	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "服务器地址（如 http://127.0.0.1:8710）"))
