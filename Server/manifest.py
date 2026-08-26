@@ -41,6 +41,10 @@ def matches_any(rel_path, patterns):
 def generate_manifest(cfg, platform, base_version=None, force=False):
     """扫描基础包目录生成完整性清单，返回清单 dict（按基础包版本缓存）。"""
     project = cfg["project"]
+    # 显式指定了版本号但配置中不存在：直接报错（由调用方转为 404），
+    # 避免回退到最新版本生成“张冠李戴”的清单。
+    if base_version and base_version not in (cfg.get("base_packages", {}).get(platform) or {}):
+        raise ValueError(f"平台 {platform} 未配置基础包版本 {base_version}")
     root = get_base_dir(cfg, platform, base_version)
     if not root or not os.path.isdir(root):
         raise RuntimeError(f"未配置或找不到平台 {platform} 的打包目录")

@@ -194,31 +194,45 @@
     <div id="tab-dirs" class="tab-panel hidden">
       <div class="card">
         <h3>目录位置</h3>
-        <div class="muted" style="margin-top:2px">这些目录决定清单缓存、版本文件库、HotPatcher 导入源和基础包修复源的位置</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
-          <div>
-            <label class="muted">数据目录（清单缓存 / 索引 / 回收站）</label>
-            <div style="display:flex;gap:6px;margin-top:4px">
-              <input id="setDataDir" style="flex:1">
-              <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
-            </div>
+        <div class="muted" style="margin-top:2px">按用途分组列出，避免把“服务器缓存”与“补丁包存放位置”混淆</div>
+
+        <div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px">
+          <div style="font-weight:600">① 服务器缓存位置</div>
+          <div class="muted" style="font-size:12px;margin:4px 0 8px">清单缓存、版本索引、回收站等运行缓存，可由源数据重建，建议放服务器本地磁盘</div>
+          <div style="display:flex;gap:6px">
+            <input id="setDataDir" style="flex:1">
+            <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
           </div>
-          <div>
-            <label class="muted">版本文件库位置（存储导入的版本 JSON / Pak / 描述文件）</label>
-            <div style="display:flex;gap:6px;margin-top:4px">
-              <input id="setVersionLib" style="flex:1" placeholder="data/versions 或绝对路径">
-              <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
-            </div>
-          </div>
-          <div style="grid-column:1/-1">
-            <label class="muted">补丁包位置（HotPatcher 产物目录，一键导入的数据源）</label>
-            <div style="display:flex;gap:6px;margin-top:4px">
-              <input id="setPatchSource" style="flex:1" placeholder="例如 D:/test/CodeBuild/Saved/HotPatcher">
-              <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
-            </div>
-          </div>
-          <div id="setPackageRoots" style="grid-column:1/-1"></div>
         </div>
+
+        <div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px">
+          <div style="font-weight:600">② 补丁包存放位置</div>
+          <div class="muted" style="font-size:12px;margin:4px 0 8px">一键导入后，版本 JSON / Pak / 描述文件的存储目录（客户端实际下载的内容来源）</div>
+          <div style="display:flex;gap:6px">
+            <input id="setVersionLib" style="flex:1" placeholder="data/versions 或绝对路径">
+            <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px">
+          <div style="font-weight:600">③ HotPatcher 导入源（补丁包来源）</div>
+          <div class="muted" style="font-size:12px;margin:4px 0 8px">一键导入读取的目录：HotPatcher 产物目录（需含各版本的 *_Release.json 子目录）。注意：这是“来源”，与 ② 的“存放位置”不是同一目录</div>
+          <div style="display:flex;gap:6px">
+            <input id="setPatchSource" style="flex:1" placeholder="例如 D:/test/CodeBuild/Saved/HotPatcher">
+            <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px">
+          <div style="font-weight:600">④ 基础包根目录与版本</div>
+          <div class="muted" style="font-size:12px;margin:4px 0 8px">全局基础包根目录（base_packages_root）：设置后，下方各基础包条目只需填相对子目录，如 Windows / WindowsIOStore</div>
+          <div style="display:flex;gap:6px">
+            <input id="setPackageRoot" style="flex:1" placeholder="例如 D:/test/CodeBuild/HotPatherPack">
+            <button class="ghost" onclick="openFolderPicker(this)" style="white-space:nowrap">选择</button>
+          </div>
+          <div id="setPackageRoots" style="margin-top:10px"></div>
+        </div>
+
         <div class="btn-row" style="margin-top:14px">
           <button class="green" onclick="saveDirSettings()">保存目录配置</button>
           <span class="muted">保存后立即生效并写回 config.json</span>
@@ -765,6 +779,7 @@ function renderSettings() {
     Object.keys(rows).sort().forEach(v => addBaseRow(p, v, rows[v], false));
   });
   $('setPatchSource').value = cfg.patchSourceDir || '';
+  $('setPackageRoot').value = cfg.basePackagesRoot || '';
   $('setOrder').value = cfg.hotpatcherOrder || '';
   $('setHash').value = cfg.manifestHash || 'md5';
   $('setMaxUpload').value = cfg.maxUploadMb || 2048;
@@ -869,6 +884,7 @@ async function saveDirSettings() {
     dataDir: $('setDataDir').value.trim(),
     versionLibraryDir: $('setVersionLib').value.trim(),
     basePackages,
+    basePackagesRoot: $('setPackageRoot').value.trim(),
     patchSourceDir: $('setPatchSource').value.trim(),
   };
   try {
@@ -1301,7 +1317,7 @@ async function loadDirPicker(path) {
     const data = await api('/api/dirs/list?path=' + encodeURIComponent(path));
     folderPath = data.path || '';
     folderParent = data.parent || null;
-    $('dirCurrent').textContent = folderPath || '选择磁盘';
+    $('dirCurrent').textContent = (folderPath || '选择磁盘') + (data.warning ? '  ⚠ ' + data.warning : '');
     $('dirUpBtn').style.visibility = folderParent ? 'visible' : 'hidden';
     const list = $('dirList');
     if (!data.entries.length) {

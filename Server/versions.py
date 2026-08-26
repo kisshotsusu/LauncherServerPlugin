@@ -57,6 +57,30 @@ def _revoked_entry_from_descriptor(cfg, version_id):
     return {"versionId": version_id, "type": desc.get("type", ""), "files": files}
 
 
+def _revoked_entry_from_base(cfg, platform, version_id):
+    """从基础包整包描述生成"被撤销版本"条目（versionId + 文件清单），供客户端精确删除旧基础包残留文件。
+
+    与 _revoked_entry_from_descriptor 的区别：基础包没有版本文件库中的 descriptor.json，
+    而是动态生成的整包描述（build_base_descriptor）。
+    """
+    desc = build_base_descriptor(cfg, platform, version_id)
+    if not desc:
+        return None
+    files = []
+    for f in desc.get("files", []):
+        trp = f.get("targetRelativePath", "")
+        if not trp:
+            continue
+        files.append({
+            "fileName": f.get("fileName") or os.path.basename(trp),
+            "targetRelativePath": trp,
+            "hash": f.get("hash", ""),
+            "size": f.get("size", 0),
+            "kind": f.get("kind", ""),
+        })
+    return {"versionId": version_id, "type": "full", "files": files}
+
+
 def build_versions_index(cfg, explicit_order=None):
     """扫描版本文件库与基础包目录生成版本索引（补丁 + 基础包多版本）。"""
     ensure_dirs(cfg)
@@ -135,6 +159,29 @@ def build_versions_index(cfg, explicit_order=None):
         "revoked": [],
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
     }
+    # 被更高基础包版本取代的旧基础包：自动注入 revoked，让客户端删除其整包残留文件
+    # （例如更新到 1.5.3 后，旧的 1.4 基础包目录下的 Windows_1.4_PatchConfig.json 应被清理）。
+    revoked_base = {}
+    revoke_superseded = cfg.get("revoke_superseded_base_packages", True)
+    enabled_map = {}
+    for _plat, _ids in (cfg.get("enabled_versions") or {}).items():
+        if isinstance(_ids, list):
+            enabled_map[str(_plat)] = set(str(x) for x in _ids)
+    for platform in cfg["platforms"]:
+        pkgs = base_versions.get(platform) or []
+        if len(pkgs) <= 1:
+            continue
+        latest_base = max(pkgs, key=version_key)
+        for v in pkgs:
+            if v == latest_base:
+                continue
+            # 显式在 enabled_versions 中保留的旧基础包：只在开启自动回收时撤销
+            kept = (platform in enabled_map) and (v in enabled_map[platform])
+            if revoke_superseded or not kept:
+                entry = _revoked_entry_from_base(cfg, platform, v)
+                if entry:
+                    revoked_base[v] = entry
+
     # 注入已删除版本的快照：版本若被重新发布（仍在 all_ids 中）则从撤销库移除
     revoked_store = load_revoked_store(cfg)
     cleaned = {}
@@ -142,9 +189,12 @@ def build_versions_index(cfg, explicit_order=None):
         if vid in all_ids:
             continue
         cleaned[vid] = entry
+    # 合并被取代/被隐藏的旧基础包（被取代的基础包即便仍配置也应撤销，故不按 all_ids 跳过）
+    for vid, entry in revoked_base.items():
+        cleaned[vid] = entry
     if cleaned:
         index["revoked"] = [cleaned[k] for k in sorted(cleaned.keys(), key=version_key)]
-    if cleaned != revoked_store:
+    if cleaned != revoked_store or revoked_base:
         save_revoked_store(cfg, cleaned)
     index_path = os.path.join(cfg["data_dir"], "versions.json")
     with open(index_path, "w", encoding="utf-8") as f:
@@ -196,9 +246,9 @@ def filter_index_by_enabled(index, cfg):
     if all_ids:
         index["current"] = max(all_ids, key=version_key)
 
-    # 被隐藏的补丁版本：客户端若已下载应删除。从描述文件快照文件清单注入 revoked
+    # 被隐藏的版本（含整包基础包）：客户端若已下载应删除。从描述文件快照文件清单注入 revoked
     hidden_ids = [v.get("versionId") for v in original_versions
-                  if v.get("type") != "full" and v.get("versionId") not in allowed_any]
+                  if v.get("versionId") not in allowed_any]
     revoked = list(index.get("revoked") or [])
     seen = {r.get("versionId") for r in revoked}
     for vid in hidden_ids:

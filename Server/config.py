@@ -33,13 +33,27 @@ def set_config_dir(path):
 
 def resolve_server_path(path, base=None):
     """把配置中的路径解析为绝对路径（相对路径以 config.json 所在目录为基准）。"""
-    p = os.path.expandvars(os.path.expanduser(str(path).strip()))
+    p = os.path.expanduser(str(path).strip())
+    # 注意：故意不调用 os.path.expandvars —— 配置路径里合法的 `%VAR%` / `$VAR` 字符
+    # 会被当成环境变量静默改写（例如含 % 的普通目录名会被替换或拼出非法路径），
+    # 造成“配置看似正确、实则指向错误目录”的隐患。家目录 `~` 仍按预期展开。
     if not p:
         return ""
     if not os.path.isabs(p):
         base_dir = Path(base).resolve() if base else CONFIG_DIR
         p = str((base_dir / p).resolve())
     return os.path.abspath(p)
+
+
+def resolve_base_package_path(path, root=""):
+    """基础包目录解析：root 给定且 path 非绝对时，相对 root 解析（全局基础包根目录）；
+    否则按常规服务器路径解析。返回绝对路径。"""
+    path = str(path or "").strip()
+    if not path:
+        return ""
+    if root and not os.path.isabs(path):
+        return os.path.abspath(os.path.join(str(resolve_server_path(root)), path))
+    return resolve_server_path(path)
 
 
 
@@ -72,21 +86,31 @@ def load_config(config_path=None):
     cfg["versions_dir"] = cfg["version_library_dir"]
     cfg["hotpatcher_source"] = resolve_server_path(cfg["hotpatcher_source"])
 
+    # 全局基础包根目录：base_packages 中的条目若为非绝对路径，则相对它解析（全局地址）
+    cfg.setdefault("base_packages_root", "")
+    bp_root_abs = resolve_server_path(cfg.get("base_packages_root", ""))
+    cfg["base_packages_root"] = bp_root_abs
+
     # 迁移旧的 package_roots（单基础包）到 base_packages（多版本基础包）
     if not cfg["base_packages"] and cfg.get("package_roots"):
         migrated = {}
         for platform, root in cfg["package_roots"].items():
             if isinstance(root, dict):
-                migrated[platform] = {str(k): resolve_server_path(v) for k, v in root.items()}
+                migrated[platform] = {
+                    str(k): resolve_base_package_path(v, bp_root_abs)
+                    for k, v in root.items()
+                }
             else:
-                migrated[platform] = {"1.0": resolve_server_path(root)}
+                migrated[platform] = {"1.0": resolve_base_package_path(root, bp_root_abs)}
         cfg["base_packages"] = migrated
     else:
+        resolved_bp = {}
         for platform, versions in cfg["base_packages"].items():
-            cfg["base_packages"][platform] = {
-                str(version): resolve_server_path(path)
+            resolved_bp[platform] = {
+                str(version): resolve_base_package_path(path, bp_root_abs)
                 for version, path in (versions or {}).items()
             }
+        cfg["base_packages"] = resolved_bp
 
     # 兼容字段：package_roots 指向各平台最新基础包
     cfg["package_roots"] = {}

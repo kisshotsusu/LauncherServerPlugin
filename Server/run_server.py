@@ -43,6 +43,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from config import (
     resolve_server_path,
+    resolve_base_package_path,
     load_config,
     ensure_dirs,
     safe_join,
@@ -86,6 +87,52 @@ _DOUBLE_CLICKED = False
 
 def _is_double_clicked():
     return _DOUBLE_CLICKED
+
+
+_CFG_MTIME_CACHE = {}
+
+
+def reload_cfg_if_changed():
+    """若 config.json 比内存中的副本更新，则重新加载，使手动/外部修改立即生效。
+
+    修复：服务进程只在启动时 load_config 一次，之后手动编辑 config.json 不会反映到
+    运行时（表现为“路径配置没同步”“一键导入读不到 hotpatcher 源”）。改为每个请求前
+    比对文件 mtime，变化即重新加载并刷新 UpdateHandler.cfg。
+    """
+    cfg = UpdateHandler.cfg
+    cfg_path = cfg.get("_config_path") if cfg else None
+    if not cfg_path or not os.path.isfile(cfg_path):
+        return
+    try:
+        mtime = os.path.getmtime(cfg_path)
+    except OSError:
+        return
+    if _CFG_MTIME_CACHE.get(cfg_path) == mtime:
+        return
+    try:
+        new_cfg = load_config(cfg_path)
+    except Exception:
+        return
+    UpdateHandler.cfg = new_cfg
+    _CFG_MTIME_CACHE[cfg_path] = mtime
+
+
+def _rel_if_under(raw, abs_path, root):
+    """若 abs_path 位于 root 之下，返回相对 root 的简写（正斜杠）；否则返回原始值（绝对路径）。"""
+    if not root:
+        return raw
+    root_abs = resolve_server_path(root)
+    if not root_abs:
+        return raw
+    ap = os.path.abspath(abs_path)
+    try:
+        rel = os.path.relpath(ap, root_abs)
+    except ValueError:
+        return raw
+    rel = rel.replace(os.sep, "/")
+    if rel and not rel.startswith("..") and not os.path.isabs(rel):
+        return rel
+    return raw
 
 
 class UpdateHandler(BaseHTTPRequestHandler):
@@ -138,6 +185,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
 
     # ---------- 路由（仅启动器所需的只读 API + 本地文件下发）----------
     def do_GET(self):
+        reload_cfg_if_changed()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = parse_qs(parsed.query)
@@ -220,6 +268,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "versionLibraryDir": self.cfg.get("version_library_dir", ""),
             "basePackageDirs": self.cfg.get("package_roots", {}),
             "basePackages": self.cfg.get("base_packages", {}),
+            "basePackagesRoot": self.cfg.get("base_packages_root", ""),
             "patchSourceDir": self.cfg.get("hotpatcher_source", ""),
             "serverTime": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         })
@@ -253,6 +302,26 @@ class UpdateHandler(BaseHTTPRequestHandler):
         platform = query.get("platform", [self.cfg["platforms"][0]])[0]
         base_version = query.get("baseVersion", [""])[0] or None
         rel_dir = query.get("path", [""])[0]
+        raw_platform = (self.cfg.get("base_packages", {}) or {}).get(platform) or {}
+        if base_version:
+            # 显式指定了版本号：必须已在配置中，否则视为无效版本返回 404，
+            # 避免回退到最新版本导致“请求不存在的版本却返回最新版内容”的串味。
+            if base_version not in raw_platform:
+                paths = {str(v): str(p) for v, p in raw_platform.items()}
+                self._send_json({
+                    "ok": False,
+                    "error": f"平台 {platform} 未配置基础包版本 {base_version}",
+                    "configuredPaths": paths,
+                }, status=404)
+                return
+            resolved = resolve_server_path(raw_platform[base_version])
+            if not os.path.isdir(resolved):
+                self._send_json({
+                    "ok": False,
+                    "error": f"基础包 {platform}/{base_version} 已配置，但目录在磁盘上不存在：{resolved}",
+                    "configuredPaths": {base_version: resolved},
+                }, status=404)
+                return
         root = get_base_dir(self.cfg, platform, base_version)
         if not root or not os.path.isdir(root):
             # get_base_packages 会过滤掉磁盘上不存在的目录，因此这里回查原始配置，
@@ -319,6 +388,20 @@ class UpdateHandler(BaseHTTPRequestHandler):
         except Exception as exc:
             self._send_json({"ok": False, "error": f"路径无效：{exc}"}, status=400)
             return
+        warning = ""
+        if p and not os.path.isdir(p):
+            # 配置的目录在磁盘上不存在：沿上级目录逐级回退到第一个存在的目录，
+            # 让文件夹选择器仍能打开并修正，而不是直接报错导致“选择包目录”卡死。
+            cur = p
+            while cur and not os.path.isdir(cur):
+                nxt = os.path.dirname(cur.rstrip("\\/"))
+                if nxt == cur:
+                    cur = ""
+                    break
+                cur = nxt
+            if cur and os.path.isdir(cur):
+                warning = f"原路径不存在，已回退到：{cur}"
+                p = cur
         if not p:
             if os.name == "nt":
                 drives = []
@@ -326,7 +409,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
                     d = letter + ":\\"
                     if os.path.isdir(d):
                         drives.append({"name": d.rstrip("\\") + "\\", "path": d, "isDir": True})
-                self._send_json({"ok": True, "path": "", "parent": None, "entries": drives})
+                self._send_json({"ok": True, "path": "", "parent": None, "entries": drives, "warning": warning})
                 return
             p = "/"
         if not os.path.isdir(p):
@@ -351,7 +434,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
         parent = os.path.dirname(stripped) if stripped else None
         if parent == p or not parent:
             parent = None
-        self._send_json({"ok": True, "path": p, "parent": parent, "entries": entries})
+        self._send_json({"ok": True, "path": p, "parent": parent, "entries": entries, "warning": warning})
 
     def _public_storage_config(self):
         storage = self.cfg.get("storage") or {}
@@ -383,6 +466,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "versionLibraryDir": self.cfg.get("version_library_dir", ""),
             "basePackageDirs": self.cfg.get("package_roots", {}),
             "basePackages": self.cfg.get("base_packages", {}),
+            "basePackagesRoot": self.cfg.get("base_packages_root", ""),
             "patchSourceDir": self.cfg.get("hotpatcher_source", ""),
             "manifestExcludePatterns": self.cfg.get("manifest_exclude_patterns", []),
             "manifestHash": self.cfg.get("manifest_hash", "md5"),
@@ -565,6 +649,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
             return None
 
     def do_POST(self):
+        reload_cfg_if_changed()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = parse_qs(parsed.query)
@@ -601,6 +686,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": "404 Not Found"}, status=404)
 
     def do_DELETE(self):
+        reload_cfg_if_changed()
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         if not self._auth_ok():
@@ -820,6 +906,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
         if data is None:
             return
         updates = {}
+        missing_bp = []
         try:
             if "storage" in data:
                 updates["storage"] = self._storage_from_payload(data)
@@ -838,8 +925,31 @@ class UpdateHandler(BaseHTTPRequestHandler):
             updates["data_dir"] = str(data["dataDir"])
         if "versionLibraryDir" in data:
             updates["version_library_dir"] = str(data["versionLibraryDir"])
+        bp_root = (self.cfg.get("base_packages_root", "") or "")
+        if "basePackagesRoot" in data:
+            bp_root = str(data["basePackagesRoot"])
+            updates["base_packages_root"] = bp_root
         if "basePackages" in data:
-            updates["base_packages"] = data["basePackages"]
+            bp = data["basePackages"]
+            if not isinstance(bp, dict):
+                self._send_json({"ok": False, "error": "basePackages 必须是对象（平台: {版本号: 目录}）"}, status=400)
+                return
+            norm_bp = {}
+            for platform, versions in bp.items():
+                if not isinstance(versions, dict):
+                    self._send_json({"ok": False, "error": f"basePackages.{platform} 必须是对象（版本号: 目录）"}, status=400)
+                    return
+                for version, path in versions.items():
+                    if not isinstance(path, str) or not str(path).strip():
+                        self._send_json({"ok": False, "error": f"基础包 {platform}/{version} 的目录路径为空"}, status=400)
+                        return
+                    abs_path = resolve_base_package_path(path, bp_root)
+                    if not os.path.isdir(abs_path):
+                        missing_bp.append(f"{platform}/{version} → {path}")
+                    # 全局根目录存在且该目录在其下时，存为相对子目录（更干净、可移植）；否则保留绝对路径
+                    rel = _rel_if_under(path, abs_path, bp_root)
+                    norm_bp.setdefault(str(platform), {})[str(version)] = rel
+            updates["base_packages"] = norm_bp
         if "patchSourceDir" in data:
             updates["hotpatcher_source"] = str(data["patchSourceDir"])
         if "hotpatcherOrder" in data:
@@ -862,7 +972,21 @@ class UpdateHandler(BaseHTTPRequestHandler):
         except Exception as exc:
             self._send_json({"ok": False, "error": str(exc)}, status=500)
             return
-        self._send_json({"ok": True, "message": "配置已保存并重新加载（host/port/https 等需重启服务器生效）"})
+        msg = "配置已保存并重新加载（host/port/https 等需重启服务器生效）"
+        if missing_bp:
+            msg += "；以下基础包目录在服务器上不存在、将被忽略（请确认路径或先放入内容）：" + "；".join(missing_bp)
+        # 校验 versionLibraryDir 与 dataDir 是否同一根目录，避免版本/清单数据分家
+        vlib = (self.cfg.get("version_library_dir") or "").strip()
+        ddir = (self.cfg.get("data_dir") or "").strip()
+        if vlib and ddir:
+            try:
+                av, ad = os.path.abspath(vlib), os.path.abspath(ddir)
+                if os.path.commonpath([av, ad]) not in (av, ad):
+                    msg += ("；⚠ 注意：versionLibraryDir 与 dataDir 不在同一根目录，"
+                            "版本库将存入前者、清单/启动器/背景存入后者，可能造成数据“看似丢失”，请确认是否符合预期")
+            except ValueError:
+                pass
+        self._send_json({"ok": True, "message": msg})
 
     def _storage_from_payload(self, data):
         """把管理页面提交的 storage 负载整理为可写入 config.json 的规范化配置。
@@ -1152,11 +1276,13 @@ def _apply_config_updates(updates, cfg=None):
         disk = {}
     disk.pop("_storage", None)
     disk.pop("_config_path", None)
+    disk.pop("package_roots", None)  # 兼容旧字段，由 load_config 重新计算，避免磁盘上残留陈旧值
     disk.update(updates)
     with open(cfg_path, "w", encoding="utf-8") as f:
         json.dump(disk, f, ensure_ascii=False, indent=2)
     new_cfg = load_config(cfg_path)
     UpdateHandler.cfg = new_cfg
+    _CFG_MTIME_CACHE[cfg_path] = os.path.getmtime(cfg_path)
     ensure_dirs(new_cfg)
     return new_cfg
 
