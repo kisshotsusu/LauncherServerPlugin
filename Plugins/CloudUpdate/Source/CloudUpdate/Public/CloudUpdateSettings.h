@@ -16,8 +16,12 @@ class CLOUDUPDATE_API UCloudUpdateSettings : public UDeveloperSettings
 public:
 	UCloudUpdateSettings();
 
+	virtual FName GetCategoryName() const override { return TEXT("Game"); }
+	virtual FText GetSectionText() const override { return NSLOCTEXT("CloudUpdate", "SettingsSection", "云更新"); }
+	virtual FText GetSectionDescription() const override { return NSLOCTEXT("CloudUpdate", "SettingsDesc", "配置更新服务器、本地路径与更新行为"); }
+
 	/** 管理服务器地址，例如 http://127.0.0.1:8710 */
-	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "服务器地址"))
+	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "服务器地址（如 http://127.0.0.1:8710）"))
 	FString ServerUrl;
 
 	/** 项目名，与 Server/config.json 中的 project 一致 */

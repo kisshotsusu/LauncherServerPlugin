@@ -10,6 +10,15 @@ class FJsonObject;
 class FCloudUpdateService : public TSharedFromThis<FCloudUpdateService>
 {
 public:
+	/** 完整性检查的后台哈希计算结果（由 RunLocalComparison 产出，CompareLocalResults 消费） */
+	struct FCompareResult
+	{
+		int32 Index = 0;
+		bool bExists = false;
+		int64 Size = 0;
+		FString Hash;
+	};
+
 	explicit FCloudUpdateService(UCloudUpdateSubsystem* InOwner);
 	~FCloudUpdateService();
 
@@ -19,6 +28,8 @@ public:
 	void RepairIssues();
 	void CheckForUpdates();
 	void ApplyUpdate(const FString& InVersionId);
+	void ApplyLatestUpdate();
+	void QueryPendingUpdateSize();
 	void Abort();
 
 	FString GetLocalVersion() const;
@@ -44,6 +55,8 @@ private:
 	bool bIoStoreApplied = false;
 	bool bDirectIoStore = false;
 	bool bRestartRequired = false;
+	/** 查询更新大小时的待更新列表（复用 CheckForUpdates 解析结果） */
+	TArray<FCloudUpdateVersionInfo> SizeQueryPendingVersions;
 
 	/** 经二进制补丁合并后生成/更新的 ContentPak 基础文件路径，供最终挂载 */
 	TArray<FString> MergedPakPaths;
@@ -60,14 +73,15 @@ private:
 
 	// ---------- HTTP ----------
 	void FetchJson(const FString& InUrl, TFunction<void(bool, const TSharedPtr<FJsonObject>&)> InCallback);
-	void DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft, TFunction<void(bool)> InCallback);
+	void DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
+		TFunction<void(bool)> InCallback,
+		TFunction<void(int64 /*BytesDone*/, int64 /*TotalBytes*/)> InProgress = nullptr);
 
 	// ---------- 完整性检查 ----------
 	void ParseManifest(const TSharedPtr<FJsonObject>& InJson);
 	void RunLocalComparison();
 
-	struct FCompareResult;
-	void CompareLocalResults(const TArray<struct FCompareResult>& InResults);
+	void CompareLocalResults(const TArray<FCompareResult>& InResults);
 	void FinishIntegrityCheck(bool bSuccess, const TArray<FCloudFileIssue>& InIssues, const FString& InMessage);
 
 	// ---------- 修复 ----------
@@ -77,6 +91,8 @@ private:
 
 	// ---------- 更新检查 ----------
 	void ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJson);
+	void HandleCheckForUpdatesFinished(bool bSuccess, bool bHasUpdate, const FString& LatestVersion,
+		const TArray<FCloudUpdateVersionInfo>& Versions, const FString& Message);
 
 	// ---------- 回滚被撤销版本 ----------
 	void RollbackRevokedVersion(const FString& RevokedVersion, const TArray<FCloudDownloadFile>& Files, const FString& TargetVersion);

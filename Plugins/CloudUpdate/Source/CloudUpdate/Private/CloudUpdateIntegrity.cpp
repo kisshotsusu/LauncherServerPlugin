@@ -29,14 +29,6 @@
 #include "CloudUpdateUtil.h"
 using namespace CloudUpdatePrivate;
 
-// 完整性检查的后台哈希计算结果（由 RunLocalComparison 产出，CompareLocalResults 消费）
-struct FCompareResult
-{
-	int32 Index = 0;
-	bool bExists = false;
-	int64 Size = 0;
-	FString Hash;
-};
 void FCloudUpdateService::ParseManifest(const TSharedPtr<FJsonObject>& InJson)
 {
 	ServerManifest = FCloudUpdateManifest();
@@ -102,7 +94,7 @@ void FCloudUpdateService::RunLocalComparison()
 	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
 	Async(EAsyncExecution::ThreadPool, [WorkItems, WeakThis]()
 	{
-		TArray<FCompareResult> Results;
+		TArray<FCloudUpdateService::FCompareResult> Results;
 		Results.Reserve(WorkItems.Num());
 		for (const FWorkItem& Item : WorkItems)
 		{
@@ -122,12 +114,12 @@ void FCloudUpdateService::RunLocalComparison()
 	});
 }
 
-void FCloudUpdateService::CompareLocalResults(const TArray<FCompareResult>& InResults)
+void FCloudUpdateService::CompareLocalResults(const TArray<FCloudUpdateService::FCompareResult>& InResults)
 {
 	TArray<FCloudFileIssue> Issues;
 	const bool bFullHash = (IntegrityMode == ECloudCheckMode::FullHash);
 
-	for (const FCompareResult& Result : InResults)
+	for (const FCloudUpdateService::FCompareResult& Result : InResults)
 	{
 		const int32 Index = Result.Index;
 		if (!ServerManifest.Files.IsValidIndex(Index))

@@ -1,4 +1,5 @@
 #include "CloudUpdateSubsystem.h"
+#include "CloudUpdate.h"
 #include "CloudUpdateService.h"
 #include "CloudUpdateSettings.h"
 #include "CloudUpdateBinaryMerge.h"
@@ -15,9 +16,6 @@ UCloudUpdateSubsystem* UCloudUpdateSubsystem::GetCloudUpdateSubsystem()
 void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	// 允许自签名证书：服务器启用 HTTPS（自签名或内网证书）时，启动器才能正常拉取版本/清单。
-	// 仅对内网分发与自签名场景放开；若服务器使用公网合法证书，此设置无副作用。
-	FHttpModule::Get().SetAllowSelfSignedCertificates(true);
 	Service = MakeShared<FCloudUpdateService>(this);
 
 	// 交换上一轮因文件被占用而暂存的补丁（.pending -> 基础文件）。
@@ -82,6 +80,26 @@ void UCloudUpdateSubsystem::ApplyUpdate(const FString& VersionId)
 	if (Service.IsValid())
 	{
 		Service->ApplyUpdate(VersionId);
+	}
+}
+
+void UCloudUpdateSubsystem::QueryPendingUpdateSize()
+{
+	if (Service.IsValid())
+	{
+		Service->QueryPendingUpdateSize();
+	}
+	else if (OnUpdateSizeQueryFinished.IsBound())
+	{
+		OnUpdateSizeQueryFinished.Broadcast(false, 0, 0, TEXT("服务未初始化"));
+	}
+}
+
+void UCloudUpdateSubsystem::ApplyLatestUpdate()
+{
+	if (Service.IsValid())
+	{
+		Service->ApplyLatestUpdate();
 	}
 }
 
@@ -201,7 +219,7 @@ void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bInc
 	// 如需严格安全，应引入跨流程的合并锁或将自动合并与更新合并纳入同一串行队列。
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [Self, Dir, bIncludeSubdirectories, FeatureName, Total]()
 	{
-		FCloudBinaryMerge::FBinaryMergeResult Result = FCloudBinaryMerge::AutoMergeDirectory(
+		FBinaryMergeResult Result = FCloudBinaryMerge::AutoMergeDirectory(
 			Dir, bIncludeSubdirectories, FeatureName,
 			[Self](int32 Completed, int32 InTotal, const FString& PatchPath, bool bOk)
 			{

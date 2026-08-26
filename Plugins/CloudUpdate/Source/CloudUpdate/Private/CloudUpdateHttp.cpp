@@ -55,7 +55,9 @@ void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, c
 	Request->ProcessRequest();
 }
 
-void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft, TFunction<void(bool)> InCallback)
+void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
+	TFunction<void(bool)> InCallback,
+	TFunction<void(int64, int64)> InProgress)
 {
 	if (bAbortRequested)
 	{
@@ -72,6 +74,15 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 	Request->SetURL(InUrl);
 	Request->SetVerb(TEXT("GET"));
 	Request->SetTimeout(Settings ? Settings->HttpTimeoutSeconds : 60);
+	if (InProgress)
+	{
+		Request->OnRequestProgress64().BindLambda([InProgress](FHttpRequestPtr Req, uint64 BytesSent, uint64 BytesReceived)
+		{
+			// Content-Length 在进度回调阶段不可直接获取（响应尚未完成）；
+			// 总大小由上层根据清单 size 累计后传入。
+			InProgress(static_cast<int64>(BytesReceived), -1);
+		});
+	}
 	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
 	Request->OnProcessRequestComplete().BindLambda([WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
 	{

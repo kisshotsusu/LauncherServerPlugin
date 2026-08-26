@@ -22,6 +22,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCloudBinaryPatchFinished, bool
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudAutoMergeProgress, int32, Completed, int32, Total, const FString&, CurrentPatch, bool, bSuccess);
 /** 目录级自动合并完成：是否全部成功、成功数、失败数 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCloudAutoMergeFinished, bool, bAllSucceeded, int32, SucceededCount, int32, FailedCount);
+/** 更新大小查询完成：是否成功、总字节数、待更新版本数、提示信息 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudUpdateSizeQueryFinished, bool, bSuccess, int64, TotalBytes, int32, PendingVersionCount, const FString&, Message);
+/** 下载字节级进度：当前文件已完成字节、总字节、整体进度 0-1 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCloudDownloadProgress, int64, BytesDone, int64, BytesTotal, float, OverallProgress);
 
 /**
  * 云更新运行时子系统
@@ -55,6 +59,14 @@ public:
 	/** 下载并应用指定版本更新（解析 HotPatcher JSON -> 下载 Pak/外部文件 -> 挂载） */
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void ApplyUpdate(const FString& VersionId);
+
+	/** 查询待更新总大小（异步）。完成后广播 OnUpdateSizeQueryFinished。 */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
+	void QueryPendingUpdateSize();
+
+	/** 一键更新到最新版本（先检查更新，若有可用更新则自动应用第一个待更新项） */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
+	void ApplyLatestUpdate();
 
 	/** 中止当前任务（当前 HTTP 请求完成后停止） */
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
@@ -144,6 +156,14 @@ public:
 	/** 更新完成 */
 	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate")
 	FOnCloudUpdateFinished OnUpdateFinished;
+
+	/** 待更新大小查询完成 */
+	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate")
+	FOnCloudUpdateSizeQueryFinished OnUpdateSizeQueryFinished;
+
+	/** 下载实时进度（字节级，HTTP 回调线程投递回游戏线程） */
+	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate")
+	FOnCloudDownloadProgress OnDownloadProgress;
 
 	/** 回滚被撤销（隐藏/删除）版本完成 */
 	UPROPERTY(BlueprintAssignable, Category = "CloudUpdate")

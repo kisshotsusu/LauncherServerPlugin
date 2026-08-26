@@ -279,8 +279,30 @@ void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJs
 	if (Owner)
 	{
 		Owner->OnUpdateCheckFinished.Broadcast(true, bHasUpdate, LatestVersion, Pending, Message);
+		HandleCheckForUpdatesFinished(true, bHasUpdate, LatestVersion, Pending, Message);
 	}
 	SetBusy(false);
+}
+
+void FCloudUpdateService::HandleCheckForUpdatesFinished(bool bSuccess, bool bHasUpdate, const FString& LatestVersion,
+	const TArray<FCloudUpdateVersionInfo>& Versions, const FString& Message)
+{
+	if (SizeQueryPendingVersions.Num() > 0 && bSuccess)
+	{
+		int64 TotalBytes = 0;
+		for (const FCloudUpdateVersionInfo& Info : SizeQueryPendingVersions)
+		{
+			TotalBytes += Info.TotalSizeBytes;
+		}
+		SizeQueryPendingVersions.Empty();
+
+		if (Owner)
+		{
+			Owner->OnUpdateSizeQueryFinished.Broadcast(bHasUpdate, TotalBytes,
+				bHasUpdate ? Versions.Num() : 0,
+				bHasUpdate ? Message : TEXT("已是最新版本"));
+		}
+	}
 }
 
 void FCloudUpdateService::CheckForUpdates()
@@ -314,7 +336,127 @@ void FCloudUpdateService::CheckForUpdates()
 			Service->SetBusy(false);
 			return;
 		}
-		Service->ParseVersionsIndex(Json);
+	Service->ParseVersionsIndex(Json);
+	});
+}
+
+void FCloudUpdateService::ApplyLatestUpdate()
+{
+	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
+	FetchJson(GetVersionsUrl(), [WeakThis](bool bOk, const TSharedPtr<FJsonObject>& Json)
+	{
+		auto Service = WeakThis.Pin();
+		if (!Service.IsValid())
+		{
+			return;
+		}
+		if (!bOk || !Json.IsValid())
+		{
+			Service->FinishUpdate(false, TEXT("无法获取更新索引"));
+			return;
+		}
+		TArray<FCloudUpdateVersionInfo> AllVersions;
+		FString LatestVersion;
+		Json->TryGetStringField(TEXT("current"), LatestVersion);
+
+		const TArray<TSharedPtr<FJsonValue>>* VersionValues = nullptr;
+		if (Json->TryGetArrayField(TEXT("versions"), VersionValues))
+		{
+			for (const TSharedPtr<FJsonValue>& Value : *VersionValues)
+			{
+				const TSharedPtr<FJsonObject> Obj = Value->AsObject();
+				if (!Obj.IsValid()) continue;
+				FCloudUpdateVersionInfo Info;
+				Obj->TryGetStringField(TEXT("versionId"), Info.VersionId);
+				Obj->TryGetStringField(TEXT("type"), Info.Type);
+				Obj->TryGetNumberField(TEXT("totalSizeBytes"), Info.TotalSizeBytes);
+				if (!Info.VersionId.IsEmpty()) AllVersions.Add(Info);
+			}
+		}
+
+		const FString Local = Service->LoadLocalVersion();
+		FString BestId;
+		for (const FCloudUpdateVersionInfo& Info : AllVersions)
+		{
+			if (!IsVersionNewer(Info.VersionId, Local)) continue;
+			if (BestId.IsEmpty() || IsVersionNewer(Info.VersionId, BestId))
+			{
+				BestId = Info.VersionId;
+			}
+		}
+		if (BestId.IsEmpty())
+		{
+			Service->FinishUpdate(false, TEXT("已是最新版本"));
+			return;
+		}
+		Service->SetBusy(false); // ApplyUpdate 内部会重新 SetBusy
+		Service->ApplyUpdate(BestId);
+	});
+}
+
+void FCloudUpdateService::QueryPendingUpdateSize()
+{
+	if (bBusy)
+	{
+		if (Owner) Owner->OnUpdateSizeQueryFinished.Broadcast(false, 0, 0, TEXT("当前已有任务在执行"));
+		return;
+	}
+	SetBusy(true);
+	bAbortRequested = false;
+	SizeQueryPendingVersions.Reset();
+
+	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
+	FetchJson(GetVersionsUrl(), [WeakThis](bool bOk, const TSharedPtr<FJsonObject>& Json)
+	{
+		auto Service = WeakThis.Pin();
+		if (!Service.IsValid()) return;
+		if (!bOk || !Json.IsValid())
+		{
+			Service->SizeQueryPendingVersions.Empty();
+			if (Service->Owner) Service->Owner->OnUpdateSizeQueryFinished.Broadcast(false, 0, 0, TEXT("无法获取更新索引"));
+			Service->SetBusy(false);
+			return;
+		}
+		// 记录待查询标记，ParseVersionsIndex 完成后由 HandleCheckForUpdatesFinished 汇总广播
+		const TArray<TSharedPtr<FJsonValue>>* ChainValues = nullptr;
+		int32 PendingCount = 0;
+		const FString Local = Service->LoadLocalVersion();
+		if (Json->TryGetArrayField(TEXT("updateChain"), ChainValues))
+		{
+			for (const TSharedPtr<FJsonValue>& V : *ChainValues)
+			{
+				FString Id; V->TryGetString(Id);
+				if (Id.IsEmpty() || !IsVersionNewer(Id, Local)) continue;
+				++PendingCount;
+				FCloudUpdateVersionInfo Info;
+				Info.VersionId = Id;
+				const TArray<TSharedPtr<FJsonValue>>* VerArr = nullptr;
+				if (Json->TryGetArrayField(TEXT("versions"), VerArr))
+				{
+					for (const TSharedPtr<FJsonValue>& JV : *VerArr)
+					{
+						const TSharedPtr<FJsonObject> O = JV->AsObject();
+						FString Vid;
+						if (O.IsValid() && O->TryGetStringField(TEXT("versionId"), Vid) && Vid == Id)
+						{
+							O->TryGetNumberField(TEXT("totalSizeBytes"), Info.TotalSizeBytes);
+							break;
+						}
+					}
+				}
+				Service->SizeQueryPendingVersions.Add(Info);
+			}
+		}
+		if (PendingCount > 0)
+		{
+			// 走 ParseVersionsIndex 以复用其广播路径（内部会调用 HandleCheckForUpdatesFinished）
+			Service->ParseVersionsIndex(Json);
+		}
+		else
+		{
+			Service->SizeQueryPendingVersions.Add(FCloudUpdateVersionInfo{}); // 空占位，触发广播
+			Service->ParseVersionsIndex(Json);
+		}
 	});
 }
 
@@ -740,14 +882,34 @@ void FCloudUpdateService::DownloadNextUpdateFile()
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
 	const int32 Retries = Settings ? Settings->DownloadRetryCount : 2;
 	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
-	DownloadFileTo(File.Url, TargetPath, Retries, [WeakThis, File](bool bOk)
+
+	const float FileProgressWeight = (PendingFiles.Num() > 0) ? 1.0f / static_cast<float>(PendingFiles.Num()) : 0.0f;
+	const float BaseProgress = static_cast<float>(CurrentFileIndex) * FileProgressWeight;
+
+	auto ReportFileProgress = [WeakThis, File, BaseProgress, FileProgressWeight](int64 BytesDone, int64)
 	{
-		auto Service = WeakThis.Pin();
-		if (Service.IsValid())
+		AsyncTask(ENamedThreads::GameThread, [WeakThis, File, BaseProgress, FileProgressWeight, BytesDone]()
 		{
-			Service->OnUpdateFileDownloaded(bOk, File);
-		}
-	});
+			auto Service = WeakThis.Pin();
+			if (!Service.IsValid() || !Service->Owner) return;
+			const float IntraProgress = (File.FileSize > 0)
+				? FMath::Clamp(static_cast<float>(BytesDone) / static_cast<float>(File.FileSize), 0.0f, 1.0f)
+				: 0.0f;
+			const float Overall = FMath::Clamp(BaseProgress + IntraProgress * FileProgressWeight, 0.0f, 1.0f);
+			Service->Owner->OnDownloadProgress.Broadcast(BytesDone, File.FileSize, Overall);
+		});
+	};
+
+	DownloadFileTo(File.Url, TargetPath, Retries,
+		[WeakThis, File](bool bOk)
+		{
+			auto Service = WeakThis.Pin();
+			if (Service.IsValid())
+			{
+				Service->OnUpdateFileDownloaded(bOk, File);
+			}
+		},
+		MoveTemp(ReportFileProgress));
 }
 
 void FCloudUpdateService::OnUpdateFileDownloaded(bool bSuccess, const FCloudDownloadFile& InFile)
@@ -833,7 +995,7 @@ void FCloudUpdateService::HandleBinaryPatchEntry(const FCloudDownloadFile& InFil
 				if (MergeResult == EBinaryMergeResult::StagedForRestart)
 				{
 					// 基础文件被占用（运行中 pak 已挂载），已暂存为 .pending，需重启后由 FinalizePendingMerges 交换
-					bRestartRequired = true;
+					Service->bRestartRequired = true;
 				}
 				Service->OnBinaryPatchApplied(true, InFile, BasePath,
 					MergeResult == EBinaryMergeResult::StagedForRestart);
@@ -991,8 +1153,7 @@ void FCloudUpdateService::RollbackRevokedVersion(const FString& RevokedVersion, 
 		}
 		if (File.Kind == ECloudDownloadKind::ContentPak && FPaths::FileExists(Path))
 		{
-			const int32 Order = UFlibPakHelper::GetPakOrderByPakPath(Path);
-			UFlibPakHelper::UnmountPak(Path, Order);
+				UFlibPakHelper::UnMountPak(Path);
 		}
 		if (FPaths::FileExists(Path))
 		{

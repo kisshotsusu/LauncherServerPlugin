@@ -30,13 +30,19 @@ namespace CloudUpdatePrivate
 		{
 			return false;
 		}
+		const int64 FileSize = Handle->Size();
+		OutSize = FileSize;
 		FMD5 Md5;
 		uint8 Buffer[1024 * 1024];
-		int64 ReadBytes = 0;
-		while ((ReadBytes = Handle->Read(Buffer, sizeof(Buffer))) > 0)
+		for (int64 Offset = 0; Offset < FileSize; )
 		{
-			OutSize += ReadBytes;
-			Md5.Update(Buffer, static_cast<int32>(ReadBytes));
+			const int64 ToRead = FMath::Min<int64>(sizeof(Buffer), FileSize - Offset);
+			if (!Handle->ReadAt(Buffer, ToRead, Offset))
+			{
+				return false;
+			}
+			Md5.Update(Buffer, static_cast<int32>(ToRead));
+			Offset += ToRead;
 		}
 		uint8 Digest[16];
 		Md5.Final(Digest);

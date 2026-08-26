@@ -12,7 +12,7 @@
 // EBinaryMergeResult 定义于此；显式包含，避免依赖包含顺序（该头被多个翻译单元间接引用）。
 #include "CloudUpdateTypes.h"
 
-class IBinariesDiffPatchFeature;
+struct IBinariesDiffPatchFeature;
 
 /** 目录级自动合并的统计结果 */
 struct CLOUDUPDATE_API FBinaryMergeResult
