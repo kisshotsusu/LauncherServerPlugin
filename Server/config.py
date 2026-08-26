@@ -22,6 +22,11 @@ if getattr(sys, "frozen", False):
 # 在配置加载前（例如查找默认配置文件）退化为 BASE_DIR。
 CONFIG_DIR = BASE_DIR
 
+# 进程启动后确定的「真正使用的配置文件」绝对路径。无参 load_config() 优先复用它，
+# 这样 importer / manifest / versions 等子流程在冻结 exe（BASE_DIR=dist）下也能找到
+# 真实的 config.json（位于 Server/），而不是去读不存在的 dist/config.json。
+_RESOLVED_CONFIG_PATH = None
+
 
 def set_config_dir(path):
     """设置相对路径基准目录（传入 config.json 路径或其所在目录）。"""
@@ -57,12 +62,33 @@ def resolve_base_package_path(path, root=""):
 
 
 
+def _default_config_path():
+    """无参 load_config() 时确定配置文件：优先复用进程已加载的路径，
+    否则按 exe 目录 -> 上级目录（Server/）回退查找，与 run_server._resolve_default_config 一致。
+    关键修复：冻结 exe 下 BASE_DIR=dist，若直接取 BASE_DIR/config.json 会得到不存在的
+    dist/config.json；这里回退到 Server/config.json。"""
+    global _RESOLVED_CONFIG_PATH
+    if _RESOLVED_CONFIG_PATH and os.path.isfile(_RESOLVED_CONFIG_PATH):
+        return _RESOLVED_CONFIG_PATH
+    here = os.path.join(str(BASE_DIR), "config.json")
+    if os.path.isfile(here):
+        return here
+    parent = os.path.join(os.path.dirname(str(BASE_DIR)), "config.json")
+    if os.path.isfile(parent):
+        return parent
+    return here
+
+
 def load_config(config_path=None):
     if config_path is None:
-        config_path = BASE_DIR / "config.json"
+        config_path = _default_config_path()
+    config_path = os.path.abspath(config_path)
     with open(config_path, "r", encoding="utf-8") as f:
         cfg = json.load(f)
     cfg["_config_path"] = str(Path(config_path).resolve())
+    # 记录进程级配置文件路径，供后续无参 load_config() 复用（冻结 exe 下尤为关键）
+    global _RESOLVED_CONFIG_PATH
+    _RESOLVED_CONFIG_PATH = cfg["_config_path"]
     # 后续所有相对路径都以 config.json 所在目录为基准
     set_config_dir(cfg["_config_path"])
     cfg.setdefault("host", "0.0.0.0")

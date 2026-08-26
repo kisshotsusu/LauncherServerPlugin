@@ -39,8 +39,5 @@
   "launcher_versions": {
     "1.0.0": "E:\\SVN\\LauncherServerPlugin\\Server\\data\\launcher"
   },
-  "background_dir": "../Luncher/Background",
-  "package_roots": {
-    "Windows": "../HotPatherPack/WindowsIOStore"
-  }
+  "background_dir": "../Luncher/Background"
 }

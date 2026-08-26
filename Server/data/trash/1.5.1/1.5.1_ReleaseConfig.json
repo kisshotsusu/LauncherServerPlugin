@@ -1,0 +1,49 @@
+{
+	"versionId": "1.5.1",
+	"byPakList": false,
+	"platformsPakListFiles": [],
+	"bImportProjectSettings": false,
+	"addExternAssetsToPlatform": [],
+	"bBackupMetadata": false,
+	"bBackupProjectConfig": false,
+	"backupMetadataPlatforms": [],
+	"bNoShaderCompile": true,
+	"assetScanConfig":
+	{
+		"bPackageTracker": true,
+		"assetIncludeFilters": [
+			{
+				"path": "/Game"
+			}
+		],
+		"assetIgnoreFilters": [],
+		"bIncludeHasRefAssetsOnly": false,
+		"bAnalysisFilterDependencies": true,
+		"assetRegistryDependencyTypes": [
+			"Packages"
+		],
+		"includeSpecifyAssets": [],
+		"bRecursiveWidgetTree": true,
+		"bAnalysisMaterialInstance": true,
+		"bSupportWorldComposition": false,
+		"bForceSkipContent": true,
+		"forceSkipContentRules": [
+			{
+				"path": "/Game/__ExternalActors__"
+			},
+			{
+				"path": "/Game/__ExternalObjects__"
+			}
+		],
+		"forceSkipAssets": [],
+		"forceSkipClasses": []
+	},
+	"bStorageConfig": true,
+	"savePath":
+	{
+		"path": "[PROJECTDIR]/Saved/HotPatcher/"
+	},
+	"hashCalculator": "MD5",
+	"bStandaloneMode": true,
+	"additionalCommandletArgs": []
+}
