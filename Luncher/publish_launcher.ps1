@@ -50,12 +50,10 @@ if (-not $Version) {
 }
 if (-not $Version) { $Version = "1.0.0" }
 
-# 3) 输出目录（带时间戳，避免覆盖旧包）
-$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+# 3) 输出目录：默认放在脚本同目录的 Release 文件夹下
 if (-not $OutDir) {
-    $OutDir = Join-Path "D:\test\CodeBuild\Publish" ("Launcher_v" + $Version)
+    $OutDir = Join-Path $root "Release"
 }
-$OutDir = Join-Path $OutDir $stamp
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 # 4) 客户端：单文件

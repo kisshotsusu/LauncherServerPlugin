@@ -1,0 +1,27 @@
+﻿CloudUpdate 启动器发布包 v1.0.0
+====================================
+
+【客户端部署】
+只需把根目录的 Launcher.exe 拷到目标机器即可。
+首次运行会自动连接服务器（http://127.0.0.1:8710）下载 ui/、SelfUpdater.exe、
+背景图等到程序目录的 app/ 子文件夹。
+系统要求：Windows 10/11 x64 + Microsoft Edge WebView2 Runtime + VC++ 2015-2022 x64 运行库。
+
+【服务器部署】
+1. 把 server/ 目录里的内容复制到服务器：Server\data\launcher\
+   （Launcher.exe / SelfUpdater.exe / ui/ / version.json / launcher_config.json）
+2. 背景图在 server\background\：在管理页「启动器管理」里把背景目录指向它
+3. 打开管理页面（http://127.0.0.1:8710/），进入「启动器管理」：
+   - 添加/更新版本文件夹（可指向本包 server\ 目录，须含 Launcher.exe）
+   - 点击「发布」推送客户端升级
+4. 客户端下次启动自检会自动完成升级与资源同步
+
+【本包结构】
+Launcher.exe      客户端单文件
+server/           服务器侧启动器资源
+  Launcher.exe        自升级源
+  SelfUpdater.exe     自升级替换器
+  ui/                 前端界面（首次运行拉取）
+  background/         背景序列帧（配置为服务器背景目录）
+  version.json        自升级版本
+  launcher_config.json 客户端默认配置（首次运行拉取，本地已有配置则本地优先）

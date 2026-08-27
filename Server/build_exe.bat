@@ -58,12 +58,14 @@ if errorlevel 1 (
   exit /b 1
 )
 
-REM ---------- 4. build ----------
+REM ---------- 4. build (via staging dir to avoid in-place overwrite lock) ----------
 taskkill /F /IM CloudUpdateServer.exe >nul 2>nul
 
 echo [4/4] Building with PyInstaller ...
 echo.
-"%VPY%" -m PyInstaller --noconfirm --distpath dist --workpath build build_exe.spec
+if exist build_stage rmdir /s /q build_stage
+if exist dist_stage rmdir /s /q dist_stage
+"%VPY%" -m PyInstaller --noconfirm --distpath dist_stage --workpath build_stage build_exe.spec
 if errorlevel 1 (
   echo.
   echo [ERROR] Build failed. Scroll up to see the PyInstaller output.
@@ -72,6 +74,37 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM ---------- 5. replace dist exe (kill + retry while locked) ----------
+taskkill /F /IM CloudUpdateServer.exe >nul 2>nul
+set "TRIES=0"
+:replace_loop
+set /a TRIES+=1
+if %TRIES% GTR 20 goto :replace_fail
+if exist dist\CloudUpdateServer.exe del /F /Q dist\CloudUpdateServer.exe 2>nul
+if not exist dist\CloudUpdateServer.exe (
+  if exist dist_stage\CloudUpdateServer.exe (
+    move /Y dist_stage\CloudUpdateServer.exe dist\CloudUpdateServer.exe >nul 2>nul
+  )
+)
+if not exist dist_stage\CloudUpdateServer.exe goto :replace_done
+timeout /t 1 >nul
+goto :replace_loop
+:replace_done
+rmdir /s /q build_stage 2>nul
+rmdir /s /q dist_stage 2>nul
+goto :build_ok
+
+:replace_fail
+echo.
+echo [ERROR] Could not replace dist\CloudUpdateServer.exe - the file is locked
+echo         (still running, or held by antivirus real-time scanning).
+echo         Close the running server/launcher, or add a Windows Defender exclusion
+echo         for this folder, then run build_exe.bat again.
+echo.
+pause
+exit /b 1
+
+:build_ok
 echo.
 echo ============================================================
 echo   Build finished:  dist\CloudUpdateServer.exe

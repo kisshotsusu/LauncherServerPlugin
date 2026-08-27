@@ -23,6 +23,22 @@
   .nav-item { display:flex; align-items:center; gap:9px; width:100%; background:transparent; border:none; border-radius:10px; padding:9px 12px; font-size:13px; font-weight:600; color:var(--text); text-align:left; cursor:pointer; margin-bottom:2px; transition:background .15s,color .15s; }
   .nav-item:hover { background:#f1f5f9; }
   .nav-item.active { background:#eef2ff; color:var(--accent); }
+  /* 父子树导航 */
+  .nav-parent { display:flex; align-items:center; gap:7px; width:100%; background:transparent; border:none; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:700; color:var(--dim); text-align:left; cursor:pointer; margin:8px 0 3px; transition:background .15s,color .15s; }
+  .nav-parent:hover { background:#f1f5f9; color:var(--text); }
+  .nav-parent .caret { font-size:10px; transition:transform .15s; display:inline-block; }
+  .nav-parent.collapsed .caret { transform:rotate(-90deg); }
+  .nav-children { display:flex; flex-direction:column; }
+  .nav-children.collapsed { display:none; }
+  .nav-item.child { padding-left:30px; font-weight:600; position:relative; }
+  .nav-item.child::before { content:""; position:absolute; left:20px; top:0; bottom:0; width:1px; background:var(--line); }
+  .nav-item.child.active { background:#eef2ff; color:var(--accent); }
+  .nav-item.child.active::before { background:#c7d2fe; }
+  /* 面包屑 */
+  .breadcrumb { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--dim); padding:2px 2px 0; flex-wrap:wrap; margin-bottom:2px; }
+  .breadcrumb .crumb { color:var(--dim); }
+  .breadcrumb .crumb.current { color:var(--accent); font-weight:700; }
+  .breadcrumb .sep { color:#cbd5e1; }
   .sidebar-footer { margin-top:auto; padding:14px 8px 2px; border-top:1px solid var(--line); font-size:12px; color:var(--dim); line-height:1.8; word-break:break-all; }
   .content { flex:1; min-width:0; padding:22px 30px 70px; }
   .topbar { display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
@@ -87,6 +103,24 @@
   .toast.ok { border-color:#bbf7d0; color:var(--accent2); }
   .toast.err { border-color:#fecaca; color:var(--danger); }
   .hidden { display:none; }
+  .proj-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin-top:8px; }
+  .proj-card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; display:flex; flex-direction:column; gap:10px; }
+  .proj-card.default { border-color:var(--accent); box-shadow:0 0 0 2px rgba(37,99,235,.12); }
+  .proj-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .proj-name { font-size:16px; font-weight:800; }
+  .proj-key { font-size:12px; color:var(--dim); font-family:Consolas,monospace; }
+  .proj-tag { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; background:#eef2ff; color:var(--accent); }
+  .proj-meta { font-size:12px; color:var(--dim); line-height:1.95; }
+  .proj-meta code { font-size:12px; }
+  .proj-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:2px; }
+  button.danger { background:var(--danger); color:#fff; }
+  button.small { padding:5px 11px; font-size:12px; }
+  .create-card { align-items:center; justify-content:center; border-style:dashed; cursor:pointer; color:var(--accent); font-weight:700; min-height:148px; transition:background .15s; }
+  .create-card:hover { background:#eef2ff; }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:12px; color:var(--dim); font-weight:600; margin-bottom:5px; }
+  .field .hint { font-size:11px; color:var(--dim); margin-top:4px; }
+  .field input, .field select { width:100%; }
 </style>
 </head>
 <body>
@@ -99,38 +133,52 @@
         <div class="brand-sub">管理控制台</div>
       </div>
     </div>
-    <nav>
+    <nav id="navTree">
       <div class="nav-group">
-        <div class="group-title">总览</div>
         <button class="nav-item active" data-tab="overview" onclick="switchTab('overview')">📊 总览</button>
       </div>
+
       <div class="nav-group">
-        <div class="group-title">游戏版本</div>
-        <button class="nav-item" data-tab="versions" onclick="switchTab('versions')">📦 版本管理</button>
-        <button class="nav-item" data-tab="manifest" onclick="switchTab('manifest')">✅ 完整性清单</button>
+        <button class="nav-parent" data-nav="server" onclick="toggleNav('server')">
+          <span class="caret">▾</span><span>服务器管理</span>
+        </button>
+        <div class="nav-children" id="nav-server">
+          <button class="nav-item child" data-tab="projects" data-parent="server" onclick="switchTab('projects')">🗂️ 项目管理</button>
+          <button class="nav-item child" data-tab="apis" data-parent="server" onclick="switchTab('apis')">🔌 接口管理</button>
+          <button class="nav-item child" data-tab="cert" data-parent="server" onclick="switchTab('cert')">🔐 证书管理</button>
+          <button class="nav-item child" data-tab="access" data-parent="server" onclick="switchTab('access')">🌐 访问格式管理</button>
+          <button class="nav-item child" data-tab="control" data-parent="server" onclick="switchTab('control')">🖥️ 运行状态</button>
+        </div>
       </div>
+
       <div class="nav-group">
-        <div class="group-title">存储管理</div>
-        <button class="nav-item" data-tab="dirs" onclick="switchTab('dirs')">📁 目录位置</button>
-        <button class="nav-item" data-tab="oss" onclick="switchTab('oss')">🗄️ 对象存储</button>
-        <button class="nav-item" data-tab="files" onclick="switchTab('files')">☁️ 云端文件</button>
+        <button class="nav-parent" data-nav="project" onclick="toggleNav('project')">
+          <span class="caret">▾</span><span id="navProjectHeader">项目内部</span>
+        </button>
+        <div class="nav-children" id="nav-project">
+          <button class="nav-item child" data-tab="versions" data-parent="project" onclick="switchTab('versions')">📦 版本管理</button>
+          <button class="nav-item child" data-tab="manifest" data-parent="project" onclick="switchTab('manifest')">✅ 完整性清单</button>
+          <button class="nav-item child" data-tab="launcher" data-parent="project" onclick="switchTab('launcher')">🚀 启动器管理</button>
+          <button class="nav-item child" data-tab="settings" data-parent="project" onclick="switchTab('settings')">⚙️ 项目设置</button>
+        </div>
       </div>
+
       <div class="nav-group">
-        <div class="group-title">服务器管理</div>
-        <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">⚙️ 基本设置</button>
-        <button class="nav-item" data-tab="control" onclick="switchTab('control')">🖥️ 运行状态</button>
-      </div>
-      <div class="nav-group">
-        <div class="group-title">启动器</div>
-        <button class="nav-item" data-tab="launcher" onclick="switchTab('launcher')">🚀 启动器管理</button>
-      </div>
-      <div class="nav-group">
-        <div class="group-title">其他</div>
-        <button class="nav-item" data-tab="api" onclick="switchTab('api')">📖 API 说明</button>
+        <button class="nav-parent" data-nav="storage" onclick="toggleNav('storage')">
+          <span class="caret">▾</span><span>存储管理</span>
+        </button>
+        <div class="nav-children" id="nav-storage">
+          <button class="nav-item child" data-tab="dirs" data-parent="storage" onclick="switchTab('dirs')">📁 目录位置</button>
+          <button class="nav-item child" data-tab="oss" data-parent="storage" onclick="switchTab('oss')">🗄️ 对象存储</button>
+          <button class="nav-item child" data-tab="files" data-parent="storage" onclick="switchTab('files')">☁️ 云端文件</button>
+        </div>
       </div>
     </nav>
     <div class="sidebar-footer">
       <div id="sideProject">项目：-</div>
+      <select id="projSwitcher" onchange="switchProject(this.value)" style="width:100%;margin:6px 0 8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px;background:#fff;cursor:pointer;">
+        <option value="">切换项目…</option>
+      </select>
       <div id="sideStorage">存储：-</div>
       <div id="sideServerTime"></div>
     </div>
@@ -145,6 +193,8 @@
       <label class="muted">管理员令牌</label>
       <input type="password" id="tokenInput" placeholder="留空则不需要" style="width:180px" onchange="saveToken()">
     </div>
+
+    <div class="breadcrumb" id="breadcrumb"></div>
 
     <div id="tab-overview" class="tab-panel">
       <div class="status-strip" id="statusGrid">
@@ -411,6 +461,18 @@
       </div>
     </div>
 
+    <div id="tab-projects" class="tab-panel hidden">
+      <div class="toolbar" style="justify-content:space-between">
+        <div>
+          <div style="font-size:13px;color:var(--dim)">每个项目拥有独立的访问地址（<code>/&lt;标识&gt;/</code>）与项目空间（数据目录隔离）。默认项目也已不再占用根路径，统一以 <code>/&lt;标识&gt;/</code> 访问，可随时重命名。</div>
+        </div>
+        <button class="green" onclick="openCreateProject()">＋ 新建项目</button>
+      </div>
+      <div class="proj-grid" id="projGrid">
+        <div class="proj-card create-card" onclick="openCreateProject()">＋ 新建项目</div>
+      </div>
+    </div>
+
     <div id="tab-control" class="tab-panel hidden">
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
         <div class="card"><h3>进程 PID</h3><div class="value" id="ctlPid">-</div><div class="sub" id="ctlPython"></div></div>
@@ -471,30 +533,117 @@
       </div>
     </div>
 
-    <div id="tab-api" class="tab-panel hidden">
-      <div class="card" style="line-height:1.9">
-        <div><strong>状态</strong>　<code>GET /api/status</code></div>
-        <div><strong>版本索引</strong>　<code>GET /api/versions</code></div>
-        <div><strong>更新描述</strong>　<code>GET /api/version/&lt;id&gt;</code></div>
-        <div><strong>完整性清单</strong>　<code>GET /api/manifest.json?platform=Windows</code></div>
-        <div><strong>云端文件浏览</strong>　<code>GET /api/files?platform=Windows&amp;path=CodeBuild/Content</code></div>
-        <div><strong>云端文件下载</strong>　<code>GET /files/packages/&lt;平台&gt;/&lt;相对路径&gt;</code></div>
-        <div><strong>更新包下载</strong>　<code>GET /files/versions/&lt;版本&gt;/&lt;文件名&gt;</code></div>
-        <div><strong>重建索引</strong>　<code>POST /api/versions/reindex</code></div>
-        <div><strong>重新生成清单</strong>　<code>POST /api/manifest/generate?platform=Windows</code></div>
-        <div><strong>上传文件</strong>　<code>POST /api/upload?target=package|version&amp;platform=Windows&amp;path=&amp;versionId=</code>（multipart，字段名 file）</div>
-        <div><strong>一键导入</strong>　<code>POST /api/import/hotpatcher</code></div>
-        <div><strong>开放版本（查询）</strong>　<code>GET /api/enabled_versions</code></div>
-        <div><strong>开放版本（设置）</strong>　<code>POST /api/enabled_versions</code>　<code>{platform, versions:[...]}</code>，客户端仅可见列表内版本</div>
-        <div><strong>删除版本</strong>　<code>DELETE /api/version/&lt;id&gt;</code>（移入 data/trash 回收站）</div>
-        <div><strong>重启服务器</strong>　<code>POST /api/server/restart</code></div>
-        <div><strong>存储测试</strong>　<code>POST /api/storage/test</code>　<code>{storage:{...}}</code></div>
-        <div><strong>启动器历史版本</strong>　<code>GET /api/launcher/versions</code>／<code>POST {version, dir}</code>／<code>DELETE /api/launcher/versions/&lt;版本&gt;</code></div>
-        <div><strong>启动器版本发布</strong>　<code>POST /api/launcher/publish</code>　<code>{version, note}</code>（从版本文件夹快照 exe）</div>
-        <div><strong>背景资源清单</strong>　<code>GET /api/launcher/background</code>（客户端自检用，指定文件夹）</div>
-        <div><strong>背景目录设置</strong>　<code>POST /api/launcher/background/dir</code>　<code>{dir}</code></div>
-        <div><strong>背景 FPS / 清除配置</strong>　<code>POST /api/launcher/background</code>　<code>{frameFps}</code>／<code>POST /api/launcher/background/clear</code></div>
-        <div class="muted" style="margin-top:8px">配置了 admin_token 时，管理操作需携带 <code>Authorization: Bearer &lt;token&gt;</code>。</div>
+    <div id="tab-apis" class="tab-panel hidden">
+      <div class="card">
+        <h3>接口管理（服务器级）</h3>
+        <div class="muted" style="margin-bottom:10px">这里集中管理所有对外接口。关闭某个接口后，客户端/启动器调用它将返回 403。服务器管理自身接口（项目/证书/访问格式）与核心控制台永远可用，不会被锁死。修改立即生效。</div>
+        <div id="apisToolbar" class="btn-row" style="margin-bottom:12px">
+          <button class="ghost" onclick="setAllApis(true)">全部启用</button>
+          <button class="ghost" onclick="setAllApis(false)">全部停用</button>
+          <button class="green" onclick="saveApis()">保存更改</button>
+          <span id="apisMsg" class="muted"></span>
+        </div>
+        <table style="width:100%">
+          <thead><tr><th style="width:64px">状态</th><th>方法</th><th>路径</th><th>名称</th><th>作用域</th><th>说明</th></tr></thead>
+          <tbody id="apisBody"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>API 参考（客户端 / 启动器对接清单）</h3>
+        <div style="line-height:1.9" class="muted">
+          <div><strong>状态</strong>　<code>GET /api/status</code></div>
+          <div><strong>版本索引</strong>　<code>GET /api/versions</code></div>
+          <div><strong>更新描述</strong>　<code>GET /api/version/&lt;id&gt;</code></div>
+          <div><strong>完整性清单</strong>　<code>GET /api/manifest.json?platform=Windows</code></div>
+          <div><strong>云端文件浏览</strong>　<code>GET /api/files?platform=Windows&amp;path=CodeBuild/Content</code></div>
+          <div><strong>云端文件下载</strong>　<code>GET /files/packages/&lt;平台&gt;/&lt;相对路径&gt;</code></div>
+          <div><strong>更新包下载</strong>　<code>GET /files/versions/&lt;版本&gt;/&lt;文件名&gt;</code></div>
+          <div><strong>重建索引</strong>　<code>POST /api/versions/reindex</code></div>
+          <div><strong>重新生成清单</strong>　<code>POST /api/manifest/generate?platform=Windows</code></div>
+          <div><strong>上传文件</strong>　<code>POST /api/upload?target=package|version&amp;platform=Windows&amp;path=&amp;versionId=</code>（multipart，字段名 file）</div>
+          <div><strong>一键导入</strong>　<code>POST /api/import/hotpatcher</code></div>
+          <div><strong>开放版本（查询/设置）</strong>　<code>GET/POST /api/enabled_versions</code>　<code>{platform, versions:[...]}</code></div>
+          <div><strong>删除版本</strong>　<code>DELETE /api/version/&lt;id&gt;</code>（移入 data/trash 回收站）</div>
+          <div><strong>重启服务器</strong>　<code>POST /api/server/restart</code></div>
+          <div><strong>存储测试</strong>　<code>POST /api/storage/test</code>　<code>{storage:{...}}</code></div>
+          <div><strong>启动器历史版本</strong>　<code>GET /api/launcher/versions</code>／<code>POST {version, dir}</code>／<code>DELETE /api/launcher/versions/&lt;版本&gt;</code></div>
+          <div><strong>启动器版本发布</strong>　<code>POST /api/launcher/publish</code>　<code>{version, note}</code></div>
+          <div><strong>背景资源</strong>　<code>GET /api/launcher/background</code>　<code>POST /api/launcher/background/dir</code>　<code>POST /api/launcher/background</code></div>
+          <div style="margin-top:8px">所有接口均带当前项目前缀（如 <code>/codebuild/api/...</code>）；配置 admin_token 后管理操作需携带 <code>Authorization: Bearer &lt;token&gt;</code>。</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-cert" class="tab-panel hidden">
+      <div class="card">
+        <h3>证书管理（HTTPS）</h3>
+        <div id="certStatus" class="muted" style="margin-bottom:10px">加载中...</div>
+        <div id="certDetail" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px"></div>
+        <div class="btn-row">
+          <button class="green" onclick="certAction('enable')">启用 HTTPS</button>
+          <button class="ghost" onclick="certAction('disable')">停用（转 HTTP）</button>
+          <button class="ghost" onclick="certAction('regenerate')">重新生成自签证书</button>
+          <button class="ghost" onclick="loadCert()">刷新状态</button>
+        </div>
+        <div class="muted" style="margin-top:10px">启用/更换证书后需<b>重启服务器</b>才会真正生效（TLS 在启动时加载）。</div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>使用自定义证书</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+          <div>
+            <label class="muted">证书文件（.crt / .pem，绝对路径）</label>
+            <input id="certFile" style="width:100%;margin-top:4px" placeholder="如 D:/certs/server.crt">
+          </div>
+          <div>
+            <label class="muted">私钥文件（.key，绝对路径）</label>
+            <input id="certKey" style="width:100%;margin-top:4px" placeholder="如 D:/certs/server.key">
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="green" onclick="certAction('setCustom')">应用自定义证书</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>重新生成自签证书参数</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+          <div>
+            <label class="muted">Common Name</label>
+            <input id="certCn" style="width:100%;margin-top:4px" placeholder="CloudUpdate">
+          </div>
+          <div>
+            <label class="muted">国家代码</label>
+            <input id="certCountry" style="width:100%;margin-top:4px" placeholder="CN">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-access" class="tab-panel hidden">
+      <div class="card">
+        <h3>访问格式管理（服务器级）</h3>
+        <div class="muted" style="margin-bottom:10px">定义各项目的访问地址格式与保留前缀。修改立即生效（监听端口/根重定向之外的部分需重启）。</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+          <div>
+            <label class="muted">访问前缀模式（展示用）</label>
+            <input id="accPrefix" style="width:100%;margin-top:4px" placeholder="/{key}/">
+          </div>
+          <div>
+            <label class="muted">根路径行为</label>
+            <select id="accRoot" style="width:100%;margin-top:4px">
+              <option value="redirect">重定向到默认项目（/ → /&lt;默认&gt;/）</option>
+              <option value="serve_at_root">直接在根 / 服务默认项目</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <label class="muted">保留前缀（逗号分隔，不可作为项目名；api/web/files 始终保留）</label>
+          <input id="accReserved" style="width:100%;margin-top:4px" placeholder="api, web, files">
+          <div class="hint">访问前缀格式：每个项目通过其标识获得独立地址，例如标识 <code>cc</code> 的访问地址为 <code>/cc/</code>。</div>
+        </div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="green" onclick="saveAccess()">保存访问格式</button>
+          <button class="ghost" onclick="loadAccess()">刷新</button>
+        </div>
       </div>
     </div>
   </main>
@@ -510,7 +659,7 @@
 </div>
 
 <script>
-const state = { token: localStorage.getItem('cu_token') || '', status: null, versions: [], files: [], filePath: '', platform: '', baseVersion: '', baseContainers: {}, enabledMap: {}, managePlatform: '', uptimeBase: 0, uptimeAt: 0, launcherVer: null, launcherVersions: [], launcherPublished: '', bg: null };
+const state = { token: localStorage.getItem('cu_token') || '', status: null, versions: [], files: [], filePath: '', platform: '', baseVersion: '', baseContainers: {}, enabledMap: {}, managePlatform: '', uptimeBase: 0, uptimeAt: 0, launcherVer: null, launcherVersions: [], launcherPublished: '', bg: null, apiList: [], apisToggles: {} };
 const $ = id => document.getElementById(id);
 let endpointAuto = false;
 const STORAGE_PRESETS = {
@@ -531,11 +680,36 @@ function headers(json) {
 }
 
 async function api(url, opts = {}) {
-  const resp = await fetch(url, opts);
+  // 多项目：所有 API 自动带上当前项目前缀（由服务器注入 window.__PREFIX__），
+  // 例如 /cc/api/status。以 http 开头的完整 URL 不处理。
+  const prefix = window.__PREFIX__ || '';
+  const u = url.startsWith('http') ? url : prefix + url;
+  const resp = await fetch(u, opts);
   let data = null;
   try { data = await resp.json(); } catch (e) {}
   if (!resp.ok) throw new Error((data && data.error) || ('HTTP ' + resp.status));
   return data;
+}
+
+function switchProject(key) {
+  if (!key) return;
+  // 默认项目若为历史 main 走根 /；其余（含重命名后的默认）统一走 /<key>/
+  const def = window.__DEFAULT_PROJECT__ || 'main';
+  if (key === 'main' && def === 'main') { location.pathname = '/'; return; }
+  location.pathname = '/' + key + '/';
+}
+
+function fillProjSwitcher(projects, current) {
+  const sel = $('projSwitcher');
+  if (!sel) return;
+  sel.innerHTML = '';
+  (projects || []).forEach(pr => {
+    const o = document.createElement('option');
+    o.value = pr.key;
+    o.textContent = pr.display + (pr.isDefault ? '（默认）' : '') + ' · ' + pr.prefix + '/';
+    if (pr.key === current) o.selected = true;
+    sel.appendChild(o);
+  });
 }
 
 function toast(text, type) {
@@ -553,12 +727,56 @@ function fmtSize(bytes) {
   return v.toFixed(1) + ' ' + u[i];
 }
 
-const TAB_TITLES = { overview: '总览', versions: '版本管理', manifest: '完整性清单', dirs: '目录位置', oss: '对象存储', files: '云端文件', settings: '基本设置', control: '运行状态', launcher: '启动器管理', api: 'API 说明' };
+const TAB_TITLES = { overview: '总览', projects: '项目管理', apis: '接口管理', cert: '证书管理', access: '访问格式管理', control: '运行状态', versions: '版本管理', manifest: '完整性清单', launcher: '启动器管理', settings: '项目设置', dirs: '目录位置', oss: '对象存储', files: '云端文件' };
+// 父子页面层级关系：服务器管理（父）> 项目内部（子，挂在当前项目下）> 存储管理
+const NAV_TREE = {
+  overview: { path: ['总览'] },
+  projects: { parent: 'server',  path: ['服务器管理', '项目管理'] },
+  apis:     { parent: 'server',  path: ['服务器管理', '接口管理'] },
+  cert:     { parent: 'server',  path: ['服务器管理', '证书管理'] },
+  access:   { parent: 'server',  path: ['服务器管理', '访问格式管理'] },
+  control:  { parent: 'server',  path: ['服务器管理', '运行状态'] },
+  versions: { parent: 'project', path: ['{project}', '版本管理'] },
+  manifest: { parent: 'project', path: ['{project}', '完整性清单'] },
+  launcher: { parent: 'project', path: ['{project}', '启动器管理'] },
+  settings: { parent: 'project', path: ['{project}', '项目设置'] },
+  dirs:     { parent: 'storage', path: ['存储管理', '目录位置'] },
+  oss:      { parent: 'storage', path: ['存储管理', '对象存储'] },
+  files:    { parent: 'storage', path: ['存储管理', '云端文件'] },
+};
+function toggleNav(id) {
+  const box = $('nav-' + id);
+  const head = document.querySelector('.nav-parent[data-nav="' + id + '"]');
+  const collapsed = box.classList.toggle('collapsed');
+  if (head) head.classList.toggle('collapsed', collapsed);
+}
+function expandNav(id) {
+  const box = $('nav-' + id);
+  const head = document.querySelector('.nav-parent[data-nav="' + id + '"]');
+  if (box) box.classList.remove('collapsed');
+  if (head) head.classList.remove('collapsed');
+}
+function renderBreadcrumb(name) {
+  const el = $('breadcrumb');
+  const t = NAV_TREE[name];
+  if (!el || !t) return;
+  const proj = (state.status && (state.status.project || state.status.projectKey)) || '项目';
+  const path = t.path.map(s => s === '{project}' ? proj : s);
+  el.innerHTML = path.map((s, i) => i === path.length - 1
+    ? '<span class="crumb current">' + esc(s) + '</span>'
+    : '<span class="crumb">' + esc(s) + '</span><span class="sep">›</span>').join('');
+}
 function switchTab(name) {
   document.querySelectorAll('.nav-item[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
-  $('tab-' + name).classList.remove('hidden');
+  const panel = $('tab-' + name);
+  if (panel) panel.classList.remove('hidden');
   $('pageTitle').textContent = TAB_TITLES[name] || name;
+  // 展开当前页面所属的父级，确保父子层级可见
+  const item = document.querySelector('.nav-item[data-tab="' + name + '"]');
+  const p = item && item.dataset.parent;
+  if (p) expandNav(p);
+  renderBreadcrumb(name);
 }
 
 async function loadAll() {
@@ -574,7 +792,11 @@ async function loadAll() {
     $('serverBadge').className = 'badge online';
     $('serverTime').textContent = status.serverTime || '';
     $('sideServerTime').textContent = status.serverTime || '';
-    $('sideProject').textContent = '项目：' + (status.project || '-');
+    $('sideProject').textContent = '项目：' + (status.projectKey ? status.projectKey + '（' + (status.projectPrefix || '/') + '）' : (status.project || '-'));
+    // 项目内部父级标题显示当前项目，强化“父(项目)→子(版本/清单…)”的层级关系
+    const ph = $('navProjectHeader');
+    if (ph) ph.textContent = (status.project || status.projectKey || '项目') + ' · 项目内部';
+    fillProjSwitcher(status.projects || [], status.projectKey);
     $('sideStorage').textContent = '存储：' + (config.storageBackend === 's3' ? 'OSS / S3' : '本地磁盘');
     $('stProject').textContent = status.project || '-';
     $('stPlatforms').textContent = (status.platforms || []).join(', ');
@@ -590,7 +812,7 @@ async function loadAll() {
       $('stManifest').textContent = m.exists ? m.fileCount + ' 个文件' : '未生成';
       $('stManifestSub').textContent = m.exists ? ('基础包 ' + (m.baseVersion || '') + ' · ' + (m.generatedAt || '')) : '';
       $('manifestLinks').innerHTML = keys.flatMap(p => (ms[p] || []).filter(x => x.exists).map(x =>
-        `<a href="/api/manifest.json?platform=${p}&baseVersion=${x.baseVersion}">${p} ${x.baseVersion} 清单</a>`)).join(' · ');
+        `<a href="${window.__PREFIX__ || ''}/api/manifest.json?platform=${p}&baseVersion=${x.baseVersion}">${p} ${x.baseVersion} 清单</a>`)).join(' · ');
     }
     if (state.token && !status.authRequired) toast('服务器未启用令牌，已忽略本地令牌', 'err');
     initManagePlatform();
@@ -607,6 +829,10 @@ async function loadAll() {
     initFilePlatform();
     renderManifestTab();
     renderSettings();
+    renderProjects();
+    try { await loadApis(); } catch (e) {}
+    try { await loadCert(); } catch (e) {}
+    try { await loadAccess(); } catch (e) {}
   } catch (e) {
     $('serverBadge').textContent = '离线';
     $('serverBadge').className = 'badge offline';
@@ -749,7 +975,7 @@ function renderManifestTab() {
         </div>
         <div class="btn-row">
           <button class="ghost" onclick="regenerateManifest('${esc(p)}','${esc(m.baseVersion)}')">重新生成</button>
-          ${m.exists ? `<a href="/api/manifest.json?platform=${esc(p)}&baseVersion=${esc(m.baseVersion)}">下载</a>` : ''}
+          ${m.exists ? `<a href="${window.__PREFIX__ || ''}/api/manifest.json?platform=${esc(p)}&baseVersion=${esc(m.baseVersion)}">下载</a>` : ''}
         </div>
       </div>`).join('');
   }).join('');
@@ -1289,6 +1515,124 @@ async function doUpload(target) {
 
 function closeModal() { $('modalMask').classList.remove('show'); }
 
+// ---------- 项目空间管理 ----------
+async function renderProjects() {
+  const grid = $('projGrid');
+  if (!grid) return;
+  try {
+    const data = await api('/api/projects');
+    state.projectsList = data.projects || [];
+    const origin = location.origin;
+    grid.innerHTML = state.projectsList.map(p => {
+      const url = origin + (p.prefix === '/' ? '/' : p.prefix + '/');
+      const space = p.dataDir ? p.dataDir : ('projects/' + p.key + '/data');
+      const actions = [`<button class="ghost small" onclick="switchProject('${esc(p.key)}')">打开空间</button>`];
+      actions.push(`<button class="ghost small" onclick="openRenameProject('${esc(p.key)}','${esc(p.display)}')">重命名</button>`);
+      if (!p.isDefault) {
+        actions.push(`<button class="ghost small" onclick="setDefaultProject('${esc(p.key)}')">设为默认</button>`);
+        actions.push(`<button class="danger small" onclick="deleteProject('${esc(p.key)}')">删除</button>`);
+      }
+      return `<div class="proj-card${p.isDefault ? ' default' : ''}">
+        <div class="proj-head">
+          <span class="proj-name">${esc(p.display)}</span>
+          <span class="proj-key">${esc(p.key)}</span>
+          ${p.isDefault ? '<span class="proj-tag">默认</span>' : ''}
+        </div>
+        <div class="proj-meta">
+          <div>访问地址：<a href="${esc(url)}" target="_blank">${esc(url)}</a></div>
+          <div>项目空间：<code>${esc(space)}</code></div>
+          <div>版本数：<b>${p.versionCount}</b></div>
+        </div>
+        <div class="proj-actions">${actions.join('')}</div>
+      </div>`;
+    }).join('') + `<div class="proj-card create-card" onclick="openCreateProject()">＋ 新建项目</div>`;
+  } catch (e) {
+    grid.innerHTML = '<div class="empty">项目列表加载失败：' + esc(e.message) + '</div>';
+  }
+}
+
+function openCreateProject() {
+  const sel = $('npCopyFrom');
+  if (sel && state.projectsList) {
+    sel.innerHTML = state.projectsList.map(p =>
+      `<option value="${esc(p.key)}">${esc(p.display)}（${esc(p.key)}）</option>`).join('');
+  }
+  $('npKey').value = '';
+  $('npDisplay').value = '';
+  $('npUrlPreview').textContent = '/<标识>/';
+  $('projModalMask').classList.add('show');
+  setTimeout(() => $('npKey').focus(), 50);
+}
+function closeProjModal() { $('projModalMask').classList.remove('show'); }
+
+async function submitCreateProject() {
+  const key = $('npKey').value.trim();
+  const display = $('npDisplay').value.trim();
+  const copyFrom = $('npCopyFrom').value;
+  if (!/^[A-Za-z0-9_]+$/.test(key)) { toast('项目标识只能包含字母、数字、下划线', 'err'); return; }
+  if (key === 'api' || key === 'web' || key === 'files') { toast('该名称是保留前缀，不可使用', 'err'); return; }
+  try {
+    const r = await api('/api/projects', { method: 'POST', headers: headers(true),
+      body: JSON.stringify({ key, display, copyFrom }) });
+    toast('已创建项目 ' + key + '，访问地址 ' + (r.prefix || ('/' + key)) + '/', 'ok');
+    closeProjModal();
+    await renderProjects();
+  } catch (e) { toast('创建失败：' + e.message, 'err'); }
+}
+
+async function deleteProject(key) {
+  if (!confirm('确定删除项目 “' + key + '” 吗？\n将注销该项目并删除其项目空间目录（数据不可恢复）。')) return;
+  try {
+    const r = await api('/api/projects/' + encodeURIComponent(key) + '?cleanup=1',
+      { method: 'DELETE', headers: headers() });
+    toast(r.message || ('已删除 ' + key), 'ok');
+    await renderProjects();
+    loadAll();
+  } catch (e) { toast('删除失败：' + e.message, 'err'); }
+}
+
+async function setDefaultProject(key) {
+  try {
+    const r = await api('/api/projects/default', { method: 'POST', headers: headers(true),
+      body: JSON.stringify({ key }) });
+    toast(r.message || ('已设为默认 ' + key), 'ok');
+    await renderProjects();
+    loadAll();
+  } catch (e) { toast('设置失败：' + e.message, 'err'); }
+}
+
+async function openRenameProject(key, display) {
+  $('rnKey').value = key;
+  $('rnNewKey').value = key;
+  $('rnDisplay').value = display || key;
+  $('renameModalMask').classList.add('show');
+  setTimeout(() => $('rnDisplay').focus(), 50);
+}
+function closeRenameModal() { $('renameModalMask').classList.remove('show'); }
+
+async function submitRenameProject() {
+  const key = $('rnKey').value;
+  const newKey = $('rnNewKey').value.trim();
+  const display = $('rnDisplay').value.trim();
+  if (!display) { toast('显示名称不能为空', 'err'); return; }
+  if (!newKey) { toast('项目标识不能为空', 'err'); return; }
+  if (!/^[A-Za-z0-9_]+$/.test(newKey)) { toast('项目标识只能包含字母、数字、下划线', 'err'); return; }
+  if (newKey === 'api' || newKey === 'web' || newKey === 'files') { toast('该标识是保留前缀，不可使用', 'err'); return; }
+  try {
+    const r = await api('/api/projects/rename', { method: 'POST', headers: headers(true),
+      body: JSON.stringify({ key, newKey, display }) });
+    toast('已重命名：' + (r.key || newKey), 'ok');
+    closeRenameModal();
+    // 若改的是当前项目的标识，跳转到新前缀以刷新 UI
+    if (newKey !== key && key === (window.__PROJECT__ || '')) {
+      location.href = location.origin + '/' + (r.key || newKey) + '/';
+      return;
+    }
+    await renderProjects();
+    loadAll();
+  } catch (e) { toast('重命名失败：' + e.message, 'err'); }
+}
+
 let folderTarget = null;
 let folderPath = '';
 let folderParent = null;
@@ -1344,12 +1688,157 @@ function dirPickerChoose() {
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+// ---------- 服务器管理：接口管理 ----------
+function renderApiTable() {
+  const body = $('apisBody');
+  if (!state.apiList || !state.apiList.length) { body.innerHTML = '<tr><td colspan="6" class="empty">无接口数据</td></tr>'; return; }
+  body.innerHTML = state.apiList.map(e => {
+    const on = state.apisToggles[e.id] !== undefined ? state.apisToggles[e.id] : e.enabled;
+    return `<tr>
+      <td><label class="switch"><input type="checkbox" ${on ? 'checked' : ''} onchange="onApiToggle('${esc(e.id)}', this.checked)"><span class="track"></span></label></td>
+      <td><code>${esc(e.method)}</code></td>
+      <td><code>${esc(e.path)}</code></td>
+      <td>${esc(e.name)}</td>
+      <td>${e.scope === 'client' ? '客户端' : '管理端'}</td>
+      <td class="muted">${esc(e.desc)}</td>
+    </tr>`;
+  }).join('');
+}
+async function loadApis() {
+  try {
+    const data = await api('/api/server/apis');
+    state.apiList = data.endpoints || [];
+    state.apisToggles = {};
+    renderApiTable();
+    $('apisMsg').textContent = '';
+  } catch (e) { $('apisMsg').textContent = '加载失败：' + e.message; }
+}
+function onApiToggle(id, val) { state.apisToggles[id] = val; }
+function setAllApis(val) { (state.apiList || []).forEach(e => { state.apisToggles[e.id] = val; }); renderApiTable(); }
+async function saveApis() {
+  const toggles = {};
+  (state.apiList || []).forEach(e => { toggles[e.id] = state.apisToggles[e.id] !== undefined ? state.apisToggles[e.id] : e.enabled; });
+  try {
+    const r = await api('/api/server/apis', { method: 'POST', headers: headers(true), body: JSON.stringify({ toggles }) });
+    state.apisToggles = {};
+    state.apiList = r.endpoints || state.apiList;
+    renderApiTable();
+    $('apisMsg').textContent = '已保存';
+    toast('接口启停已保存', 'ok');
+  } catch (e) { $('apisMsg').textContent = '保存失败：' + e.message; toast('保存失败：' + e.message, 'err'); }
+}
+
+// ---------- 服务器管理：证书管理 ----------
+async function loadCert() {
+  try {
+    const data = await api('/api/server/cert');
+    const c = data.cert || {};
+    $('certStatus').textContent = '当前状态：' + (c.enabled ? ('HTTPS 已启用（' + (c.mode === 'selfsigned' ? '自签名' : '自定义证书') + '）') : 'HTTP（未启用 HTTPS）');
+    const rows = [
+      ['证书文件', c.certFile || '-'], ['私钥文件', c.keyFile || '-'],
+      ['Common Name', c.commonName || '-'], ['颁发者', c.issuer || '-'],
+      ['有效期至', c.notAfter || '-'], ['剩余天数', c.daysLeft != null ? (c.daysLeft + ' 天') : '-'],
+    ];
+    $('certDetail').innerHTML = rows.map(([k, v]) => `<div><div class="muted" style="font-size:12px">${k}</div><div style="font-size:13px;word-break:break-all">${esc(v)}</div></div>`).join('');
+  } catch (e) { $('certStatus').textContent = '加载失败：' + e.message; }
+}
+async function certAction(action) {
+  try {
+    const body = { action };
+    if (action === 'regenerate') { body.commonName = $('certCn').value.trim() || 'CloudUpdate'; body.country = $('certCountry').value.trim() || 'CN'; }
+    if (action === 'setCustom') { body.certFile = $('certFile').value.trim(); body.keyFile = $('certKey').value.trim(); }
+    const r = await api('/api/server/cert', { method: 'POST', headers: headers(true), body: JSON.stringify(body) });
+    toast(r.message || '证书操作成功', 'ok');
+    await loadCert();
+  } catch (e) { toast('证书操作失败：' + e.message, 'err'); }
+}
+
+// ---------- 服务器管理：访问格式管理 ----------
+async function loadAccess() {
+  try {
+    const data = await api('/api/server/access');
+    const a = data.access || {};
+    $('accPrefix').value = a.prefixPattern || '/{key}/';
+    $('accRoot').value = a.rootBehavior || 'redirect';
+    $('accReserved').value = (a.reservedPrefixes || []).join(', ');
+  } catch (e) { toast('访问格式加载失败：' + e.message, 'err'); }
+}
+async function saveAccess() {
+  const reserved = $('accReserved').value.split(',').map(s => s.trim()).filter(Boolean);
+  try {
+    const r = await api('/api/server/access', { method: 'POST', headers: headers(true),
+      body: JSON.stringify({ prefixPattern: $('accPrefix').value.trim(), rootBehavior: $('accRoot').value, reservedPrefixes: reserved }) });
+    toast(r.message || '访问格式已保存', 'ok');
+    await loadAccess();
+  } catch (e) { toast('保存失败：' + e.message, 'err'); }
+}
+
 $('tokenInput').value = state.token;
+switchTab('overview');
 loadAll();
 setInterval(loadAll, 30000);
 setInterval(() => {
   if (state.uptimeAt) $('ctlUptime').textContent = fmtUptime(state.uptimeBase + Math.floor((Date.now() - state.uptimeAt) / 1000));
 }, 1000);
 </script>
+<!-- 新建项目弹窗 -->
+<div class="modal-mask" id="projModalMask" onclick="if(event.target===this)closeProjModal()">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head">
+      <h3>新建项目</h3>
+      <button class="ghost small" onclick="closeProjModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>项目标识（访问地址用）</label>
+        <input id="npKey" placeholder="如 cc、game2" autocomplete="off" oninput="document.getElementById('npUrlPreview').textContent='/'+(this.value||'<标识>')+'/'">
+        <div class="hint">仅限字母、数字、下划线。创建后访问地址为 <code id="npUrlPreview">/&lt;标识&gt;/</code></div>
+      </div>
+      <div class="field">
+        <label>显示名称</label>
+        <input id="npDisplay" placeholder="如 CC项目、测试服" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>模板项目（复制其配置与启动器资源）</label>
+        <select id="npCopyFrom"></select>
+        <div class="hint">新建项目将复制该项目的设置，并拥有独立的项目空间（数据目录隔离）。</div>
+      </div>
+      <div class="btn-row" style="justify-content:flex-end;margin-top:6px">
+        <button class="ghost" onclick="closeProjModal()">取消</button>
+        <button class="green" onclick="submitCreateProject()">创建项目</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 重命名项目弹窗 -->
+<div class="modal-mask" id="renameModalMask" onclick="if(event.target===this)closeRenameModal()">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head">
+      <h3>重命名项目空间</h3>
+      <button class="ghost small" onclick="closeRenameModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>当前标识</label>
+        <input id="rnKey" readonly disabled autocomplete="off">
+      </div>
+      <div class="field">
+        <label>新标识（访问地址用，改后目录一并迁移）</label>
+        <input id="rnNewKey" placeholder="如 codebuild、game2" autocomplete="off">
+        <div class="hint">仅限字母、数字、下划线，且不能与保留前缀（api/web/files）或其它项目冲突。默认项目的标识改名后其数据目录仍在服务器根（不迁移）。</div>
+      </div>
+      <div class="field">
+        <label>显示名称</label>
+        <input id="rnDisplay" placeholder="如 CodeBuild、测试服" autocomplete="off">
+      </div>
+      <div class="btn-row" style="justify-content:flex-end;margin-top:6px">
+        <button class="ghost" onclick="closeRenameModal()">取消</button>
+        <button class="green" onclick="submitRenameProject()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

@@ -29,6 +29,9 @@
   "max_upload_mb": 2048,
   "hotpatcher_source": "D:\\test\\CodeBuild\\Saved\\HotPatcher",
   "hotpatcher_order": "1.0,1.2,1.3,1.4",
+  "game_asset_prefixes": [
+    "/Game/"
+  ],
   "enabled_versions": {
     "Windows": [
       "1.0",
@@ -39,5 +42,24 @@
   "launcher_versions": {
     "1.0.0": "E:\\SVN\\LauncherServerPlugin\\Server\\data\\launcher"
   },
-  "background_dir": "../Luncher/Background"
+  "background_dir": "../Luncher/Background",
+  "api_endpoints": {
+    "versions": true
+  },
+  "https": {
+    "enabled": false,
+    "certFile": "E:\\SVN\\LauncherServerPlugin\\Server\\data\\ssl\\server.crt",
+    "keyFile": "E:\\SVN\\LauncherServerPlugin\\Server\\data\\ssl\\server.key",
+    "autoGenSelfSigned": true,
+    "country": "CN",
+    "commonName": "CodeBuild"
+  },
+  "access": {
+    "rootBehavior": "redirect",
+    "reservedPrefixes": [
+      "api",
+      "web",
+      "files"
+    ]
+  }
 }

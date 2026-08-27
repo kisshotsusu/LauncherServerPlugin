@@ -1,0 +1,72 @@
+============================================================
+CloudUpdate 管理服务器已启动
+  ★ 网页管理控制台 : http://127.0.0.1:8710/
+    （把上面这个地址复制到浏览器打开即可管理）
+  状态接口 : http://127.0.0.1:8710/api/status
+  监听地址 : http://0.0.0.0:8710
+  存储后端 : 本地磁盘
+  项目     : CodeBuild  platforms: Windows
+  配置文件 : E:\SVN\LauncherServerPlugin\Server\config.json
+  数据目录 : E:\SVN\LauncherServerPlugin\Server\data
+  按 Ctrl+C 停止
+============================================================
+[16:34:52] "GET /api/status HTTP/1.1" 200 -
+[16:35:07] "GET / HTTP/1.1" 200 -
+[16:35:08] "GET /api/projects HTTP/1.1" 200 -
+[16:35:09] "POST /api/projects HTTP/1.1" 400 -
+[16:35:09] "GET /cc/api/status HTTP/1.1" 200 -
+[16:35:10] "GET /cc/ HTTP/1.1" 200 -
+[16:35:11] "POST /api/projects/default HTTP/1.1" 200 -
+[16:35:11] "POST /api/projects/default HTTP/1.1" 200 -
+[16:35:13] "DELETE /api/projects/cc?cleanup=1 HTTP/1.1" 200 -
+[16:35:14] "GET /api/status HTTP/1.1" 200 -
+[16:35:31] "GET / HTTP/1.1" 200 -
+[16:37:46] "GET /api/config HTTP/1.1" 200 -
+[16:37:46] "GET /api/versions?all=1 HTTP/1.1" 200 -
+[16:37:46] "GET /api/status HTTP/1.1" 200 -
+[16:37:46] "GET /api/launcher/version HTTP/1.1" 404 -
+[16:37:46] "GET /api/launcher/versions HTTP/1.1" 200 -
+[16:37:46] "GET /api/launcher/background HTTP/1.1" 200 -
+[16:37:46] "GET /api/files?platform=Windows&baseVersion=1.5.3&path= HTTP/1.1" 200 -
+[16:37:48] "GET /api/versions?all=1 HTTP/1.1" 200 -
+[16:37:48] "GET /api/config HTTP/1.1" 200 -
+[16:37:48] "GET /api/status HTTP/1.1" 200 -
+[16:37:48] "GET /api/launcher/version HTTP/1.1" 404 -
+[16:37:48] "GET /api/launcher/versions HTTP/1.1" 200 -
+[16:37:48] "GET /api/launcher/background HTTP/1.1" 200 -
+[16:37:48] "GET /api/files?platform=Windows&baseVersion=1.5.3&path= HTTP/1.1" 200 -
+[16:37:48] "GET /api/config HTTP/1.1" 200 -
+[16:37:48] "GET /api/versions?all=1 HTTP/1.1" 200 -
+[16:37:48] "GET /api/status HTTP/1.1" 200 -
+[16:37:48] "GET /api/launcher/version HTTP/1.1" 404 -
+[16:37:48] "GET /api/launcher/versions HTTP/1.1" 200 -
+[16:37:48] "GET /api/launcher/background HTTP/1.1" 200 -
+[16:37:48] "GET /api/files?platform=Windows&baseVersion=1.5.3&path= HTTP/1.1" 200 -
+[16:37:54] "GET /api/config HTTP/1.1" 200 -
+[16:37:54] "GET /api/versions?all=1 HTTP/1.1" 200 -
+[16:37:54] "GET /api/status HTTP/1.1" 200 -
+[16:37:54] "GET /api/launcher/version HTTP/1.1" 404 -
+[16:37:54] "GET /api/launcher/versions HTTP/1.1" 200 -
+[16:37:54] "GET /api/launcher/background HTTP/1.1" 200 -
+[16:37:54] "GET /api/files?platform=Windows&baseVersion=1.5.3&path= HTTP/1.1" 200 -
+[16:38:24] "GET /api/config HTTP/1.1" 200 -
+[16:38:24] "GET /api/versions?all=1 HTTP/1.1" 200 -
+[16:38:24] "GET /api/status HTTP/1.1" 200 -
+[16:38:24] "GET /api/launcher/version HTTP/1.1" 404 -
+[16:38:24] "GET /api/launcher/versions HTTP/1.1" 200 -
+[16:38:24] "GET /api/launcher/background HTTP/1.1" 200 -
+[16:38:24] "GET /api/files?platform=Windows&baseVersion=1.5.3&path= HTTP/1.1" 200 -
+[16:39:31] "GET /api/config HTTP/1.1" 200 -
+[16:39:31] "GET /api/versions?all=1 HTTP/1.1" 200 -
+[16:39:31] "GET /api/status HTTP/1.1" 200 -
+[16:39:31] "GET /api/launcher/version HTTP/1.1" 404 -
+[16:39:31] "GET /api/launcher/versions HTTP/1.1" 200 -
+[16:39:31] "GET /api/launcher/background HTTP/1.1" 200 -
+[16:39:31] "GET /api/files?platform=Windows&baseVersion=1.5.3&path= HTTP/1.1" 200 -
+[16:40:31] "GET /api/config HTTP/1.1" 200 -
+[16:40:31] "GET /api/versions?all=1 HTTP/1.1" 200 -
+[16:40:31] "GET /api/status HTTP/1.1" 200 -
+[16:40:31] "GET /api/launcher/version HTTP/1.1" 404 -
+[16:40:31] "GET /api/launcher/versions HTTP/1.1" 200 -
+[16:40:31] "GET /api/launcher/background HTTP/1.1" 200 -
+[16:40:31] "GET /api/files?platform=Windows&baseVersion=1.5.3&path= HTTP/1.1" 200 -

@@ -29,6 +29,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Compiling resources (Launcher.rc) ...
+rc /nologo Launcher.rc
+if errorlevel 1 (
+    echo [ERROR] Resource compile (Launcher.rc) failed.
+    pause
+    exit /b 1
+)
+
 echo Building Launcher.exe ...
 cl /nologo /std:c++17 /O2 /utf-8 /EHsc /W3 /DUNICODE /D_UNICODE ^
     /I third_party\webview2\include ^
@@ -36,7 +44,7 @@ cl /nologo /std:c++17 /O2 /utf-8 /EHsc /W3 /DUNICODE /D_UNICODE ^
     /Fe:Launcher.exe ^
     /link user32.lib gdi32.lib gdiplus.lib winhttp.lib advapi32.lib shell32.lib ole32.lib ^
     shlwapi.lib comctl32.lib dwmapi.lib third_party\webview2\lib\x64\WebView2LoaderStatic.lib ^
-    /SUBSYSTEM:WINDOWS
+    Launcher.res /SUBSYSTEM:WINDOWS
 if errorlevel 1 (
     echo [ERROR] Launcher build failed.
     pause

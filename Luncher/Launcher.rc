@@ -1,0 +1,6 @@
+#include "resource.h"
+#include <winver.h>
+
+// 启动器应用图标：编译进 exe，Explorer 文件图标与窗口标题栏均使用
+// 资源路径相对 Launcher.rc 所在目录（项目根）
+IDI_ICON1 ICON "ui/launcher.ico"

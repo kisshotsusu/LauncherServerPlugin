@@ -36,7 +36,13 @@ def version_id_from_base_path(path):
     return m.group(1) if m else ""
 
 
-def count_asset_map(diff_obj):
+# 仅把这些前缀下的资产视为“游戏内容”的变更/删除；其余（/Engine/ 及 ControlRig/Niagara 等
+# 引擎插件内置资产）属于不变更的内置内容——HotPatcher 的资产注册表 diff 会把它们误报为“删除”
+# （实际并未改动，只是未重新写进补丁），故应排除，避免把 3000+ 内置资产错显成“删除”。
+DEFAULT_GAME_ASSET_PREFIXES = ("/Game/",)
+
+
+def count_asset_map(diff_obj, keep_prefixes=DEFAULT_GAME_ASSET_PREFIXES):
     if not diff_obj:
         return 0
     modules = diff_obj.get("assetsDependenciesMap", {})
@@ -44,16 +50,19 @@ def count_asset_map(diff_obj):
     for module in modules.values():
         if isinstance(module, dict):
             total += len(module.get("assetDependencyDetails", {}) or {})
+                if keep_prefixes and not any(name.startswith(p) for p in keep_prefixes):
+                    continue
+                total += 1
     return total
 
 
-def parse_diff_counts(diff):
+def parse_diff_counts(diff, game_prefixes=DEFAULT_GAME_ASSET_PREFIXES):
     if not diff:
         return 0, 0
     asset_diff = diff.get("assetDiffInfo", {})
-    add = count_asset_map(asset_diff.get("addAssetDependInfo", {}))
-    modify = count_asset_map(asset_diff.get("modifyAssetDependInfo", {}))
-    delete = count_asset_map(asset_diff.get("deleteAssetDependInfo", {}))
+    add = count_asset_map(asset_diff.get("addAssetDependInfo", {}), game_prefixes)
+    modify = count_asset_map(asset_diff.get("modifyAssetDependInfo", {}), game_prefixes)
+    delete = count_asset_map(asset_diff.get("deleteAssetDependInfo", {}), game_prefixes)
     return add + modify, delete
 
 
@@ -200,7 +209,11 @@ def import_version(source_dir, dest_versions_dir, version_id, platform, package_
             diff = read_json(os.path.join(dest, name))
             if diff:
                 break
-    changed, deleted = parse_diff_counts(diff)
+    # 仅统计游戏内容资产（排除 /Engine/ 等内置资产被 HotPatcher 误报为“删除”）
+    game_prefixes = tuple(
+        (load_config() or {}).get("game_asset_prefixes") or list(DEFAULT_GAME_ASSET_PREFIXES)
+    )
+    changed, deleted = parse_diff_counts(diff, game_prefixes)
 
     descriptor = {
         "schemaVersion": 1,

@@ -6,6 +6,6 @@
   "gamePath": "D:\\test\\DownLoadTest",
   "launcherVersion": "1.0.0",
   "platform": "Windows",
-  "serverUrl": "http://127.0.0.1:8710",
+  "serverUrl": "http://127.0.0.1:8710/codebuild",
   "speedLimitKBps": 0
 }

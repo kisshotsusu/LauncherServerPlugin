@@ -4,6 +4,7 @@
 
 #include "App.h"
 
+#include "../resource.h"
 #include "Json.h"
 #include "Network.h"
 
@@ -187,9 +188,15 @@ bool App::init(HINSTANCE hInstance) {
     }
     updater_ = std::make_unique<UpdateManager>(cfg_);
 
-    std::wstring iconPath = u8w(joinPath(joinPath(exeDirectory(), "ui"), "launcher.ico"));
-    iconBig_ = static_cast<HICON>(LoadImageW(nullptr, iconPath.c_str(), IMAGE_ICON, 64, 64, LR_LOADFROMFILE));
-    iconSmall_ = static_cast<HICON>(LoadImageW(nullptr, iconPath.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
+    // 优先使用内嵌资源图标（已编译进 exe，单文件首运行即可见），
+    // 内嵌资源缺失时回退到 ui/launcher.ico 文件
+    iconBig_ = static_cast<HICON>(LoadImageW(hInst_, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 64, 64, LR_SHARED));
+    iconSmall_ = static_cast<HICON>(LoadImageW(hInst_, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 16, 16, LR_SHARED));
+    if (!iconBig_ || !iconSmall_) {
+        std::wstring iconPath = u8w(joinPath(joinPath(exeDirectory(), "ui"), "launcher.ico"));
+        if (!iconBig_) iconBig_ = static_cast<HICON>(LoadImageW(nullptr, iconPath.c_str(), IMAGE_ICON, 64, 64, LR_LOADFROMFILE));
+        if (!iconSmall_) iconSmall_ = static_cast<HICON>(LoadImageW(nullptr, iconPath.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
+    }
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WndProc;
