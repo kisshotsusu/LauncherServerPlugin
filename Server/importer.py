@@ -49,7 +49,7 @@ def count_asset_map(diff_obj, keep_prefixes=DEFAULT_GAME_ASSET_PREFIXES):
     total = 0
     for module in modules.values():
         if isinstance(module, dict):
-            total += len(module.get("assetDependencyDetails", {}) or {})
+            for name in (module.get("assetDependencyDetails") or {}):
                 if keep_prefixes and not any(name.startswith(p) for p in keep_prefixes):
                     continue
                 total += 1
