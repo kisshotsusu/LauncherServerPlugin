@@ -90,6 +90,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void SetServerUrl(const FString& InUrl);
 
+	/** 读取访问令牌（与项目设置中的「访问令牌」一致） */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate")
+	FString GetServerToken() const;
+
+	/** 运行时修改访问令牌并保存到配置 */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
+	void SetServerToken(const FString& InToken);
+
 	// ---------- 二进制补丁合并（蓝图控制） ----------
 
 	/** 运行时是否有可用的二进制补丁实现（HDiffPatch 已注册）。UI 可据此判断能否走增量更新 */

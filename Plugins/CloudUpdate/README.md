@@ -35,6 +35,8 @@ Plugins/CloudUpdate/
 | 配置项 | 说明 |
 | --- | --- |
 | 服务器地址 | 管理服务器地址，默认 `http://127.0.0.1:8710` |
+| 访问令牌 | 可选；非空时随所有请求发送 `Authorization: Bearer <token>`，用于需要鉴权的服务器 |
+| 自定义请求头 | 可选；键值对数组，随所有请求附加，适合 API 网关 / 鉴权等场景 |
 | 项目名 | 与 `Server/config.json` 的 `project` 一致，默认 CodeBuild |
 | 平台 | Windows |
 | HotPatcher JSON 直连根地址 | 可选。留空走管理服务器 `/api/version/{id}`；填写后客户端直接按 `{根}/{版本}/{版本}_PatchConfig.json` 与 `_PakFilesInfo.json` 解析 |

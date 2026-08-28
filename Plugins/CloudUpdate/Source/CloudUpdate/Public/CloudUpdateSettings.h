@@ -4,6 +4,19 @@
 #include "Engine/DeveloperSettings.h"
 #include "CloudUpdateSettings.generated.h"
 
+/** 随所有 HTTP 请求附加的自定义请求头（键值对） */
+USTRUCT(BlueprintType)
+struct FCloudUpdateHttpHeader
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CloudUpdate")
+	FString Key;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CloudUpdate")
+	FString Value;
+};
+
 /**
  * CloudUpdate 运行时设置
  * 可在 项目设置 -> Cloud Update (云更新) 中配置
@@ -44,6 +57,14 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "HotPatcher JSON 直连根地址（可选）"))
 	FString HotPatcherBaseUrl;
+
+	/** 访问令牌（可选）：非空时以 Authorization: Bearer <token> 形式随所有请求发送，供需要鉴权的服务器使用 */
+	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "访问令牌（可选，Bearer）"))
+	FString ServerToken;
+
+	/** 自定义 HTTP 请求头（可选）：随所有请求附加，适合 API 网关 / 鉴权等场景 */
+	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "自定义请求头（可选）"))
+	TArray<FCloudUpdateHttpHeader> CustomHeaders;
 
 	/** 本地安装根目录覆盖，留空时自动判断（打包版为 FPaths::RootDir） */
 	UPROPERTY(EditAnywhere, config, Category = "本地", meta = (DisplayName = "本地安装根目录覆盖（可选）"))

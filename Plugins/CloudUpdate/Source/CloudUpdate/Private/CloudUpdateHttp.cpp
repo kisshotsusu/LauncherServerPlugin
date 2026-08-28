@@ -37,6 +37,20 @@ void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, c
 	Request->SetHeader(TEXT("Accept"), TEXT("application/json"));
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
 	Request->SetTimeout(Settings ? Settings->HttpTimeoutSeconds : 60);
+	if (Settings)
+	{
+		if (!Settings->ServerToken.IsEmpty())
+		{
+			Request->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *Settings->ServerToken));
+		}
+		for (const FCloudUpdateHttpHeader& H : Settings->CustomHeaders)
+		{
+			if (!H.Key.IsEmpty())
+			{
+				Request->SetHeader(H.Key, H.Value);
+			}
+		}
+	}
 	Request->OnProcessRequestComplete().BindLambda([InCallback](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
 	{
 		TSharedPtr<FJsonObject> Json;
@@ -73,6 +87,20 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 	Request->SetURL(InUrl);
 	Request->SetVerb(TEXT("GET"));
+	if (Settings)
+	{
+		if (!Settings->ServerToken.IsEmpty())
+		{
+			Request->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *Settings->ServerToken));
+		}
+		for (const FCloudUpdateHttpHeader& H : Settings->CustomHeaders)
+		{
+			if (!H.Key.IsEmpty())
+			{
+				Request->SetHeader(H.Key, H.Value);
+			}
+		}
+	}
 	Request->SetTimeout(Settings ? Settings->HttpTimeoutSeconds : 60);
 	if (InProgress)
 	{

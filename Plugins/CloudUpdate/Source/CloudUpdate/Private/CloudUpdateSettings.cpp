@@ -6,6 +6,7 @@ UCloudUpdateSettings::UCloudUpdateSettings()
 	ProjectName = TEXT("CodeBuild");
 	Platform = TEXT("Windows");
 	HotPatcherBaseUrl = TEXT("");
+	ServerToken = TEXT("");
 	LocalRootOverride = TEXT("");
 	CurrentVersionId = TEXT("1.0");
 	bAutoCheckUpdateOnStart = false;

@@ -142,6 +142,22 @@ void UCloudUpdateSubsystem::SetServerUrl(const FString& InUrl)
 	}
 }
 
+FString UCloudUpdateSubsystem::GetServerToken() const
+{
+	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+	return Settings ? Settings->ServerToken : FString();
+}
+
+void UCloudUpdateSubsystem::SetServerToken(const FString& InToken)
+{
+	if (UCloudUpdateSettings* Settings = GetMutableDefault<UCloudUpdateSettings>())
+	{
+		Settings->ServerToken = InToken;
+		Settings->SaveConfig();
+		UE_LOG(LogCloudUpdate, Log, TEXT("访问令牌已更新（已写入配置）"));
+	}
+}
+
 bool UCloudUpdateSubsystem::IsBinaryMergeAvailable() const
 {
 	return FCloudBinaryMerge::IsHDiffPatchAvailable();
