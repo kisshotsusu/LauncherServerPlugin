@@ -1,0 +1,2161 @@
+{
+	"versionId": "1.5.1",
+	"baseVersionId": "",
+	"date": "2026.08.26-07.38.03",
+	"assetInfo":
+	{
+		"assetsDependenciesMap":
+		{
+			"Game":
+			{
+				"moduleCategory": "Game",
+				"assetDependencyDetails":
+				{
+					"/Game/GI_Test":
+					{
+						"packagePath": "/Game/GI_Test.GI_Test",
+						"assetType": "Blueprint",
+						"guid": "7c69133ccde745f09e61a7d9346616a3"
+					},
+					"/Game/Characters/Mannequins/Anims/Death/MM_Death_Back_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Death/MM_Death_Back_01.MM_Death_Back_01",
+						"assetType": "AnimSequence",
+						"guid": "90fc540af072d4ea034fa1ec22e16883"
+					},
+					"/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_01.MM_Death_Front_01",
+						"assetType": "AnimSequence",
+						"guid": "8c5a038736c18a684fdd87a1cb493d43"
+					},
+					"/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_02":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_02.MM_Death_Front_02",
+						"assetType": "AnimSequence",
+						"guid": "acb750af47e4c4ed12a427d1025aad5e"
+					},
+					"/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_03":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_03.MM_Death_Front_03",
+						"assetType": "AnimSequence",
+						"guid": "253f1c08b0a84bdccee32c25fcacd6ff"
+					},
+					"/Game/Characters/Mannequins/Anims/Death/MM_Death_Left_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Death/MM_Death_Left_01.MM_Death_Left_01",
+						"assetType": "AnimSequence",
+						"guid": "660c1b8801372e260614adb83df81030"
+					},
+					"/Game/Characters/Mannequins/Anims/Death/MM_Death_Right_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Death/MM_Death_Right_01.MM_Death_Right_01",
+						"assetType": "AnimSequence",
+						"guid": "4ff1e2a50ed657086a419fa253d67efa"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/MF_Pistol_Idle_ADS":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/MF_Pistol_Idle_ADS.MF_Pistol_Idle_ADS",
+						"assetType": "AnimSequence",
+						"guid": "1e18ec55b90b76374d98f35f7dc03124"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_DryFire":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_DryFire.MM_Pistol_DryFire",
+						"assetType": "AnimSequence",
+						"guid": "e6819c3564967593cc537804e2ebba2a"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Equip":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Equip.MM_Pistol_Equip",
+						"assetType": "AnimSequence",
+						"guid": "938ccb9eb0b69a0babd010cc0292114b"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Fire":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Fire.MM_Pistol_Fire",
+						"assetType": "AnimSequence",
+						"guid": "5afd0bb1e27ec191c0eb6dd6aeebe3ee"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Fire_Montage":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Fire_Montage.MM_Pistol_Fire_Montage",
+						"assetType": "AnimMontage",
+						"guid": "780f53158124c1175ddd598c7e941b15"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Reload":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Reload.MM_Pistol_Reload",
+						"assetType": "AnimSequence",
+						"guid": "4551d0b7146dee31a64b222891bc9e68"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Aim/AO_Pistol":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Aim/AO_Pistol.AO_Pistol",
+						"assetType": "AimOffsetBlendSpace",
+						"guid": "587689a01dfdf81f965be88e7ce5bff4"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Aim/MF_Pistol_Idle_ADS1":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Aim/MF_Pistol_Idle_ADS1.MF_Pistol_Idle_ADS1",
+						"assetType": "AnimSequence",
+						"guid": "76d84a4a28ad359c95161413f839893e"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Aim/MF_Pistol_Idle_ADS_AO_CD":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Aim/MF_Pistol_Idle_ADS_AO_CD.MF_Pistol_Idle_ADS_AO_CD",
+						"assetType": "AnimSequence",
+						"guid": "f5a41fb793287245de0483eaaedc0b3e"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Aim/MF_Pistol_Idle_ADS_AO_CU":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Aim/MF_Pistol_Idle_ADS_AO_CU.MF_Pistol_Idle_ADS_AO_CU",
+						"assetType": "AnimSequence",
+						"guid": "198b9783ac8dd28879b75a6873310d41"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Bwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Bwd.MF_Pistol_Jog_Bwd",
+						"assetType": "AnimSequence",
+						"guid": "84090b03e27eb20bc7735eea16372da5"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Bwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Bwd_Left.MF_Pistol_Jog_Bwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "c70dc66b604494dc60c125e7d85307f7"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Bwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Bwd_Right.MF_Pistol_Jog_Bwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "3a2e5f307a3fe632fb522a6d27cfcd07"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Fwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Fwd.MF_Pistol_Jog_Fwd",
+						"assetType": "AnimSequence",
+						"guid": "0eb4fd46d9529ebd50d123c14c312ebb"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Fwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Fwd_Left.MF_Pistol_Jog_Fwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "20cfc70ea69c6c56d38d938cbd430674"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Fwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Fwd_Right.MF_Pistol_Jog_Fwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "4235249444f4e81aedd117d08d6e04f5"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Left.MF_Pistol_Jog_Left",
+						"assetType": "AnimSequence",
+						"guid": "62af1218751480df3aba5d277eb7ccbc"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jog/MF_Pistol_Jog_Right.MF_Pistol_Jog_Right",
+						"assetType": "AnimSequence",
+						"guid": "f8da761f021f5b5ec3cd067e28235e23"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jump/MM_Pistol_Jump_Fall_Loop":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jump/MM_Pistol_Jump_Fall_Loop.MM_Pistol_Jump_Fall_Loop",
+						"assetType": "AnimSequence",
+						"guid": "2d804ce63f1d9c67f1e7abf70494e456"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jump/MM_Pistol_Jump_RecoveryAdditive":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jump/MM_Pistol_Jump_RecoveryAdditive.MM_Pistol_Jump_RecoveryAdditive",
+						"assetType": "AnimSequence",
+						"guid": "c2bcd36e841f17ae4f1ac915d5a9cfe4"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Jump/MM_Pistol_Jump_Start":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Jump/MM_Pistol_Jump_Start.MM_Pistol_Jump_Start",
+						"assetType": "AnimSequence",
+						"guid": "f5a9379edd3d1b66246f43ad20bc9b7a"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Bwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Bwd.MF_Pistol_Walk_Bwd",
+						"assetType": "AnimSequence",
+						"guid": "ed6f6a7ce73e1ca668b78ae517fc212f"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Bwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Bwd_Left.MF_Pistol_Walk_Bwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "90ccd0039c5a2cb080b443a767124657"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Bwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Bwd_Right.MF_Pistol_Walk_Bwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "753aa487a8fa0ef31453dc47e8a0eb81"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Fwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Fwd.MF_Pistol_Walk_Fwd",
+						"assetType": "AnimSequence",
+						"guid": "b24ee4a4247b7b3194bb252149046926"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Fwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Fwd_Left.MF_Pistol_Walk_Fwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "f657d5713ef8bc58cb9084a93c311d0e"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Fwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Fwd_Right.MF_Pistol_Walk_Fwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "8c67ed32f84904517b374603dfafbde5"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Left.MF_Pistol_Walk_Left",
+						"assetType": "AnimSequence",
+						"guid": "8c64757261e165edf277dffd14e1bc1f"
+					},
+					"/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Pistol/Walk/MF_Pistol_Walk_Right.MF_Pistol_Walk_Right",
+						"assetType": "AnimSequence",
+						"guid": "966b5fdd98eb0eac3e7e498168aaa6fe"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/MF_Rifle_Idle_ADS":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/MF_Rifle_Idle_ADS.MF_Rifle_Idle_ADS",
+						"assetType": "AnimSequence",
+						"guid": "02d11f771ebb111a8a1971cc40c8a788"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_DryFire":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_DryFire.MM_Rifle_DryFire",
+						"assetType": "AnimSequence",
+						"guid": "dab8e1603824fbccb6fca32b3d4d62d6"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Equip":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Equip.MM_Rifle_Equip",
+						"assetType": "AnimSequence",
+						"guid": "c529b49342eae67d41b9296a7fb383c7"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Fire":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Fire.MM_Rifle_Fire",
+						"assetType": "AnimSequence",
+						"guid": "1488bd06a1c285d104a81eeba2628d3f"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Reload":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Reload.MM_Rifle_Reload",
+						"assetType": "AnimSequence",
+						"guid": "1fe13cf8a65cc1ee91a8039eed873033"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/AIM/AO_Rifle":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/AIM/AO_Rifle.AO_Rifle",
+						"assetType": "AimOffsetBlendSpace",
+						"guid": "cdb0311e42595cf1519932eb5de59b61"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/AIM/MM_Rifle_Idle_ADS_AO_CC":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/AIM/MM_Rifle_Idle_ADS_AO_CC.MM_Rifle_Idle_ADS_AO_CC",
+						"assetType": "AnimSequence",
+						"guid": "b12d5217e458cb934e78d4eb5af93c4f"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/AIM/MM_Rifle_Idle_ADS_AO_CD":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/AIM/MM_Rifle_Idle_ADS_AO_CD.MM_Rifle_Idle_ADS_AO_CD",
+						"assetType": "AnimSequence",
+						"guid": "d3953c86665e874f2ccd643883037e65"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/AIM/MM_Rifle_Idle_ADS_AO_CU":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/AIM/MM_Rifle_Idle_ADS_AO_CU.MM_Rifle_Idle_ADS_AO_CU",
+						"assetType": "AnimSequence",
+						"guid": "f1536b59c850d9c495f5ccfe5b009b7d"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Back_Med_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Back_Med_01.MM_HitReact_Back_Med_01",
+						"assetType": "AnimSequence",
+						"guid": "a1571b5d2090601a2026e9f258eeab6b"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Hvy_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Hvy_01.MM_HitReact_Front_Hvy_01",
+						"assetType": "AnimSequence",
+						"guid": "a099a8d8630458f08dfc917eaca6c978"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_01.MM_HitReact_Front_Lgt_01",
+						"assetType": "AnimSequence",
+						"guid": "b396a4a09b003f1d50334c42b9436d01"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_02":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_02.MM_HitReact_Front_Lgt_02",
+						"assetType": "AnimSequence",
+						"guid": "c51cc8c42adaa79e55ea3a8621b686d6"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_03":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_03.MM_HitReact_Front_Lgt_03",
+						"assetType": "AnimSequence",
+						"guid": "37f273fa74700e6ac93da88c3889576d"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_04":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_04.MM_HitReact_Front_Lgt_04",
+						"assetType": "AnimSequence",
+						"guid": "5920c5672b34283b270219a4cdf76a14"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Med_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Med_01.MM_HitReact_Front_Med_01",
+						"assetType": "AnimSequence",
+						"guid": "033926cf99cd9653697b71a0aad1fdab"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Med_02":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Med_02.MM_HitReact_Front_Med_02",
+						"assetType": "AnimSequence",
+						"guid": "a393a4042261025c3bf220f5cbaaaa6a"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd.MF_Rifle_Jog_Bwd",
+						"assetType": "AnimSequence",
+						"guid": "9891a8662c6b6d9e96790337b6a89b6d"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd_Left.MF_Rifle_Jog_Bwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "69a49838daeab40a9065bbc229ac7822"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd_Right.MF_Rifle_Jog_Bwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "86dcfb051f67242622a89c7df26a02b0"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd.MF_Rifle_Jog_Fwd",
+						"assetType": "AnimSequence",
+						"guid": "1f6f2bd580ca06586932e4787c6b6f02"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd_Left.MF_Rifle_Jog_Fwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "9ed7bc4457c07249568d40f7c337dbc2"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd_Right.MF_Rifle_Jog_Fwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "8deab3bca1d0a8039415fb81553a9bb9"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Left.MF_Rifle_Jog_Left",
+						"assetType": "AnimSequence",
+						"guid": "410b03957594e4a5bd9096deff3f92cd"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Right.MF_Rifle_Jog_Right",
+						"assetType": "AnimSequence",
+						"guid": "63d3f7fb038494d4b855715f87ec4381"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Apex":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Apex.MM_Rifle_Jump_Apex",
+						"assetType": "AnimSequence",
+						"guid": "05dba1f3128e95babb13929c638a88bc"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Fall_Land":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Fall_Land.MM_Rifle_Jump_Fall_Land",
+						"assetType": "AnimSequence",
+						"guid": "473b51b130a6ef9762038e2e020daacf"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Fall_Loop":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Fall_Loop.MM_Rifle_Jump_Fall_Loop",
+						"assetType": "AnimSequence",
+						"guid": "8db9859af4166495d1ce403458d92cfa"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_RecoveryAdditive":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_RecoveryAdditive.MM_Rifle_Jump_RecoveryAdditive",
+						"assetType": "AnimSequence",
+						"guid": "1122d2d389c2e82b17eaaab45c7ddd7f"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Start":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Start.MM_Rifle_Jump_Start",
+						"assetType": "AnimSequence",
+						"guid": "817802ea5109ab851876f2f10e7acf03"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Start_Loop":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Start_Loop.MM_Rifle_Jump_Start_Loop",
+						"assetType": "AnimSequence",
+						"guid": "c13cf111d5a072f2be08ee1deaa9da3a"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Bwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Bwd.MF_Rifle_Walk_Bwd",
+						"assetType": "AnimSequence",
+						"guid": "369068c520679b1ba42a0a1422bffa26"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Bwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Bwd_Left.MF_Rifle_Walk_Bwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "b311cc68b9a346e08463374fac26df4a"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Bwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Bwd_Right.MF_Rifle_Walk_Bwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "5732933965c8ac69f00626bc7b4c4dc5"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Fwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Fwd.MF_Rifle_Walk_Fwd",
+						"assetType": "AnimSequence",
+						"guid": "21b03a7a6ecb4d05b442a967ee73b573"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Fwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Fwd_Left.MF_Rifle_Walk_Fwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "c1974d88a2a37e6c3eb9ff96aa327035"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Fwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Fwd_Right.MF_Rifle_Walk_Fwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "228ea9eef8ad96448363a5abcc29a404"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Left.MF_Rifle_Walk_Left",
+						"assetType": "AnimSequence",
+						"guid": "137db44837d1533da2d5f63649b802ca"
+					},
+					"/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Rifle/Walk/MF_Rifle_Walk_Right.MF_Rifle_Walk_Right",
+						"assetType": "AnimSequence",
+						"guid": "73547e03b0f4f5756e865642eb0e5a59"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed.ABP_Unarmed",
+						"assetType": "AnimBlueprint",
+						"guid": "fa52ead2de1bf7b9b940daf68dd867c8"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/BS_Idle_Walk_Run":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/BS_Idle_Walk_Run.BS_Idle_Walk_Run",
+						"assetType": "BlendSpace",
+						"guid": "f941bd430fb50b6e758860d498673585"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/MM_Idle":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/MM_Idle.MM_Idle",
+						"assetType": "AnimSequence",
+						"guid": "f2d30b383c6163a85cdd6e221640926c"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_Attack_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_Attack_01.MM_Attack_01",
+						"assetType": "AnimSequence",
+						"guid": "73bac422625dbb8a0c852142025125e6"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_Attack_02":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_Attack_02.MM_Attack_02",
+						"assetType": "AnimSequence",
+						"guid": "715b111442c887a2ae75635b4129c164"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_Attack_03":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_Attack_03.MM_Attack_03",
+						"assetType": "AnimSequence",
+						"guid": "2bff1d5d79e47103b9bf0f3f6b30df18"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_ChargedAttack":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_ChargedAttack.MM_ChargedAttack",
+						"assetType": "AnimSequence",
+						"guid": "efc582185cb9b4c6a3f6c0ed542c9851"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Bwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Bwd.MF_Unarmed_Jog_Bwd",
+						"assetType": "AnimSequence",
+						"guid": "31feaa2763879309f68d4a53266dac61"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Bwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Bwd_Left.MF_Unarmed_Jog_Bwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "9247cc0210bd202a934b3ce3ccd5ae98"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Bwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Bwd_Right.MF_Unarmed_Jog_Bwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "a3fe5a5b442689431418af1dca9b3bb6"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Fwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Fwd.MF_Unarmed_Jog_Fwd",
+						"assetType": "AnimSequence",
+						"guid": "a776adbb6fc05a9bb889ba93d20bcb4f"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Fwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Fwd_Left.MF_Unarmed_Jog_Fwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "6086f9332a983a502b1331a64ce29dfa"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Fwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Fwd_Right.MF_Unarmed_Jog_Fwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "f7b6f0db5837667d86b801a03a9fa447"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Left.MF_Unarmed_Jog_Left",
+						"assetType": "AnimSequence",
+						"guid": "831997070f004acb47c5e2cd6d42cd71"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Right.MF_Unarmed_Jog_Right",
+						"assetType": "AnimSequence",
+						"guid": "8f8a47e6012d09c1cedbf1d6dfb68a65"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_Dash":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_Dash.MM_Dash",
+						"assetType": "AnimSequence",
+						"guid": "1e263c5b21e06e47fbc8f0a8460c2f88"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_Fall_Loop":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_Fall_Loop.MM_Fall_Loop",
+						"assetType": "AnimSequence",
+						"guid": "fa0c3503936e47692735f18175fd6eff"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_Jump":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_Jump.MM_Jump",
+						"assetType": "AnimSequence",
+						"guid": "277962161c854a1811a7b2c8e94674f6"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_Land":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_Land.MM_Land",
+						"assetType": "AnimSequence",
+						"guid": "4a14c73b64acf6cbbcd7e20407514c93"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_WallJump":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Jump/MM_WallJump.MM_WallJump",
+						"assetType": "AnimSequence",
+						"guid": "a443c73fade1dac24b372918dec037b4"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Bwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Bwd.MF_Unarmed_Walk_Bwd",
+						"assetType": "AnimSequence",
+						"guid": "7484abe5078f016a9506c1f7b8732d64"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Bwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Bwd_Left.MF_Unarmed_Walk_Bwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "964bfbd7d1b34e7dfc670fc791b96389"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Bwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Bwd_Right.MF_Unarmed_Walk_Bwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "ca4ece1dd67f0928e99710c148ea2191"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Fwd":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Fwd.MF_Unarmed_Walk_Fwd",
+						"assetType": "AnimSequence",
+						"guid": "f3b72fb85f299959d696f31ebe74cb27"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Fwd_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Fwd_Left.MF_Unarmed_Walk_Fwd_Left",
+						"assetType": "AnimSequence",
+						"guid": "c02fd1ed435b0bbfc8d8faa7d8454d6b"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Fwd_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Fwd_Right.MF_Unarmed_Walk_Fwd_Right",
+						"assetType": "AnimSequence",
+						"guid": "a446672a5ce4e1f17cf5706caefbf2bb"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Left":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Left.MF_Unarmed_Walk_Left",
+						"assetType": "AnimSequence",
+						"guid": "ac4f87eaca13a509c55cc6cde934a54b"
+					},
+					"/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Right":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Anims/Unarmed/Walk/MF_Unarmed_Walk_Right.MF_Unarmed_Walk_Right",
+						"assetType": "AnimSequence",
+						"guid": "e8a11230c6ae5e7ac6417c226550fb3a"
+					},
+					"/Game/Characters/Mannequins/Materials/M_Mannequin":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Materials/M_Mannequin.M_Mannequin",
+						"assetType": "Material",
+						"guid": "2520f82ef0183bdc54eb85b0980b7ae1"
+					},
+					"/Game/Characters/Mannequins/Materials/Manny/MI_Manny_01_New":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Materials/Manny/MI_Manny_01_New.MI_Manny_01_New",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "46059a6cd91cd71de05040d150337613"
+					},
+					"/Game/Characters/Mannequins/Materials/Manny/MI_Manny_02_New":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Materials/Manny/MI_Manny_02_New.MI_Manny_02_New",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "5bb3b914f6954ccb99807be53d18e877"
+					},
+					"/Game/Characters/Mannequins/Materials/Quinn/MI_Quinn_01":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Materials/Quinn/MI_Quinn_01.MI_Quinn_01",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "88072adcd618fb626dcd37de36eea42f"
+					},
+					"/Game/Characters/Mannequins/Materials/Quinn/MI_Quinn_02":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Materials/Quinn/MI_Quinn_02.MI_Quinn_02",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "6c689098cd345daa498e9b1534948261"
+					},
+					"/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple",
+						"assetType": "SkeletalMesh",
+						"guid": "6a966ab008b4eba2021f6a0ac91529e3"
+					},
+					"/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple",
+						"assetType": "SkeletalMesh",
+						"guid": "928540fc35d67a487b51c99a79013039"
+					},
+					"/Game/Characters/Mannequins/Meshes/SK_Mannequin":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Meshes/SK_Mannequin.SK_Mannequin",
+						"assetType": "Skeleton",
+						"guid": "7066bf947a649904c7dcfd33221bcba2"
+					},
+					"/Game/Characters/Mannequins/Rigs/CR_Mannequin_Body":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Rigs/CR_Mannequin_Body.CR_Mannequin_Body",
+						"assetType": "ControlRigBlueprint",
+						"guid": "20b1cc5cbe51de1c44363f6d1ae14b75"
+					},
+					"/Game/Characters/Mannequins/Rigs/CR_Mannequin_FootIK":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Rigs/CR_Mannequin_FootIK.CR_Mannequin_FootIK",
+						"assetType": "ControlRigBlueprint",
+						"guid": "bdfe2df337775702c72ccae32611a8d7"
+					},
+					"/Game/Characters/Mannequins/Rigs/CR_Mannequin_Procedural":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Rigs/CR_Mannequin_Procedural.CR_Mannequin_Procedural",
+						"assetType": "ControlRigBlueprint",
+						"guid": "27013b85f9a3b130297ee3eb636f89ca"
+					},
+					"/Game/Characters/Mannequins/Rigs/PA_Mannequin":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Rigs/PA_Mannequin.PA_Mannequin",
+						"assetType": "PhysicsAsset",
+						"guid": "39849a2bd76ef01d7e1255199e34e2d6"
+					},
+					"/Game/Characters/Mannequins/Textures/Manny/T_Manny_01_BN":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Manny/T_Manny_01_BN.T_Manny_01_BN",
+						"assetType": "Texture2D",
+						"guid": "7d7be7ec182727a14cef036f83bb73bc"
+					},
+					"/Game/Characters/Mannequins/Textures/Manny/T_Manny_01_D":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Manny/T_Manny_01_D.T_Manny_01_D",
+						"assetType": "Texture2D",
+						"guid": "cb903e72e204e33cd2eae9262e9b52fa"
+					},
+					"/Game/Characters/Mannequins/Textures/Manny/T_Manny_01_MRA":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Manny/T_Manny_01_MRA.T_Manny_01_MRA",
+						"assetType": "Texture2D",
+						"guid": "36f9eea444bda656ee10e809f03e05cb"
+					},
+					"/Game/Characters/Mannequins/Textures/Manny/T_Manny_02_BN":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Manny/T_Manny_02_BN.T_Manny_02_BN",
+						"assetType": "Texture2D",
+						"guid": "eda4065012e41147fe0c4fa025ac9586"
+					},
+					"/Game/Characters/Mannequins/Textures/Manny/T_Manny_02_D":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Manny/T_Manny_02_D.T_Manny_02_D",
+						"assetType": "Texture2D",
+						"guid": "3a381b1c877964ce3cabdff3b741f8dd"
+					},
+					"/Game/Characters/Mannequins/Textures/Manny/T_Manny_02_MRA":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Manny/T_Manny_02_MRA.T_Manny_02_MRA",
+						"assetType": "Texture2D",
+						"guid": "1b0cf575ac8c3790ff0cc60588bac9bc"
+					},
+					"/Game/Characters/Mannequins/Textures/Manny/T_Manny_02_N":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Manny/T_Manny_02_N.T_Manny_02_N",
+						"assetType": "Texture2D",
+						"guid": "968ec295dfc266b7c47e825cc76ea34d"
+					},
+					"/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_01_D":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_01_D.T_Quinn_01_D",
+						"assetType": "Texture2D",
+						"guid": "867b838b27dce7394fa4c895ea5fa3e7"
+					},
+					"/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_01_MRA":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_01_MRA.T_Quinn_01_MRA",
+						"assetType": "Texture2D",
+						"guid": "64f5ff83a9ca589bdda33f28be427435"
+					},
+					"/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_01_N":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_01_N.T_Quinn_01_N",
+						"assetType": "Texture2D",
+						"guid": "af851d4d2876c67e96df45882012c1a5"
+					},
+					"/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_02_D":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_02_D.T_Quinn_02_D",
+						"assetType": "Texture2D",
+						"guid": "4c6c797769cdfb83515dd63168bc404d"
+					},
+					"/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_02_MRA":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_02_MRA.T_Quinn_02_MRA",
+						"assetType": "Texture2D",
+						"guid": "843e15ae7faef0107401af146b7b1a19"
+					},
+					"/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_02_N":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Quinn/T_Quinn_02_N.T_Quinn_02_N",
+						"assetType": "Texture2D",
+						"guid": "42ed43b7e33461c5bf2aecfd647e8b50"
+					},
+					"/Game/Characters/Mannequins/Textures/Shared/T_UE_Logo_M":
+					{
+						"packagePath": "/Game/Characters/Mannequins/Textures/Shared/T_UE_Logo_M.T_UE_Logo_M",
+						"assetType": "Texture2D",
+						"guid": "4b6ed65756863d01c91e414c65e2bdb6"
+					},
+					"/Game/Input/IMC_Default":
+					{
+						"packagePath": "/Game/Input/IMC_Default.IMC_Default",
+						"assetType": "InputMappingContext",
+						"guid": "9e8b542a93eb94d9909f93cc09c7faf7"
+					},
+					"/Game/Input/IMC_MouseLook":
+					{
+						"packagePath": "/Game/Input/IMC_MouseLook.IMC_MouseLook",
+						"assetType": "InputMappingContext",
+						"guid": "3e3cab7493086d64e4cda62c5f78b1d2"
+					},
+					"/Game/Input/Actions/IA_Jump":
+					{
+						"packagePath": "/Game/Input/Actions/IA_Jump.IA_Jump",
+						"assetType": "InputAction",
+						"guid": "478dad330e04f09d02ac285076bf27f7"
+					},
+					"/Game/Input/Actions/IA_Look":
+					{
+						"packagePath": "/Game/Input/Actions/IA_Look.IA_Look",
+						"assetType": "InputAction",
+						"guid": "412bf67b3fff2b6495ade26ff550feaa"
+					},
+					"/Game/Input/Actions/IA_MouseLook":
+					{
+						"packagePath": "/Game/Input/Actions/IA_MouseLook.IA_MouseLook",
+						"assetType": "InputAction",
+						"guid": "ad5bf4b16f835a98202d8d8c8f1e2a37"
+					},
+					"/Game/Input/Actions/IA_Move":
+					{
+						"packagePath": "/Game/Input/Actions/IA_Move.IA_Move",
+						"assetType": "InputAction",
+						"guid": "90e4c9d2554020ceeecd462b27430dea"
+					},
+					"/Game/Input/Touch/BPI_TouchInterface":
+					{
+						"packagePath": "/Game/Input/Touch/BPI_TouchInterface.BPI_TouchInterface",
+						"assetType": "Blueprint",
+						"guid": "345ed329b7233643569f35a76b28f52a"
+					},
+					"/Game/Input/Touch/UI_Thumbstick":
+					{
+						"packagePath": "/Game/Input/Touch/UI_Thumbstick.UI_Thumbstick",
+						"assetType": "WidgetBlueprint",
+						"guid": "13a7ecf0f99c6f323e82872bd0ee03db"
+					},
+					"/Game/Input/Touch/UI_TouchSimple":
+					{
+						"packagePath": "/Game/Input/Touch/UI_TouchSimple.UI_TouchSimple",
+						"assetType": "WidgetBlueprint",
+						"guid": "37d34cd735a9d91d1366fa7b5c92c98c"
+					},
+					"/Game/LevelPrototyping/Interactable/Door/BP_DoorFrame":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/Door/BP_DoorFrame.BP_DoorFrame",
+						"assetType": "Blueprint",
+						"guid": "1c2ff28eddd96538263a5743203fd7ae"
+					},
+					"/Game/LevelPrototyping/Interactable/Door/Meshes/SM_Door":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/Door/Meshes/SM_Door.SM_Door",
+						"assetType": "StaticMesh",
+						"guid": "995f7bc464eada7f3092b3c84e374f2b"
+					},
+					"/Game/LevelPrototyping/Interactable/Door/Meshes/SM_DoorFrame_Corner":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/Door/Meshes/SM_DoorFrame_Corner.SM_DoorFrame_Corner",
+						"assetType": "StaticMesh",
+						"guid": "7bed455782a37304128169567a4b5d7b"
+					},
+					"/Game/LevelPrototyping/Interactable/Door/Meshes/SM_DoorFrame_Edge":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/Door/Meshes/SM_DoorFrame_Edge.SM_DoorFrame_Edge",
+						"assetType": "StaticMesh",
+						"guid": "aa97193f4352ce9aa2a768629d58656a"
+					},
+					"/Game/LevelPrototyping/Interactable/JumpPad/BP_JumpPad":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/JumpPad/BP_JumpPad.BP_JumpPad",
+						"assetType": "Blueprint",
+						"guid": "538a233c920cff75ae668fc99dcd79c2"
+					},
+					"/Game/LevelPrototyping/Interactable/JumpPad/Assets/NS_JumpPad":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/JumpPad/Assets/NS_JumpPad.NS_JumpPad",
+						"assetType": "NiagaraSystem",
+						"guid": "e33f33baa0f08a8bb9dfe0b4a20936cf"
+					},
+					"/Game/LevelPrototyping/Interactable/JumpPad/Assets/Materials/MI_GlowNT":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/JumpPad/Assets/Materials/MI_GlowNT.MI_GlowNT",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "f5b7e117eba269e8734f972129975f2d"
+					},
+					"/Game/LevelPrototyping/Interactable/JumpPad/Assets/Materials/M_GradientGlow":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/JumpPad/Assets/Materials/M_GradientGlow.M_GradientGlow",
+						"assetType": "Material",
+						"guid": "f4cd90da7452c9b968d5fec1dc60ae56"
+					},
+					"/Game/LevelPrototyping/Interactable/JumpPad/Assets/Materials/M_SimpleGlow":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/JumpPad/Assets/Materials/M_SimpleGlow.M_SimpleGlow",
+						"assetType": "Material",
+						"guid": "565db3c89cbf7bf5b2a681dd11d5d658"
+					},
+					"/Game/LevelPrototyping/Interactable/JumpPad/Assets/Meshes/SM_CircularBand":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/JumpPad/Assets/Meshes/SM_CircularBand.SM_CircularBand",
+						"assetType": "StaticMesh",
+						"guid": "3a1fe04bf1b7cf985a6a66c6500a8df7"
+					},
+					"/Game/LevelPrototyping/Interactable/JumpPad/Assets/Meshes/SM_CircularGlow":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/JumpPad/Assets/Meshes/SM_CircularGlow.SM_CircularGlow",
+						"assetType": "StaticMesh",
+						"guid": "cbf04f7eba4b98df23afd6514204b758"
+					},
+					"/Game/LevelPrototyping/Interactable/Target/BP_WobbleTarget":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/Target/BP_WobbleTarget.BP_WobbleTarget",
+						"assetType": "Blueprint",
+						"guid": "467185507cf8a85c6b8feb99e61f2663"
+					},
+					"/Game/LevelPrototyping/Interactable/Target/Assets/SM_TargetBaseMesh":
+					{
+						"packagePath": "/Game/LevelPrototyping/Interactable/Target/Assets/SM_TargetBaseMesh.SM_TargetBaseMesh",
+						"assetType": "StaticMesh",
+						"guid": "45bd6646f0e117c0f33670ceb071a029"
+					},
+					"/Game/LevelPrototyping/Materials/MF_ProcGrid":
+					{
+						"packagePath": "/Game/LevelPrototyping/Materials/MF_ProcGrid.MF_ProcGrid",
+						"assetType": "MaterialFunction",
+						"guid": "066bc1df462ad91b0675f518180e3ad4"
+					},
+					"/Game/LevelPrototyping/Materials/MI_DefaultColorway":
+					{
+						"packagePath": "/Game/LevelPrototyping/Materials/MI_DefaultColorway.MI_DefaultColorway",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "0749013402f48ae9cf464f68a8279db1"
+					},
+					"/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray":
+					{
+						"packagePath": "/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray.MI_PrototypeGrid_Gray",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "9963aaac8a534741927485d62d9ac8e1"
+					},
+					"/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray_02":
+					{
+						"packagePath": "/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray_02.MI_PrototypeGrid_Gray_02",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "de659ec552bdcd995e6b03cdda58fdee"
+					},
+					"/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray_Round":
+					{
+						"packagePath": "/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray_Round.MI_PrototypeGrid_Gray_Round",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "86138eec5d71512f678176694cc0fdda"
+					},
+					"/Game/LevelPrototyping/Materials/MI_PrototypeGrid_TopDark":
+					{
+						"packagePath": "/Game/LevelPrototyping/Materials/MI_PrototypeGrid_TopDark.MI_PrototypeGrid_TopDark",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "098b6a88bf8d1d9993c41ca558cddf8d"
+					},
+					"/Game/LevelPrototyping/Materials/M_FlatCol":
+					{
+						"packagePath": "/Game/LevelPrototyping/Materials/M_FlatCol.M_FlatCol",
+						"assetType": "Material",
+						"guid": "870a96d3ffd515b7c0c23b6e6fbe253e"
+					},
+					"/Game/LevelPrototyping/Materials/M_PrototypeGrid":
+					{
+						"packagePath": "/Game/LevelPrototyping/Materials/M_PrototypeGrid.M_PrototypeGrid",
+						"assetType": "Material",
+						"guid": "bb8b0a2e0fb05e66b3c7c4ad773c40c1"
+					},
+					"/Game/LevelPrototyping/Meshes/SM_ChamferCube":
+					{
+						"packagePath": "/Game/LevelPrototyping/Meshes/SM_ChamferCube.SM_ChamferCube",
+						"assetType": "StaticMesh",
+						"guid": "0d2c4cc274c94b835a5da8fdcc910372"
+					},
+					"/Game/LevelPrototyping/Meshes/SM_Cube":
+					{
+						"packagePath": "/Game/LevelPrototyping/Meshes/SM_Cube.SM_Cube",
+						"assetType": "StaticMesh",
+						"guid": "ce0ca37b996d0ff3b67fbfdfea02d1dd"
+					},
+					"/Game/LevelPrototyping/Meshes/SM_Cylinder":
+					{
+						"packagePath": "/Game/LevelPrototyping/Meshes/SM_Cylinder.SM_Cylinder",
+						"assetType": "StaticMesh",
+						"guid": "dfc4043997cb73ce3a7a08392c89a290"
+					},
+					"/Game/LevelPrototyping/Meshes/SM_Plane":
+					{
+						"packagePath": "/Game/LevelPrototyping/Meshes/SM_Plane.SM_Plane",
+						"assetType": "StaticMesh",
+						"guid": "3d980913025ce4dcfb088e8387c6e4f4"
+					},
+					"/Game/LevelPrototyping/Meshes/SM_QuarterCylinder":
+					{
+						"packagePath": "/Game/LevelPrototyping/Meshes/SM_QuarterCylinder.SM_QuarterCylinder",
+						"assetType": "StaticMesh",
+						"guid": "717c7e2a0d447d6a8ad1d170667e181f"
+					},
+					"/Game/LevelPrototyping/Meshes/SM_QuarterCylinderOuter":
+					{
+						"packagePath": "/Game/LevelPrototyping/Meshes/SM_QuarterCylinderOuter.SM_QuarterCylinderOuter",
+						"assetType": "StaticMesh",
+						"guid": "1b327818da099e0e4893fae8bb4c2cbd"
+					},
+					"/Game/LevelPrototyping/Meshes/SM_Ramp":
+					{
+						"packagePath": "/Game/LevelPrototyping/Meshes/SM_Ramp.SM_Ramp",
+						"assetType": "StaticMesh",
+						"guid": "2d8d5b0396c83fd2ec6a8cc8a85aed83"
+					},
+					"/Game/LevelPrototyping/Textures/T_GridChecker_A":
+					{
+						"packagePath": "/Game/LevelPrototyping/Textures/T_GridChecker_A.T_GridChecker_A",
+						"assetType": "Texture2D",
+						"guid": "3aca8d14e6eaa34e111eb1e68ec5a240"
+					},
+					"/Game/ThirdPerson/Lvl_ThirdPerson":
+					{
+						"packagePath": "/Game/ThirdPerson/Lvl_ThirdPerson.Lvl_ThirdPerson",
+						"assetType": "World",
+						"guid": "159391e8d5834ae6bc8e8baa91f21abf"
+					},
+					"/Game/ThirdPerson/MI_ThirdPersonColWay":
+					{
+						"packagePath": "/Game/ThirdPerson/MI_ThirdPersonColWay.MI_ThirdPersonColWay",
+						"assetType": "MaterialInstanceConstant",
+						"guid": "d4f5537974896b6df2ed31f5b8638b06"
+					},
+					"/Game/ThirdPerson/NewBlueprint":
+					{
+						"packagePath": "/Game/ThirdPerson/NewBlueprint.NewBlueprint",
+						"assetType": "Blueprint",
+						"guid": "b3d8a10da13a0b63ac58ce74dcef330a"
+					},
+					"/Game/ThirdPerson/Blueprints/BP_ThirdPersonCharacter":
+					{
+						"packagePath": "/Game/ThirdPerson/Blueprints/BP_ThirdPersonCharacter.BP_ThirdPersonCharacter",
+						"assetType": "Blueprint",
+						"guid": "a82213509b257a19d3b68ba131fe6fe2"
+					},
+					"/Game/ThirdPerson/Blueprints/BP_ThirdPersonGameMode":
+					{
+						"packagePath": "/Game/ThirdPerson/Blueprints/BP_ThirdPersonGameMode.BP_ThirdPersonGameMode",
+						"assetType": "Blueprint",
+						"guid": "b826885ef85727f47ab78090d704fd1a"
+					},
+					"/Game/ThirdPerson/Blueprints/BP_ThirdPersonPlayerController":
+					{
+						"packagePath": "/Game/ThirdPerson/Blueprints/BP_ThirdPersonPlayerController.BP_ThirdPersonPlayerController",
+						"assetType": "Blueprint",
+						"guid": "9b5e3d7511d554f59934df30d0b3278e"
+					}
+				}
+			},
+			"Engine":
+			{
+				"moduleCategory": "Engine",
+				"assetDependencyDetails":
+				{
+					"/Engine/Animation/DefaultVariableFrameStrippingSettings":
+					{
+						"packagePath": "/Engine/Animation/DefaultVariableFrameStrippingSettings.DefaultVariableFrameStrippingSettings",
+						"assetType": "VariableFrameStrippingSettings",
+						"guid": "cdadc49de7ec059e8e0c662f94f7ef63"
+					},
+					"/Engine/Animation/DefaultAnimBoneCompressionSettings":
+					{
+						"packagePath": "/Engine/Animation/DefaultAnimBoneCompressionSettings.DefaultAnimBoneCompressionSettings",
+						"assetType": "AnimBoneCompressionSettings",
+						"guid": "42e06aa2d7ada73ff06ba5d0d6541112"
+					},
+					"/Engine/Animation/DefaultAnimCurveCompressionSettings":
+					{
+						"packagePath": "/Engine/Animation/DefaultAnimCurveCompressionSettings.DefaultAnimCurveCompressionSettings",
+						"assetType": "AnimCurveCompressionSettings",
+						"guid": "558d95f62a50ddeb045102b1cef27cc1"
+					},
+					"/Engine/EngineMaterials/WorldGridMaterial":
+					{
+						"packagePath": "/Engine/EngineMaterials/WorldGridMaterial.WorldGridMaterial",
+						"assetType": "Material",
+						"guid": "832141bd2ef1e22123a899ab04a317ed"
+					},
+					"/Engine/EngineMaterials/T_Default_Material_Grid_M":
+					{
+						"packagePath": "/Engine/EngineMaterials/T_Default_Material_Grid_M.T_Default_Material_Grid_M",
+						"assetType": "Texture2D",
+						"guid": "ca8e8e163795f3120bb5f0c5510e9167"
+					},
+					"/Engine/EngineMaterials/T_Default_Material_Grid_N":
+					{
+						"packagePath": "/Engine/EngineMaterials/T_Default_Material_Grid_N.T_Default_Material_Grid_N",
+						"assetType": "Texture2D",
+						"guid": "c83486616652f4b39db7ccfbfcbe6bbe"
+					},
+					"/Engine/Functions/Engine_MaterialFunctions01/Opacity/CameraDepthFade":
+					{
+						"packagePath": "/Engine/Functions/Engine_MaterialFunctions01/Opacity/CameraDepthFade.CameraDepthFade",
+						"assetType": "MaterialFunction",
+						"guid": "6b34c25e03ad540de20476a99a9b7dcd"
+					},
+					"/Engine/Functions/Engine_MaterialFunctions02/Utility/BreakOutFloat2Components":
+					{
+						"packagePath": "/Engine/Functions/Engine_MaterialFunctions02/Utility/BreakOutFloat2Components.BreakOutFloat2Components",
+						"assetType": "MaterialFunction",
+						"guid": "5c941419d8053f3be92a7dffdb0f3401"
+					},
+					"/Engine/Functions/Engine_MaterialFunctions01/Texturing/ScaleUVsByCenter":
+					{
+						"packagePath": "/Engine/Functions/Engine_MaterialFunctions01/Texturing/ScaleUVsByCenter.ScaleUVsByCenter",
+						"assetType": "MaterialFunction",
+						"guid": "43f4bf5b59014772b3f4d1b8d09f1330"
+					},
+					"/Engine/Animation/DefaultRecorderBoneCompression":
+					{
+						"packagePath": "/Engine/Animation/DefaultRecorderBoneCompression.DefaultRecorderBoneCompression",
+						"assetType": "AnimBoneCompressionSettings",
+						"guid": "97b82a85b8c05b4dc10fb421b10ec756"
+					},
+					"/Engine/MobileResources/HUD/VirtualJoystick_Background":
+					{
+						"packagePath": "/Engine/MobileResources/HUD/VirtualJoystick_Background.VirtualJoystick_Background",
+						"assetType": "Texture2D",
+						"guid": "df8405a6204f369daa5184608e88021f"
+					},
+					"/Engine/MobileResources/HUD/VirtualJoystick_Thumb":
+					{
+						"packagePath": "/Engine/MobileResources/HUD/VirtualJoystick_Thumb.VirtualJoystick_Thumb",
+						"assetType": "Texture2D",
+						"guid": "6e1c97eed16d5a8a2f98f1b1e19bc2bd"
+					},
+					"/Engine/EditorBlueprintResources/StandardMacros":
+					{
+						"packagePath": "/Engine/EditorBlueprintResources/StandardMacros.StandardMacros",
+						"assetType": "Blueprint",
+						"guid": "8b0b6e36bb8042ee7d628037f6f6f7a9"
+					},
+					"/Engine/BasicShapes/BasicShapeMaterial":
+					{
+						"packagePath": "/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial",
+						"assetType": "Material",
+						"guid": "894cec28acb7983b52a21cbd053dace0"
+					},
+					"/Engine/EditorResources/LightIcons/S_LightError":
+					{
+						"packagePath": "/Engine/EditorResources/LightIcons/S_LightError.S_LightError",
+						"assetType": "Texture2D",
+						"guid": "b78e665c337ce89e933b12984c390979"
+					},
+					"/Engine/Functions/Engine_MaterialFunctions02/Utility/MakeFloat3":
+					{
+						"packagePath": "/Engine/Functions/Engine_MaterialFunctions02/Utility/MakeFloat3.MakeFloat3",
+						"assetType": "MaterialFunction",
+						"guid": "5bf18a39f79c542e0556237e60f5bd07"
+					},
+					"/Engine/Functions/Engine_MaterialFunctions02/Utility/BreakOutFloat3Components":
+					{
+						"packagePath": "/Engine/Functions/Engine_MaterialFunctions02/Utility/BreakOutFloat3Components.BreakOutFloat3Components",
+						"assetType": "MaterialFunction",
+						"guid": "6b4a04a21461864ada0d0994cde8cfe6"
+					},
+					"/Engine/Functions/Engine_MaterialFunctions01/Gradient/LinearGradient":
+					{
+						"packagePath": "/Engine/Functions/Engine_MaterialFunctions01/Gradient/LinearGradient.LinearGradient",
+						"assetType": "MaterialFunction",
+						"guid": "92fe83fe23159a266bdee525f8834c04"
+					},
+					"/Engine/Functions/Engine_MaterialFunctions01/ImageAdjustment/CheapContrast":
+					{
+						"packagePath": "/Engine/Functions/Engine_MaterialFunctions01/ImageAdjustment/CheapContrast.CheapContrast",
+						"assetType": "MaterialFunction",
+						"guid": "c1c59699973fe9054d4b8dd84596fccf"
+					},
+					"/Engine/Functions/Engine_MaterialFunctions03/Math/RemapValueRange":
+					{
+						"packagePath": "/Engine/Functions/Engine_MaterialFunctions03/Math/RemapValueRange.RemapValueRange",
+						"assetType": "MaterialFunction",
+						"guid": "e1b694576f1493161113791e467b0c0a"
+					},
+					"/Engine/EditorResources/S_KBSJoint":
+					{
+						"packagePath": "/Engine/EditorResources/S_KBSJoint.S_KBSJoint",
+						"assetType": "Texture2D",
+						"guid": "0415151520c4f31d7bb7b80c19c6ba4a"
+					},
+					"/Engine/EditorResources/S_KHinge":
+					{
+						"packagePath": "/Engine/EditorResources/S_KHinge.S_KHinge",
+						"assetType": "Texture2D",
+						"guid": "7c002b34e3fc929d42056fbcebbb1db1"
+					},
+					"/Engine/EditorResources/S_KPrismatic":
+					{
+						"packagePath": "/Engine/EditorResources/S_KPrismatic.S_KPrismatic",
+						"assetType": "Texture2D",
+						"guid": "15dfaa8d027aa1a5a35dd4c0091b74a2"
+					}
+				}
+			},
+			"ControlRig":
+			{
+				"moduleCategory": "ControlRig",
+				"assetDependencyDetails":
+				{
+					"/ControlRig/Controls/DefaultGizmoLibraryNormalized":
+					{
+						"packagePath": "/ControlRig/Controls/DefaultGizmoLibraryNormalized.DefaultGizmoLibraryNormalized",
+						"assetType": "ControlRigShapeLibrary",
+						"guid": "d6459b0335935642b5eb49ad0955e62a"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow2_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow2_1mm.ControlRig_Arrow2_1mm",
+						"assetType": "StaticMesh",
+						"guid": "34cbf79198bc31f63abc795c0e5f9a19"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow2_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow2_3mm.ControlRig_Arrow2_3mm",
+						"assetType": "StaticMesh",
+						"guid": "6248e6d482019c15f94c4c05beb71848"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow2_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow2_solid.ControlRig_Arrow2_solid",
+						"assetType": "StaticMesh",
+						"guid": "a3d2fcf2a3a35039de17be53a6e0b4e8"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow4_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow4_1mm.ControlRig_Arrow4_1mm",
+						"assetType": "StaticMesh",
+						"guid": "c9263d41d69bb9c7d58e3ba92c4d7a28"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow4_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow4_3mm.ControlRig_Arrow4_3mm",
+						"assetType": "StaticMesh",
+						"guid": "b0cacff2350c2586d72933b87610d11c"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow4_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow4_solid.ControlRig_Arrow4_solid",
+						"assetType": "StaticMesh",
+						"guid": "1f2d7c1e00175a4be9e321e4004eeffa"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow_1mm.ControlRig_Arrow_1mm",
+						"assetType": "StaticMesh",
+						"guid": "94ec4eabec822ca118095c7a0b20c642"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow_3mm.ControlRig_Arrow_3mm",
+						"assetType": "StaticMesh",
+						"guid": "0b75434ef50f89d0d6d3f56ba95e13af"
+					},
+					"/ControlRig/Controls/ControlRig_Arrow_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Arrow_solid.ControlRig_Arrow_solid",
+						"assetType": "StaticMesh",
+						"guid": "4e242fd38f0771db33a20f918d4f14d0"
+					},
+					"/ControlRig/Controls/ControlRig_Box_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Box_1mm.ControlRig_Box_1mm",
+						"assetType": "StaticMesh",
+						"guid": "458f161e0ecb4bd4f0093127761894b4"
+					},
+					"/ControlRig/Controls/ControlRig_Box_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Box_3mm.ControlRig_Box_3mm",
+						"assetType": "StaticMesh",
+						"guid": "a9efcf6e8930170780bab16a67b0c11d"
+					},
+					"/ControlRig/Controls/ControlRig_Box_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Box_solid.ControlRig_Box_solid",
+						"assetType": "StaticMesh",
+						"guid": "3e19def5b23a67335e4e665d2cda4e62"
+					},
+					"/ControlRig/Controls/ControlRig_Circle_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Circle_1mm.ControlRig_Circle_1mm",
+						"assetType": "StaticMesh",
+						"guid": "7b91ba90a40c5d96b6612e42476d477b"
+					},
+					"/ControlRig/Controls/ControlRig_Circle_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Circle_3mm.ControlRig_Circle_3mm",
+						"assetType": "StaticMesh",
+						"guid": "c1e85e723f1d1dc807a329cd2c8b0d2d"
+					},
+					"/ControlRig/Controls/ControlRig_Circle_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Circle_solid.ControlRig_Circle_solid",
+						"assetType": "StaticMesh",
+						"guid": "265a72923a604f465c3a8ee8bbc52068"
+					},
+					"/ControlRig/Controls/ControlRig_Diamond_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Diamond_1mm.ControlRig_Diamond_1mm",
+						"assetType": "StaticMesh",
+						"guid": "d5673dffffde55ec66127bce8b5b2a3e"
+					},
+					"/ControlRig/Controls/ControlRig_Diamond_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Diamond_3mm.ControlRig_Diamond_3mm",
+						"assetType": "StaticMesh",
+						"guid": "64540049f65c3fed757b8a949fac5fbe"
+					},
+					"/ControlRig/Controls/ControlRig_Diamond_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Diamond_solid.ControlRig_Diamond_solid",
+						"assetType": "StaticMesh",
+						"guid": "6ac55701b0063f0c69cb5c250d71521a"
+					},
+					"/ControlRig/Controls/ControlRig_HalfCircle_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_HalfCircle_1mm.ControlRig_HalfCircle_1mm",
+						"assetType": "StaticMesh",
+						"guid": "337293ceaef8483f60cea1a8fd983eb3"
+					},
+					"/ControlRig/Controls/ControlRig_HalfCircle_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_HalfCircle_3mm.ControlRig_HalfCircle_3mm",
+						"assetType": "StaticMesh",
+						"guid": "743d85d6c5ae71bda8bd79b6f478fbf8"
+					},
+					"/ControlRig/Controls/ControlRig_HalfCircle_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_HalfCircle_solid.ControlRig_HalfCircle_solid",
+						"assetType": "StaticMesh",
+						"guid": "a20f29ba14a5bb181655e633466f2f66"
+					},
+					"/ControlRig/Controls/ControlRig_Hexagon_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Hexagon_1mm.ControlRig_Hexagon_1mm",
+						"assetType": "StaticMesh",
+						"guid": "79c7b158824ba39fe9181de01d481a8f"
+					},
+					"/ControlRig/Controls/ControlRig_Hexagon_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Hexagon_3mm.ControlRig_Hexagon_3mm",
+						"assetType": "StaticMesh",
+						"guid": "68d2e962a9f1f56dc2afdb684f309c6f"
+					},
+					"/ControlRig/Controls/ControlRig_Hexagon_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Hexagon_solid.ControlRig_Hexagon_solid",
+						"assetType": "StaticMesh",
+						"guid": "25b0c3ead6f83eef5acf77a805e90033"
+					},
+					"/ControlRig/Controls/ControlRig_Octagon_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Octagon_1mm.ControlRig_Octagon_1mm",
+						"assetType": "StaticMesh",
+						"guid": "2b15694f6d52c2ea144eb0748fca9298"
+					},
+					"/ControlRig/Controls/ControlRig_Octagon_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Octagon_3mm.ControlRig_Octagon_3mm",
+						"assetType": "StaticMesh",
+						"guid": "8ba47aeef936cdca48dbe2ec55796bd2"
+					},
+					"/ControlRig/Controls/ControlRig_Octagon_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Octagon_solid.ControlRig_Octagon_solid",
+						"assetType": "StaticMesh",
+						"guid": "2ae057b3c1d6fd446c07aa5977a178cb"
+					},
+					"/ControlRig/Controls/ControlRig_Pyramid_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Pyramid_1mm.ControlRig_Pyramid_1mm",
+						"assetType": "StaticMesh",
+						"guid": "fb2d378c767d0a3249d9c8e08a002b3a"
+					},
+					"/ControlRig/Controls/ControlRig_Pyramid_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Pyramid_3mm.ControlRig_Pyramid_3mm",
+						"assetType": "StaticMesh",
+						"guid": "38834b642a0ddc030770c1e64f493197"
+					},
+					"/ControlRig/Controls/ControlRig_Pyramid_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Pyramid_solid.ControlRig_Pyramid_solid",
+						"assetType": "StaticMesh",
+						"guid": "050197c95a38bfed180b5654cd630e68"
+					},
+					"/ControlRig/Controls/ControlRig_QuarterCircle_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_QuarterCircle_1mm.ControlRig_QuarterCircle_1mm",
+						"assetType": "StaticMesh",
+						"guid": "40f08962c7f5b7fd00ac92ce0ee2f862"
+					},
+					"/ControlRig/Controls/ControlRig_QuarterCircle_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_QuarterCircle_3mm.ControlRig_QuarterCircle_3mm",
+						"assetType": "StaticMesh",
+						"guid": "e2c8595e4b5e229057644bf7770d5da2"
+					},
+					"/ControlRig/Controls/ControlRig_QuarterCircle_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_QuarterCircle_solid.ControlRig_QuarterCircle_solid",
+						"assetType": "StaticMesh",
+						"guid": "6b4f61604b2c9d57da6eec891794594e"
+					},
+					"/ControlRig/Controls/ControlRig_RoundedSquare_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_RoundedSquare_1mm.ControlRig_RoundedSquare_1mm",
+						"assetType": "StaticMesh",
+						"guid": "17646aae5dcc3505cb5edd65febd697d"
+					},
+					"/ControlRig/Controls/ControlRig_RoundedSquare_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_RoundedSquare_3mm.ControlRig_RoundedSquare_3mm",
+						"assetType": "StaticMesh",
+						"guid": "c27942284d7d42177af4d77f5efb668e"
+					},
+					"/ControlRig/Controls/ControlRig_RoundedSquare_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_RoundedSquare_solid.ControlRig_RoundedSquare_solid",
+						"assetType": "StaticMesh",
+						"guid": "57061bcdab091395639c7869c561a118"
+					},
+					"/ControlRig/Controls/ControlRig_RoundedTriangle_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_RoundedTriangle_1mm.ControlRig_RoundedTriangle_1mm",
+						"assetType": "StaticMesh",
+						"guid": "c09cb131d3deb801d30c7608eff96f2d"
+					},
+					"/ControlRig/Controls/ControlRig_RoundedTriangle_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_RoundedTriangle_3mm.ControlRig_RoundedTriangle_3mm",
+						"assetType": "StaticMesh",
+						"guid": "274396ed73f9c55de135c52dd97c937f"
+					},
+					"/ControlRig/Controls/ControlRig_RoundedTriangle_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_RoundedTriangle_solid.ControlRig_RoundedTriangle_solid",
+						"assetType": "StaticMesh",
+						"guid": "e83d53f85157b59d7fae73e9a92c0038"
+					},
+					"/ControlRig/Controls/ControlRig_Sphere_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Sphere_1mm.ControlRig_Sphere_1mm",
+						"assetType": "StaticMesh",
+						"guid": "f07fe2923738ee48a49366dceacf24de"
+					},
+					"/ControlRig/Controls/ControlRig_Sphere_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Sphere_3mm.ControlRig_Sphere_3mm",
+						"assetType": "StaticMesh",
+						"guid": "30cd0b221b60396502344c482576bfa7"
+					},
+					"/ControlRig/Controls/ControlRig_Sphere_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Sphere_solid.ControlRig_Sphere_solid",
+						"assetType": "StaticMesh",
+						"guid": "babe80a31e4dbbebb45b3158bf608033"
+					},
+					"/ControlRig/Controls/ControlRig_Square_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Square_1mm.ControlRig_Square_1mm",
+						"assetType": "StaticMesh",
+						"guid": "ca4db63955830039c1e3350d1c824f66"
+					},
+					"/ControlRig/Controls/ControlRig_Square_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Square_3mm.ControlRig_Square_3mm",
+						"assetType": "StaticMesh",
+						"guid": "4b8cc269a9f7ea2c5bb83c99cc852772"
+					},
+					"/ControlRig/Controls/ControlRig_Square_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Square_solid.ControlRig_Square_solid",
+						"assetType": "StaticMesh",
+						"guid": "f3ff3302ce18cff2fc20584c1085ba6d"
+					},
+					"/ControlRig/Controls/ControlRig_Star4_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Star4_1mm.ControlRig_Star4_1mm",
+						"assetType": "StaticMesh",
+						"guid": "47fc17651fb44d788581452aa2a7d98b"
+					},
+					"/ControlRig/Controls/ControlRig_Star4_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Star4_3mm.ControlRig_Star4_3mm",
+						"assetType": "StaticMesh",
+						"guid": "63be871724fb16870fdfba0d3e5f814c"
+					},
+					"/ControlRig/Controls/ControlRig_Star4_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Star4_solid.ControlRig_Star4_solid",
+						"assetType": "StaticMesh",
+						"guid": "719104c84d2a501ededfe79b1ae556b8"
+					},
+					"/ControlRig/Controls/ControlRig_Triangle_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Triangle_1mm.ControlRig_Triangle_1mm",
+						"assetType": "StaticMesh",
+						"guid": "9332558230e3c7dbce89eba8e8e1ee8d"
+					},
+					"/ControlRig/Controls/ControlRig_Triangle_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Triangle_3mm.ControlRig_Triangle_3mm",
+						"assetType": "StaticMesh",
+						"guid": "819121b207bea3c0a429bb6b135bd4e3"
+					},
+					"/ControlRig/Controls/ControlRig_Triangle_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Triangle_solid.ControlRig_Triangle_solid",
+						"assetType": "StaticMesh",
+						"guid": "3917f114750113e081292c63a66c4539"
+					},
+					"/ControlRig/Controls/ControlRig_Wedge_1mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Wedge_1mm.ControlRig_Wedge_1mm",
+						"assetType": "StaticMesh",
+						"guid": "a4acb01c6481aa15b1451aed9569f70a"
+					},
+					"/ControlRig/Controls/ControlRig_Wedge_3mm":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Wedge_3mm.ControlRig_Wedge_3mm",
+						"assetType": "StaticMesh",
+						"guid": "5e03b5f8292731471c68b3f30c59f041"
+					},
+					"/ControlRig/Controls/ControlRig_Wedge_solid":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRig_Wedge_solid.ControlRig_Wedge_solid",
+						"assetType": "StaticMesh",
+						"guid": "1a72216bdd1ebe834a585ec344a89f49"
+					},
+					"/ControlRig/Controls/ControlRigGizmoMaterial":
+					{
+						"packagePath": "/ControlRig/Controls/ControlRigGizmoMaterial.ControlRigGizmoMaterial",
+						"assetType": "Material",
+						"guid": "c29b4f20be78691bc271d080b152d18a"
+					},
+					"/ControlRig/Controls/DefaultGizmoLibrary":
+					{
+						"packagePath": "/ControlRig/Controls/DefaultGizmoLibrary.DefaultGizmoLibrary",
+						"assetType": "ControlRigGizmoLibrary",
+						"guid": "c0034d8f5e16d91791f0edea9773dc3a"
+					}
+				}
+			},
+			"Niagara":
+			{
+				"moduleCategory": "Niagara",
+				"assetDependencyDetails":
+				{
+					"/Niagara/Functions/SphericalToCartesianCoordinates":
+					{
+						"packagePath": "/Niagara/Functions/SphericalToCartesianCoordinates.SphericalToCartesianCoordinates",
+						"assetType": "NiagaraScript",
+						"guid": "5814fee4fc42276087dcbbc299ca509c"
+					},
+					"/Niagara/Functions/Math/CalculateRandomPointInConeSphereIntersection":
+					{
+						"packagePath": "/Niagara/Functions/Math/CalculateRandomPointInConeSphereIntersection.CalculateRandomPointInConeSphereIntersection",
+						"assetType": "NiagaraScript",
+						"guid": "6f143d1561252e81a1d3909f65899fa0"
+					},
+					"/Niagara/Functions/Rotation/AngleUnitConverter":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/AngleUnitConverter.AngleUnitConverter",
+						"assetType": "NiagaraScript",
+						"guid": "fb7f1bbc3b84add702c5e0f1fb5c2735"
+					},
+					"/Niagara/Functions/Rotation/RotateVector2D":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/RotateVector2D.RotateVector2D",
+						"assetType": "NiagaraScript",
+						"guid": "7d4b0555ab92a1a99690424ed10a733b"
+					},
+					"/Niagara/Functions/V2/RemapRange":
+					{
+						"packagePath": "/Niagara/Functions/V2/RemapRange.RemapRange",
+						"assetType": "NiagaraScript",
+						"guid": "753b2e8ee897431f573be30bffeca622"
+					},
+					"/Niagara/Functions/Rotation/TransformStack/TransformStack_Rotation":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/TransformStack/TransformStack_Rotation.TransformStack_Rotation",
+						"assetType": "NiagaraScript",
+						"guid": "b552d20939720823320874a25f829059"
+					},
+					"/Niagara/Functions/IsolateLongestVectorComponent":
+					{
+						"packagePath": "/Niagara/Functions/IsolateLongestVectorComponent.IsolateLongestVectorComponent",
+						"assetType": "NiagaraScript",
+						"guid": "9bd21467d07629c4801c80612cd84ef2"
+					},
+					"/Niagara/Functions/Rotation/FindQuatBetween":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/FindQuatBetween.FindQuatBetween",
+						"assetType": "NiagaraScript",
+						"guid": "fbb5ae31cfd49ce580a97d530f77ae55"
+					},
+					"/Niagara/Functions/Rotation/InvertQuaternion":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/InvertQuaternion.InvertQuaternion",
+						"assetType": "NiagaraScript",
+						"guid": "f07a629c224a9d1b9ea172ab9ebd01b8"
+					},
+					"/Niagara/Functions/Rotation/MakeQuaternionFrom3BasisVectors":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/MakeQuaternionFrom3BasisVectors.MakeQuaternionFrom3BasisVectors",
+						"assetType": "NiagaraScript",
+						"guid": "5f3fbab4f4bd716a467803345b3cd4af"
+					},
+					"/Niagara/Functions/Rotation/XYZRotationToQuaternion":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/XYZRotationToQuaternion.XYZRotationToQuaternion",
+						"assetType": "NiagaraScript",
+						"guid": "29013c9064dd0c6fb468590a8a046566"
+					},
+					"/Niagara/Functions/Rotation/MatrixToQuaternion":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/MatrixToQuaternion.MatrixToQuaternion",
+						"assetType": "NiagaraScript",
+						"guid": "d8e12342400964f2f86356def23a14b8"
+					},
+					"/Niagara/Enums/ENiagara_MassInitializationMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_MassInitializationMode.ENiagara_MassInitializationMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "772d50aa1c23cd8dd0828f4843c3391a"
+					},
+					"/Niagara/Enums/ENiagara_PositionInitializationMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_PositionInitializationMode.ENiagara_PositionInitializationMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "52d2dd1579cc787981f90f6cf302ba21"
+					},
+					"/Niagara/Enums/ENiagara_SizeScaleMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_SizeScaleMode.ENiagara_SizeScaleMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "b777292a3f935cbe0c1af5fadfb20448"
+					},
+					"/Niagara/Enums/ENiagara_SpriteRotationMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_SpriteRotationMode.ENiagara_SpriteRotationMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "31dfc296a12b09fceb935249029fd2de"
+					},
+					"/Niagara/Enums/ENiagara_UVFlippingMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_UVFlippingMode.ENiagara_UVFlippingMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "110b1595c0a4257f3bccbeafb9659b20"
+					},
+					"/Niagara/ParameterDefinitions/RibbonRenderer":
+					{
+						"packagePath": "/Niagara/ParameterDefinitions/RibbonRenderer.RibbonRenderer",
+						"assetType": "NiagaraParameterDefinitions",
+						"guid": "fc5a3fc0ac821bfdbf1ae68ae767b193"
+					},
+					"/Niagara/DynamicInputs/ValueFromCurve/FloatFromCurve":
+					{
+						"packagePath": "/Niagara/DynamicInputs/ValueFromCurve/FloatFromCurve.FloatFromCurve",
+						"assetType": "NiagaraScript",
+						"guid": "29e9e3d3d9d69814c16141e9c4dfb1cb"
+					},
+					"/Niagara/Enums/Angles/ENiagara_AngleInput":
+					{
+						"packagePath": "/Niagara/Enums/Angles/ENiagara_AngleInput.ENiagara_AngleInput",
+						"assetType": "UserDefinedEnum",
+						"guid": "c411c913170692586abdb20633520595"
+					},
+					"/Niagara/Enums/Location/ENiagaraRingDiscMode":
+					{
+						"packagePath": "/Niagara/Enums/Location/ENiagaraRingDiscMode.ENiagaraRingDiscMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "e1d58565b8b0c17eddc1deeb005edb7c"
+					},
+					"/Niagara/Enums/Location/ENiagara_BoxPlaneMode":
+					{
+						"packagePath": "/Niagara/Enums/Location/ENiagara_BoxPlaneMode.ENiagara_BoxPlaneMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "a193832d9ae74097db71a12881cf7e42"
+					},
+					"/Niagara/Enums/Location/ENiagara_ConeMode":
+					{
+						"packagePath": "/Niagara/Enums/Location/ENiagara_ConeMode.ENiagara_ConeMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "8c2a9142ba7bae9493b0b00a03a507b4"
+					},
+					"/Niagara/Enums/Location/ENiagara_CylinderMode":
+					{
+						"packagePath": "/Niagara/Enums/Location/ENiagara_CylinderMode.ENiagara_CylinderMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "c088e4de9fe5ec0a98d10840510138a9"
+					},
+					"/Niagara/Enums/Location/ENiagara_LocationShapes":
+					{
+						"packagePath": "/Niagara/Enums/Location/ENiagara_LocationShapes.ENiagara_LocationShapes",
+						"assetType": "UserDefinedEnum",
+						"guid": "39c1b5b3d1ff827fa5582e8441bc2467"
+					},
+					"/Niagara/Enums/Ribbons/ENiagara_UnsetDirectSet":
+					{
+						"packagePath": "/Niagara/Enums/Ribbons/ENiagara_UnsetDirectSet.ENiagara_UnsetDirectSet",
+						"assetType": "UserDefinedEnum",
+						"guid": "d7c7a09b902e0f78166c53208903ccf7"
+					},
+					"/Niagara/Enums/Ribbons/ENiagara_UnsetDirectSetRandom":
+					{
+						"packagePath": "/Niagara/Enums/Ribbons/ENiagara_UnsetDirectSetRandom.ENiagara_UnsetDirectSetRandom",
+						"assetType": "UserDefinedEnum",
+						"guid": "af68d12a73086d6aa55826b649e29fdb"
+					},
+					"/Niagara/Enums/Transforms/ENiagara_OffsetMode":
+					{
+						"packagePath": "/Niagara/Enums/Transforms/ENiagara_OffsetMode.ENiagara_OffsetMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "d0816fd6c26733348956528d371ff931"
+					},
+					"/Niagara/Enums/Transforms/ENiagara_RotationMode":
+					{
+						"packagePath": "/Niagara/Enums/Transforms/ENiagara_RotationMode.ENiagara_RotationMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "5631c1d85228ae00ac812c2433abccaa"
+					},
+					"/Niagara/Enums/Transforms/ENiagara_ScaleMode":
+					{
+						"packagePath": "/Niagara/Enums/Transforms/ENiagara_ScaleMode.ENiagara_ScaleMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "b39c794e12c1588020a76492f93aab0c"
+					},
+					"/Niagara/Enums/Transforms/ENiagara_TransformOrder":
+					{
+						"packagePath": "/Niagara/Enums/Transforms/ENiagara_TransformOrder.ENiagara_TransformOrder",
+						"assetType": "UserDefinedEnum",
+						"guid": "bbd680f70294d84e745c769166b48b87"
+					},
+					"/Niagara/Enums/Transforms/ENiagara_TransformType":
+					{
+						"packagePath": "/Niagara/Enums/Transforms/ENiagara_TransformType.ENiagara_TransformType",
+						"assetType": "UserDefinedEnum",
+						"guid": "1f3c445c0970c230b1ca3075bed2a4f9"
+					},
+					"/Niagara/Modules/Emitter/EmitterState":
+					{
+						"packagePath": "/Niagara/Modules/Emitter/EmitterState.EmitterState",
+						"assetType": "NiagaraScript",
+						"guid": "1c24c6616e3c42bf9807728879ad9229"
+					},
+					"/Niagara/Modules/Emitter/SpawnRate":
+					{
+						"packagePath": "/Niagara/Modules/Emitter/SpawnRate.SpawnRate",
+						"assetType": "NiagaraScript",
+						"guid": "ee1961064483c868271da8da282336c7"
+					},
+					"/Niagara/Modules/Solvers/SolveForcesAndVelocity":
+					{
+						"packagePath": "/Niagara/Modules/Solvers/SolveForcesAndVelocity.SolveForcesAndVelocity",
+						"assetType": "NiagaraScript",
+						"guid": "ecfa77496b89b625b7c5e4ffe2b9b013"
+					},
+					"/Niagara/Modules/Update/Forces/GravityForce":
+					{
+						"packagePath": "/Niagara/Modules/Update/Forces/GravityForce.GravityForce",
+						"assetType": "NiagaraScript",
+						"guid": "debab569c7edc95195ddef874d83b38e"
+					},
+					"/Niagara/Modules/Update/Lifetime/ParticleState":
+					{
+						"packagePath": "/Niagara/Modules/Update/Lifetime/ParticleState.ParticleState",
+						"assetType": "NiagaraScript",
+						"guid": "446d0ea6ea7023cbef19bb6ac8082150"
+					},
+					"/Niagara/Modules/Spawn/Initialization/V2/InitializeParticle":
+					{
+						"packagePath": "/Niagara/Modules/Spawn/Initialization/V2/InitializeParticle.InitializeParticle",
+						"assetType": "NiagaraScript",
+						"guid": "0990d0c86788f83bfe657c6cc5d344d8"
+					},
+					"/Niagara/Modules/Spawn/Location/V2/ShapeLocation":
+					{
+						"packagePath": "/Niagara/Modules/Spawn/Location/V2/ShapeLocation.ShapeLocation",
+						"assetType": "NiagaraScript",
+						"guid": "e43cf73a2f93689b823bfed64ac5f66c"
+					},
+					"/Niagara/Modules/Emitter/SpawnBurst_Instantaneous":
+					{
+						"packagePath": "/Niagara/Modules/Emitter/SpawnBurst_Instantaneous.SpawnBurst_Instantaneous",
+						"assetType": "NiagaraScript",
+						"guid": "88a6a956a64b47995e09658430a83df7"
+					},
+					"/Niagara/DynamicInputs/TypeConversions/MakeVector":
+					{
+						"packagePath": "/Niagara/DynamicInputs/TypeConversions/MakeVector.MakeVector",
+						"assetType": "NiagaraScript",
+						"guid": "23c99f74a0ac6ba467c8d946ef8a1f13"
+					},
+					"/Niagara/Modules/Update/Size/ScaleMeshSize":
+					{
+						"packagePath": "/Niagara/Modules/Update/Size/ScaleMeshSize.ScaleMeshSize",
+						"assetType": "NiagaraScript",
+						"guid": "d7f13a15471c66e13714a61b1a32fffc"
+					},
+					"/Niagara/Functions/System/SystemChangeState":
+					{
+						"packagePath": "/Niagara/Functions/System/SystemChangeState.SystemChangeState",
+						"assetType": "NiagaraScript",
+						"guid": "519793fce926210a972e3f02dbd14b82"
+					},
+					"/Niagara/Functions/Emitter/EmitterChangeState":
+					{
+						"packagePath": "/Niagara/Functions/Emitter/EmitterChangeState.EmitterChangeState",
+						"assetType": "NiagaraScript",
+						"guid": "bb23120ce2efbdbd1794d43c3ce4812f"
+					},
+					"/Niagara/Icons/Modules/T_Icon_Scalability_Emitter":
+					{
+						"packagePath": "/Niagara/Icons/Modules/T_Icon_Scalability_Emitter.T_Icon_Scalability_Emitter",
+						"assetType": "Texture2D",
+						"guid": "2ecfde20ff5aa9b6a17f81306aeb9776"
+					},
+					"/Niagara/Icons/Modules/T_Icon_Scalability_System":
+					{
+						"packagePath": "/Niagara/Icons/Modules/T_Icon_Scalability_System.T_Icon_Scalability_System",
+						"assetType": "Texture2D",
+						"guid": "2fe2afc1f19805352f07507b48e4085c"
+					},
+					"/Niagara/Functions/GetRandomInfo":
+					{
+						"packagePath": "/Niagara/Functions/GetRandomInfo.GetRandomInfo",
+						"assetType": "NiagaraScript",
+						"guid": "94a7e487b10c3cb441d1b8673788e063"
+					},
+					"/Niagara/Functions/RandomRangeFloat":
+					{
+						"packagePath": "/Niagara/Functions/RandomRangeFloat.RandomRangeFloat",
+						"assetType": "NiagaraScript",
+						"guid": "b2971952dcf39dd471e539845202e9af"
+					},
+					"/Niagara/Functions/DirectionAndLengthSafe":
+					{
+						"packagePath": "/Niagara/Functions/DirectionAndLengthSafe.DirectionAndLengthSafe",
+						"assetType": "NiagaraScript",
+						"guid": "028c9d1e766cafb470da1b018d971ba3"
+					},
+					"/Niagara/ParameterDefinitions/MeshRenderer":
+					{
+						"packagePath": "/Niagara/ParameterDefinitions/MeshRenderer.MeshRenderer",
+						"assetType": "NiagaraParameterDefinitions",
+						"guid": "8c64fe13ba4d631e601599811ab4a810"
+					},
+					"/Niagara/ParameterDefinitions/SpriteRenderer":
+					{
+						"packagePath": "/Niagara/ParameterDefinitions/SpriteRenderer.SpriteRenderer",
+						"assetType": "NiagaraParameterDefinitions",
+						"guid": "c9640f2afc5c1dfe3701fd9f03d62f61"
+					},
+					"/Niagara/Functions/Rotation/MultiplyVectorWithQuaternion":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/MultiplyVectorWithQuaternion.MultiplyVectorWithQuaternion",
+						"assetType": "NiagaraScript",
+						"guid": "5cd7c3d5b3252845bbe48ddb09fa5b7c"
+					},
+					"/Niagara/Functions/Math/CentimeterMeterConversion":
+					{
+						"packagePath": "/Niagara/Functions/Math/CentimeterMeterConversion.CentimeterMeterConversion",
+						"assetType": "NiagaraScript",
+						"guid": "b7a925418543b5e181a8b6024c144191"
+					},
+					"/Niagara/Functions/Drag/DragVelocity":
+					{
+						"packagePath": "/Niagara/Functions/Drag/DragVelocity.DragVelocity",
+						"assetType": "NiagaraScript",
+						"guid": "29827f782c2d49ea909def3eb2bd6e10"
+					},
+					"/Niagara/Icons/Modules/T_Icon_Solver_LimitAccel":
+					{
+						"packagePath": "/Niagara/Icons/Modules/T_Icon_Solver_LimitAccel.T_Icon_Solver_LimitAccel",
+						"assetType": "Texture2D",
+						"guid": "01f8b32d81b53449c6a93cc43c7aaabc"
+					},
+					"/Niagara/Icons/Modules/T_Icon_Solver_LimitSpeed":
+					{
+						"packagePath": "/Niagara/Icons/Modules/T_Icon_Solver_LimitSpeed.T_Icon_Solver_LimitSpeed",
+						"assetType": "Texture2D",
+						"guid": "3e8b2580e6630d815dc0a199633b1462"
+					},
+					"/Niagara/Icons/Modules/T_Icon_Solver_RotationalSolve":
+					{
+						"packagePath": "/Niagara/Icons/Modules/T_Icon_Solver_RotationalSolve.T_Icon_Solver_RotationalSolve",
+						"assetType": "Texture2D",
+						"guid": "81ef70c78973ab92f8965312b04ffbf1"
+					},
+					"/Niagara/Modules/Solvers/ApplyRotationVector":
+					{
+						"packagePath": "/Niagara/Modules/Solvers/ApplyRotationVector.ApplyRotationVector",
+						"assetType": "NiagaraScript",
+						"guid": "f0d13ebca803a941239bcce5725dac5d"
+					},
+					"/Niagara/Functions/Rotation/MultiplyQuaternion":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/MultiplyQuaternion.MultiplyQuaternion",
+						"assetType": "NiagaraScript",
+						"guid": "4f65103bad83a4c4d72499c8509c256d"
+					},
+					"/Niagara/Functions/Rotation/AxisAngleToQuaternion":
+					{
+						"packagePath": "/Niagara/Functions/Rotation/AxisAngleToQuaternion.AxisAngleToQuaternion",
+						"assetType": "NiagaraScript",
+						"guid": "ea19b43a120d13dca249537be7d9177e"
+					},
+					"/Niagara/Functions/Localspace/TransformBase":
+					{
+						"packagePath": "/Niagara/Functions/Localspace/TransformBase.TransformBase",
+						"assetType": "NiagaraScript",
+						"guid": "016b32b1c49e8945186c9c3cdbca9563"
+					},
+					"/Niagara/Functions/Localspace/TransformVector":
+					{
+						"packagePath": "/Niagara/Functions/Localspace/TransformVector.TransformVector",
+						"assetType": "NiagaraScript",
+						"guid": "a83395bdfdff38f84b2b5bfaf588dfd5"
+					},
+					"/Niagara/Functions/Math/SaturateFloat":
+					{
+						"packagePath": "/Niagara/Functions/Math/SaturateFloat.SaturateFloat",
+						"assetType": "NiagaraScript",
+						"guid": "fd7ee9b89554e3f63482ac088e77c246"
+					},
+					"/Niagara/Icons/Modules/T_Icon_Particle_InfiniteLife":
+					{
+						"packagePath": "/Niagara/Icons/Modules/T_Icon_Particle_InfiniteLife.T_Icon_Particle_InfiniteLife",
+						"assetType": "Texture2D",
+						"guid": "f246ab93f7e0ab6cd0c65460d1bff778"
+					},
+					"/Niagara/Functions/V2/CalculateRandomRange":
+					{
+						"packagePath": "/Niagara/Functions/V2/CalculateRandomRange.CalculateRandomRange",
+						"assetType": "NiagaraScript",
+						"guid": "264f26e8e32cbe086e6720bbbc170cec"
+					},
+					"/Niagara/Functions/V2/CalculateRandomRangeFloat":
+					{
+						"packagePath": "/Niagara/Functions/V2/CalculateRandomRangeFloat.CalculateRandomRangeFloat",
+						"assetType": "NiagaraScript",
+						"guid": "2729abd21fb733342c1232ee2300ea34"
+					},
+					"/Niagara/Functions/Localspace/SimulationPosition":
+					{
+						"packagePath": "/Niagara/Functions/Localspace/SimulationPosition.SimulationPosition",
+						"assetType": "NiagaraScript",
+						"guid": "66a9e9b26d7599dafcfcfef943626f34"
+					},
+					"/Niagara/Functions/V2/CalculateRandomRangeInteger":
+					{
+						"packagePath": "/Niagara/Functions/V2/CalculateRandomRangeInteger.CalculateRandomRangeInteger",
+						"assetType": "NiagaraScript",
+						"guid": "5224f747560730f4ec4bd594b47c0beb"
+					},
+					"/Niagara/Functions/LinearColor/HueShiftLinearColor":
+					{
+						"packagePath": "/Niagara/Functions/LinearColor/HueShiftLinearColor.HueShiftLinearColor",
+						"assetType": "NiagaraScript",
+						"guid": "89f39210064f14bdbe6686c0c013f227"
+					},
+					"/Niagara/Functions/V2/CalculateRandomBool":
+					{
+						"packagePath": "/Niagara/Functions/V2/CalculateRandomBool.CalculateRandomBool",
+						"assetType": "NiagaraScript",
+						"guid": "11c7c5d9db28309691fb4303c60c71d5"
+					},
+					"/Niagara/Enums/ENiagaraExpansionMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraExpansionMode.ENiagaraExpansionMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "26eb2864d380c1c1bf768ebd9e23f035"
+					},
+					"/Niagara/Functions/NormalizedExecutionIndex":
+					{
+						"packagePath": "/Niagara/Functions/NormalizedExecutionIndex.NormalizedExecutionIndex",
+						"assetType": "NiagaraScript",
+						"guid": "573e215bbb1f72eeabfcad0521eda8d1"
+					},
+					"/Niagara/Functions/ParametricTorus":
+					{
+						"packagePath": "/Niagara/Functions/ParametricTorus.ParametricTorus",
+						"assetType": "NiagaraScript",
+						"guid": "55f7ec02bfe7156bcf56ae0b2832282c"
+					},
+					"/Niagara/Functions/ParametricTorusKnot":
+					{
+						"packagePath": "/Niagara/Functions/ParametricTorusKnot.ParametricTorusKnot",
+						"assetType": "NiagaraScript",
+						"guid": "15106616c46229db67b223aa651e4ece"
+					},
+					"/Niagara/Functions/Localspace/TransformPosition":
+					{
+						"packagePath": "/Niagara/Functions/Localspace/TransformPosition.TransformPosition",
+						"assetType": "NiagaraScript",
+						"guid": "fca3427d2263ad4167cf50d13001d484"
+					},
+					"/Niagara/Functions/PolarToCartesianCoordinates":
+					{
+						"packagePath": "/Niagara/Functions/PolarToCartesianCoordinates.PolarToCartesianCoordinates",
+						"assetType": "NiagaraScript",
+						"guid": "e65b7f8e86b694b5d67c815a8bca79eb"
+					},
+					"/Niagara/Functions/RandomPointInBox":
+					{
+						"packagePath": "/Niagara/Functions/RandomPointInBox.RandomPointInBox",
+						"assetType": "NiagaraScript",
+						"guid": "c5580578b91f3b8c52a3bd9c15f1113a"
+					},
+					"/Niagara/Enums/ENiagara_LifetimeMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_LifetimeMode.ENiagara_LifetimeMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "6cc9926dc2b554a5e5240b01ee06d4a0"
+					},
+					"/Niagara/Enums/ENiagara_InfiniteLoopDuration":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_InfiniteLoopDuration.ENiagara_InfiniteLoopDuration",
+						"assetType": "UserDefinedEnum",
+						"guid": "fc6aae4e1a6f505d71ac7437fa3f9e4a"
+					},
+					"/Niagara/Enums/ENiagara_ColorInitializationMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_ColorInitializationMode.ENiagara_ColorInitializationMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "02243cf6e51e94218b7bb178e8c1a62c"
+					},
+					"/Niagara/Enums/ENiagara_EmitterStateOptions":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_EmitterStateOptions.ENiagara_EmitterStateOptions",
+						"assetType": "UserDefinedEnum",
+						"guid": "43afa4258cce449b661d62e43523f9c4"
+					},
+					"/Niagara/Enums/ENiagaraEmitterLifeCycleMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraEmitterLifeCycleMode.ENiagaraEmitterLifeCycleMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "cf1b4fab9e8ae6759bc0e3af16cda5ac"
+					},
+					"/Niagara/Enums/ENiagaraEmitterScalabilityMode_Limited":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraEmitterScalabilityMode_Limited.ENiagaraEmitterScalabilityMode_Limited",
+						"assetType": "UserDefinedEnum",
+						"guid": "da3b168b37a59b1cab909df9ec5e1863"
+					},
+					"/Niagara/Enums/ENiagaraInactiveMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraInactiveMode.ENiagaraInactiveMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "439806f470e70f7275f6c2d90eb1d772"
+					},
+					"/Niagara/Enums/ENiagaraRandomnessEvaluation":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraRandomnessEvaluation.ENiagaraRandomnessEvaluation",
+						"assetType": "UserDefinedEnum",
+						"guid": "3a4207e71b29503f2d1a617cb8b87df7"
+					},
+					"/Niagara/Enums/ENiagaraScaleColorMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraScaleColorMode.ENiagaraScaleColorMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "d875cd92d234db6b8c3f1f05b0283dac"
+					},
+					"/Niagara/Enums/ENiagaraShapeTorusMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraShapeTorusMode.ENiagaraShapeTorusMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "448e256f67afca251426614b19e2f559"
+					},
+					"/Niagara/Enums/ENiagaraSphereDistributionMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraSphereDistributionMode.ENiagaraSphereDistributionMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "650204187aa7fd430a4a6cd89f9c8398"
+					},
+					"/Niagara/Enums/ENiagaraSystemInactiveMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraSystemInactiveMode.ENiagaraSystemInactiveMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "0b21a80a6afa625bbd3ec8a83955e9b1"
+					},
+					"/Niagara/Enums/ENiagaraTorusDistributionMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraTorusDistributionMode.ENiagaraTorusDistributionMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "9c932e8a627336cbca1e273d0fa7f026"
+					},
+					"/Niagara/Enums/ENiagara_AttributeSamplingApplyOutput":
+					{
+						"packagePath": "/Niagara/Enums/ENiagara_AttributeSamplingApplyOutput.ENiagara_AttributeSamplingApplyOutput",
+						"assetType": "UserDefinedEnum",
+						"guid": "a84d4335605726599660428efeb411df"
+					},
+					"/Niagara/Enums/ENiagaraRandomnessMode":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraRandomnessMode.ENiagaraRandomnessMode",
+						"assetType": "UserDefinedEnum",
+						"guid": "674ad2d00fda7f12ec877017da5bacd8"
+					},
+					"/Niagara/DefaultAssets/DefaultSpriteMaterial":
+					{
+						"packagePath": "/Niagara/DefaultAssets/DefaultSpriteMaterial.DefaultSpriteMaterial",
+						"assetType": "Material",
+						"guid": "657fc4bc25189dfb360e3e2c97c3e39d"
+					},
+					"/Niagara/Modules/System/SystemState":
+					{
+						"packagePath": "/Niagara/Modules/System/SystemState.SystemState",
+						"assetType": "NiagaraScript",
+						"guid": "1cea48f728a33776eee32c8a1b95f9c7"
+					},
+					"/Niagara/ParameterDefinitions/CoreParameters":
+					{
+						"packagePath": "/Niagara/ParameterDefinitions/CoreParameters.CoreParameters",
+						"assetType": "NiagaraParameterDefinitions",
+						"guid": "f25de0d6ecd0ce92c0b9304923594f06"
+					},
+					"/Niagara/Modules/Update/Color/ScaleColor":
+					{
+						"packagePath": "/Niagara/Modules/Update/Color/ScaleColor.ScaleColor",
+						"assetType": "NiagaraScript",
+						"guid": "a1ced2242969a06f80303441940be437"
+					},
+					"/Niagara/Enums/ENiagaraChannelCorrelation":
+					{
+						"packagePath": "/Niagara/Enums/ENiagaraChannelCorrelation.ENiagaraChannelCorrelation",
+						"assetType": "UserDefinedEnum",
+						"guid": "7f99a2317537be6b8e48db9a17c0fe92"
+					}
+				}
+			},
+			"ACLPlugin":
+			{
+				"moduleCategory": "ACLPlugin",
+				"assetDependencyDetails":
+				{
+					"/ACLPlugin/ACLAnimCurveCompressionSettings":
+					{
+						"packagePath": "/ACLPlugin/ACLAnimCurveCompressionSettings.ACLAnimCurveCompressionSettings",
+						"assetType": "AnimCurveCompressionSettings",
+						"guid": "a431028009a272f2bde2ba48a6bd4850"
+					},
+					"/ACLPlugin/ACLAnimBoneCompressionSettings":
+					{
+						"packagePath": "/ACLPlugin/ACLAnimBoneCompressionSettings.ACLAnimBoneCompressionSettings",
+						"assetType": "AnimBoneCompressionSettings",
+						"guid": "f742e2503d57f6782d6f26cf61bea78a"
+					}
+				}
+			}
+		}
+	},
+	"platformAssets":
+	{
+	}
+}
