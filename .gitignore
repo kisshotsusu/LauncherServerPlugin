@@ -34,11 +34,13 @@
 # Visual Studio
 .vs/
 
-# Server runtime data
-Server/data/manifests/
-Server/data/versions/
-# Generated self-signed TLS cert/key (private key, never commit)
-Server/data/ssl/
+# Server runtime data（全部运行时生成，绝不入库；保留 config.example.json 作为模板）
+Server/data/
+# 本地配置文件：含本机绝对路径（E:\SVN\...、D:\test\...）与 admin_token，非可移植，勿提交
+Server/config.json
+# 运行时项目注册表 / 每项目数据（随运行再生）
+Server/projects.json
+Server/projects/
 
 # Unreal Engine plugin build output
 Plugins/CloudUpdate/Intermediate/
@@ -49,8 +51,21 @@ obj/
 *.pdb
 
 # Runtime caches / temp files (should never be committed)
+# NOTE: WebView2 运行时缓存真实路径是 Luncher/WebView2Data/（非 Luncher/app/ 下），
+#       旧规则 Luncher/app/WebView2Data/ 写错路径导致 52MB 浏览器缓存被提交。
+Luncher/WebView2Data/
 Luncher/app/WebView2Data/
 *.download
+
+# ===== Launcher 运行时 / 构建产物（绝不入库）=====
+# Luncher/Release/：发布/打包产物（含 server 子目录、背景帧等，~118MB）
+Luncher/Release/
+# Luncher/app/：首运行从服务器下载的运行时资源（ui/SelfUpdater/background 等，~151MB）
+Luncher/app/
+# 每用户 VS 设置（Launcher.vcxproj.user）
+Luncher/*.user
+# 资源编译器临时文件（如 RCa30372）
+Luncher/RCa*
 
 # Python bytecode / caches (build artifacts, never commit)
 __pycache__/
