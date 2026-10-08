@@ -70,6 +70,14 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "本地", meta = (DisplayName = "本地安装根目录覆盖（可选）"))
 	FString LocalRootOverride;
 
+ /** Initial resource release installed with this build. Empty migrates the old CurrentVersionId. */
+ UPROPERTY(EditAnywhere, config, Category = "本地", meta = (DisplayName = "初始资源版本号"))
+ FString InitialResourceVersionId;
+
+ /** Optional installed binary version. Empty uses Project Settings / Project Version. Never advanced by resource updates. */
+ UPROPERTY(EditAnywhere, config, Category = "本地", meta = (DisplayName = "游戏包版本覆盖（可选）"))
+ FString GameVersionOverride;
+
 	/** 当前本地版本号，更新成功后会自动写入 Saved/CloudUpdate/local_version.json */
 	UPROPERTY(EditAnywhere, config, Category = "本地", meta = (DisplayName = "当前版本号"))
 	FString CurrentVersionId;

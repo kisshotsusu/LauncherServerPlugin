@@ -15,7 +15,7 @@ SERVER_DIR = Path(__file__).resolve().parent.parent
 if str(SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(SERVER_DIR))
 
-from config import load_config
+from config import load_config, resolve_server_path
 from importer import run_import
 
 
@@ -30,12 +30,20 @@ def main():
     args = parser.parse_args()
 
     server_cfg = load_config()
-    source_dir = os.path.abspath(args.source or server_cfg.get("hotpatcher_source", ""))
-    data_dir = os.path.abspath(args.data or server_cfg.get("data_dir", "data"))
-    project = args.project or server_cfg.get("project", "CodeBuild")
-    platform = args.platform or (server_cfg.get("platforms") or ["Windows"])[0]
-    order = args.order if args.order is not None else server_cfg.get("hotpatcher_order", "")
-    run_import(source_dir, data_dir, project, platform, order, only=args.only)
+    platform = args.platform or server_cfg["default_platform"]
+    if platform not in server_cfg["platforms"]:
+        parser.error("项目未配置这个平台")
+    options = server_cfg["platform_settings"].get(platform, {})
+    source_dir = resolve_server_path(args.source or options.get("patchSourceDir", ""), Path(server_cfg["_config_path"]).parent)
+    data_dir = os.path.abspath(args.data or server_cfg["data_dir"])
+    server_cfg["project"] = args.project or server_cfg["project"]
+    if args.data:
+        server_cfg["data_dir"] = data_dir
+        server_cfg["versions_dir"] = os.path.join(data_dir, "versions")
+        server_cfg["manifests_dir"] = os.path.join(data_dir, "manifests")
+    order = args.order if args.order is not None else options.get("hotpatcherOrder", "")
+    run_import(source_dir, data_dir, server_cfg["project"], platform, order, only=args.only, config=server_cfg)
+
 
 
 if __name__ == "__main__":

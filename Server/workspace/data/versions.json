@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 2,
+  "platformUpdateChains": {
+    "Windows": [
+      "1.2",
+      "1.3",
+      "1.4"
+    ],
+    "Linux": [],
+    "Android": []
+  },
+  "project": "CodeBuild",
+  "platforms": [
+    "Windows",
+    "Linux",
+    "Android"
+  ],
+  "current": "1.5.3.1",
+  "versions": [
+    {
+      "platform": "Windows",
+      "versionId": "1.5.3.1",
+      "baseVersionId": "1.5.3",
+      "date": "2026.08.26-07.58.44",
+      "type": "patch",
+      "url": "/api/version/1.5.3.1?platform=Windows",
+      "changedAssetCount": 1,
+      "deletedAssetCount": 0,
+      "totalSizeBytes": 3240449
+    },
+    {
+      "platform": "Windows",
+      "versionId": "1.5.3",
+      "baseVersionId": "",
+      "date": "2026.08.26-07.57.21",
+      "type": "full",
+      "url": "/api/version/1.5.3?platform=Windows",
+      "changedAssetCount": 1,
+      "deletedAssetCount": 0,
+      "totalSizeBytes": 0
+    },
+    {
+      "platform": "Windows",
+      "versionId": "1.4",
+      "baseVersionId": "1.0",
+      "date": "2026.08.06-07.56.32",
+      "type": "patch",
+      "url": "/api/version/1.4?platform=Windows",
+      "changedAssetCount": 2,
+      "deletedAssetCount": 0,
+      "totalSizeBytes": 3251797
+    },
+    {
+      "platform": "Windows",
+      "versionId": "1.3",
+      "baseVersionId": "1.2",
+      "date": "2026.08.06-06.32.49",
+      "type": "patch",
+      "url": "/api/version/1.3?platform=Windows",
+      "changedAssetCount": 1,
+      "deletedAssetCount": 0,
+      "totalSizeBytes": 14182
+    },
+    {
+      "platform": "Windows",
+      "versionId": "1.2",
+      "baseVersionId": "1.0",
+      "date": "2026.08.06-06.18.54",
+      "type": "patch",
+      "url": "/api/version/1.2?platform=Windows",
+      "changedAssetCount": 2,
+      "deletedAssetCount": 0,
+      "totalSizeBytes": 19811
+    },
+    {
+      "platform": "Windows",
+      "versionId": "1.0",
+      "baseVersionId": "",
+      "date": "2026.08.06-05.10.39",
+      "type": "full",
+      "url": "/api/version/1.0?platform=Windows",
+      "changedAssetCount": 2,
+      "deletedAssetCount": 0,
+      "totalSizeBytes": 0
+    }
+  ],
+  "updateChain": [
+    "1.2",
+    "1.3",
+    "1.4"
+  ],
+  "baseVersions": {
+    "Windows": [],
+    "Linux": [],
+    "Android": []
+  },
+  "revoked": [],
+  "generatedAt": "2026-10-08T19:18:07+0800"
+}

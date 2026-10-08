@@ -158,11 +158,8 @@ void FCloudUpdateService::FinishIntegrityCheck(bool bSuccess, const TArray<FClou
 {
 	PendingIssues = InIssues;
 
-	if (Owner)
-	{
-		Owner->OnIntegrityCheckFinished.Broadcast(bSuccess, InIssues, InMessage);
-	}
-	SetBusy(false);
+    SetBusy(false);
+    if (Owner) Owner->OnIntegrityCheckFinished.Broadcast(bSuccess, InIssues, InMessage);
 }
 
 void FCloudUpdateService::CheckIntegrity(ECloudCheckMode InMode)
@@ -234,11 +231,10 @@ void FCloudUpdateService::DownloadNextRepairFile()
 	if (bAbortRequested || CurrentFileIndex >= PendingIssues.Num())
 	{
 		const FString Message = FString::Printf(TEXT("修复完成：成功 %d / 失败 %d"), CompletedFiles, FailedFiles);
-		if (Owner)
-		{
-			Owner->OnRepairFinished.Broadcast(!bAbortRequested, CompletedFiles, Message);
-		}
-		SetBusy(false);
+        const bool bSuccess = !bAbortRequested && FailedFiles == 0;
+        const int32 RepairedCount = CompletedFiles;
+        SetBusy(false);
+        if (Owner) Owner->OnRepairFinished.Broadcast(bSuccess, RepairedCount, Message);
 		return;
 	}
 

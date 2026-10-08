@@ -6,7 +6,7 @@
 	"Description": "运行时文件完整性检查与基于 HotPatcher JSON 的云更新管理",
 	"Category": "Network",
 	"CreatedBy": "Codex",
-	"CanContainContent": false,
+	"CanContainContent": true,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,

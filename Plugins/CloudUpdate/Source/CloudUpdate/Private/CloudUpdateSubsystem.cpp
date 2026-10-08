@@ -26,6 +26,7 @@ void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// 该调用作为「尽力而为」的安全网保留；可靠的交换须放在引擎挂载之前（启动器/Launcher 侧、
 	// 自定义 FPlatformFile、或插件模块更早的 StartupModule 中）。详见 FinalizePendingMerges 实现备注。
 	FCloudBinaryMerge::FinalizePendingMerges(FPaths::ProjectContentDir() / TEXT("Paks"), true);
+ Service->PromotePendingResourceVersion();
 
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
 	if (Settings)
@@ -45,7 +46,7 @@ void UCloudUpdateSubsystem::Deinitialize()
 {
 	if (Service.IsValid())
 	{
-		Service->Abort();
+		Service->DetachOwner();
 		Service.Reset();
 	}
 	Super::Deinitialize();
@@ -53,6 +54,7 @@ void UCloudUpdateSubsystem::Deinitialize()
 
 void UCloudUpdateSubsystem::CheckIntegrity(ECloudCheckMode CheckMode)
 {
+    if (bAutoMergeRunning) { OnIntegrityCheckFinished.Broadcast(false, {}, TEXT("自动合并正在进行")); return; }
 	if (Service.IsValid())
 	{
 		Service->CheckIntegrity(CheckMode);
@@ -61,6 +63,7 @@ void UCloudUpdateSubsystem::CheckIntegrity(ECloudCheckMode CheckMode)
 
 void UCloudUpdateSubsystem::RepairIssues()
 {
+    if (bAutoMergeRunning) { OnRepairFinished.Broadcast(false, 0, TEXT("自动合并正在进行")); return; }
 	if (Service.IsValid())
 	{
 		Service->RepairIssues();
@@ -69,6 +72,7 @@ void UCloudUpdateSubsystem::RepairIssues()
 
 void UCloudUpdateSubsystem::CheckForUpdates()
 {
+    if (bAutoMergeRunning) { OnUpdateCheckFinished.Broadcast(false, false, TEXT(""), {}, TEXT("自动合并正在进行")); return; }
 	if (Service.IsValid())
 	{
 		Service->CheckForUpdates();
@@ -77,6 +81,7 @@ void UCloudUpdateSubsystem::CheckForUpdates()
 
 void UCloudUpdateSubsystem::ApplyUpdate(const FString& VersionId)
 {
+    if (bAutoMergeRunning) { OnUpdateFinished.Broadcast(false, false, VersionId, TEXT("自动合并正在进行")); return; }
 	if (Service.IsValid())
 	{
 		Service->ApplyUpdate(VersionId);
@@ -85,6 +90,7 @@ void UCloudUpdateSubsystem::ApplyUpdate(const FString& VersionId)
 
 void UCloudUpdateSubsystem::QueryPendingUpdateSize()
 {
+    if (bAutoMergeRunning) { OnUpdateSizeQueryFinished.Broadcast(false, 0, 0, TEXT("自动合并正在进行")); return; }
 	if (Service.IsValid())
 	{
 		Service->QueryPendingUpdateSize();
@@ -97,6 +103,7 @@ void UCloudUpdateSubsystem::QueryPendingUpdateSize()
 
 void UCloudUpdateSubsystem::ApplyLatestUpdate()
 {
+    if (bAutoMergeRunning) { OnUpdateFinished.Broadcast(false, false, TEXT(""), TEXT("自动合并正在进行")); return; }
 	if (Service.IsValid())
 	{
 		Service->ApplyLatestUpdate();
@@ -113,7 +120,7 @@ void UCloudUpdateSubsystem::AbortCurrentTask()
 
 bool UCloudUpdateSubsystem::IsBusy() const
 {
-	return Service.IsValid() && Service->IsBusy();
+	return bAutoMergeRunning || (Service.IsValid() && Service->IsBusy());
 }
 
 FString UCloudUpdateSubsystem::GetLocalVersion() const
@@ -191,10 +198,7 @@ bool UCloudUpdateSubsystem::ApplyBinaryPatchToBase(const FString& BaseFilePath, 
 	{
 		return false;
 	}
-	// 备注：本函数返回 bool，会丢失 ApplyPatchToFileEx 的「StagedForRestart（需重启生效）」语义——
-	// 若合并结果是暂存待重启，调用方仅得到 true，却不知道需要重启才能真正生效。
-	// 若蓝图需要区分，可改用返回 EBinaryMergeResult 的接口（FCloudBinaryMerge::ApplyPatchToFileEx）。
-	return FCloudBinaryMerge::ApplyPatchToFile(BaseFilePath, PatchFilePath, OutMergedPath, FeatureName);
+    return ApplyBinaryPatchToBaseEx(BaseFilePath, PatchFilePath, OutMergedPath, FeatureName) != EBinaryMergeResult::Failed;
 }
 
 TArray<FString> UCloudUpdateSubsystem::FindPatchFiles(const FString& Directory, bool bIncludeSubdirectories) const
@@ -205,7 +209,7 @@ TArray<FString> UCloudUpdateSubsystem::FindPatchFiles(const FString& Directory, 
 
 void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bIncludeSubdirectories)
 {
-	if (bAutoMergeRunning)
+	if (IsBusy())
 	{
 		UE_LOG(LogCloudUpdate, Warning, TEXT("自动合并已在进行中，忽略本次请求"));
 		return;
@@ -217,22 +221,28 @@ void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bInc
 
 	// 先回报总文件数（即便 0 个也广播一次，便于 UI 进入「进行中」态）
 	const int32 Total = FCloudBinaryMerge::FindPatchFiles(Dir, bIncludeSubdirectories).Num();
+    bAutoMergeRunning = true;
+    MergeProgress = FCloudMergeProgressInfo();
+    MergeProgress.TotalFiles = Total;
+    MergeProgress.bActive = Total > 0;
+    ReportMergeProgress(MergeProgress);
 	OnAutoMergeProgress.Broadcast(0, Total, TEXT(""), true);
 
 	if (!FCloudBinaryMerge::IsHDiffPatchAvailable())
 	{
 		UE_LOG(LogCloudUpdate, Warning, TEXT("自动合并跳过：HDiffPatch 不可用"));
-		OnAutoMergeFinished.Broadcast(false, 0, Total);
+        MergeProgress.CompletedFiles = Total;
+        MergeProgress.SkippedFiles = Total;
+        MergeProgress.Progress = Total > 0 ? 1.0f : 0.0f;
+        MergeProgress.bActive = false;
+        ReportMergeProgress(MergeProgress);
+        bAutoMergeRunning = false;
+		OnAutoMergeFinished.Broadcast(Total == 0, 0, Total);
 		return;
 	}
 
-	bAutoMergeRunning = true;
 	TWeakObjectPtr<UCloudUpdateSubsystem> Self = this;
-	// 备注（并发风险）：bAutoMergeRunning 仅防止「两次 AutoMergePatches 并发」。
-	// 但更新下载流程（FCloudUpdateService::HandleBinaryPatchEntry）也会在游戏线程/HTTP 回调中
-	// 对同一基础文件做合并，二者不共享该标志。若更新进行中用户又触发自动合并，
-	// 两条路径会同时写 Foo.merged.tmp / Foo.pending，存在临时文件互相覆盖的竞态。
-	// 如需严格安全，应引入跨流程的合并锁或将自动合并与更新合并纳入同一串行队列。
+    // Busy state prevents update and manual merge tasks from overlapping this worker.
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [Self, Dir, bIncludeSubdirectories, FeatureName, Total]()
 	{
 		FBinaryMergeResult Result = FCloudBinaryMerge::AutoMergeDirectory(
@@ -244,6 +254,17 @@ void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bInc
 				{
 					if (Self.IsValid())
 					{
+                        FCloudMergeProgressInfo Progress = Self->MergeProgress;
+                        Progress.TotalFiles = InTotal;
+                        Progress.CurrentFile = PatchPath;
+                        Progress.bCurrentFileInProgress = Completed == Progress.CompletedFiles;
+                        if (!Progress.bCurrentFileInProgress)
+                        {
+                            Progress.CompletedFiles = Completed;
+                            if (bOk) ++Progress.SucceededFiles; else ++Progress.FailedFiles;
+                        }
+                        Progress.Progress = InTotal > 0 ? static_cast<float>(Completed) / InTotal : 0.0f;
+                        Self->ReportMergeProgress(Progress);
 						Self->OnAutoMergeProgress.Broadcast(Completed, InTotal, PatchPath, bOk);
 					}
 				});
@@ -255,8 +276,17 @@ void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bInc
 			{
 				return;
 			}
+            FCloudMergeProgressInfo Progress = Self->MergeProgress;
+            Progress.CompletedFiles = Result.Succeeded + Result.Failed;
+            Progress.TotalFiles = Progress.CompletedFiles;
+            Progress.SucceededFiles = Result.Succeeded;
+            Progress.FailedFiles = Result.Failed;
+            Progress.bRestartRequired = Result.RestartRequiredCount > 0;
+            Progress.bActive = Progress.bCurrentFileInProgress = false;
+            Progress.Progress = Progress.TotalFiles > 0 ? 1.0f : 0.0f;
+            Self->ReportMergeProgress(Progress);
 			Self->bAutoMergeRunning = false;
-			const bool bAllSucceeded = (Result.Failed == 0 && Result.Succeeded > 0);
+			const bool bAllSucceeded = (Result.Failed == 0);
 			Self->OnAutoMergeFinished.Broadcast(bAllSucceeded, Result.Succeeded, Result.Failed);
 		});
 	});
@@ -265,4 +295,72 @@ void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bInc
 void UCloudUpdateSubsystem::AutoMergePatchesInPaksDir(bool bIncludeSubdirectories)
 {
 	AutoMergePatches(FPaths::ProjectContentDir() / TEXT("Paks"), bIncludeSubdirectories);
+}
+
+EBinaryMergeResult UCloudUpdateSubsystem::ApplyBinaryPatchToBaseEx(const FString& BaseFilePath, const FString& PatchFilePath, FString& OutMergedPath, const FString& FeatureName)
+{
+ OutMergedPath.Reset();
+ if (!Service.IsValid() || IsBusy()) return EBinaryMergeResult::Failed;
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ const FString SelectedFeature = FeatureName.IsEmpty() && Settings ? Settings->BinaryPatchFeatureName : FeatureName;
+ return FCloudBinaryMerge::ApplyPatchToFileEx(BaseFilePath, PatchFilePath, OutMergedPath, SelectedFeature);
+}
+
+FString UCloudUpdateSubsystem::GetLocalGameVersion() const { return Service.IsValid() ? Service->GetLocalGameVersion() : FString(); }
+FString UCloudUpdateSubsystem::GetServerGameVersion() const { return GetUpdatePlan().ServerGameVersion; }
+FString UCloudUpdateSubsystem::GetLocalResourceVersion() const { return GetLocalVersion(); }
+FString UCloudUpdateSubsystem::GetServerResourceVersion() const { return GetUpdatePlan().ServerResourceVersion; }
+void UCloudUpdateSubsystem::SetLocalResourceVersion(const FString& VersionId) { SetLocalVersion(VersionId); }
+void UCloudUpdateSubsystem::QueryUpdatePlan()
+{
+ if (bAutoMergeRunning || !Service.IsValid()) { OnUpdatePlanReady.Broadcast(false, GetUpdatePlan(), TEXT("服务不可用或正在合并")); return; }
+ Service->QueryUpdatePlan();
+}
+FCloudUpdatePlan UCloudUpdateSubsystem::GetUpdatePlan() const { return Service.IsValid() ? Service->GetUpdatePlan() : FCloudUpdatePlan(); }
+int32 UCloudUpdateSubsystem::GetRequiredUpdateFileCount() const { return GetUpdatePlan().RequiredFileCount; }
+int64 UCloudUpdateSubsystem::GetRequiredUpdateSizeBytes() const { return GetUpdatePlan().RequiredBytes; }
+FCloudDownloadProgressInfo UCloudUpdateSubsystem::GetDownloadProgress() const { return Service.IsValid() ? Service->GetDownloadProgress() : FCloudDownloadProgressInfo(); }
+FCloudMergeProgressInfo UCloudUpdateSubsystem::GetMergeProgress() const { return MergeProgress; }
+void UCloudUpdateSubsystem::ReportMergeProgress(const FCloudMergeProgressInfo& Progress)
+{
+ MergeProgress = Progress;
+ MergeProgress.Percent = MergeProgress.Progress * 100.0f;
+ const FCloudMergeProgressInfo Snapshot = MergeProgress;
+ OnMergeProgress.Broadcast(Snapshot);
+}
+
+FString UCloudUpdateSubsystem::GetPendingResourceVersion() const { return Service.IsValid() ? Service->GetPendingResourceVersion() : FString(); }
+bool UCloudUpdateSubsystem::ApplyBinaryPatchAsync(const FString& BaseFilePath, const FString& PatchFilePath, const FString& FeatureName)
+{
+ if (!Service.IsValid() || IsBusy()) return false;
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ const FString Selected = FeatureName.IsEmpty() && Settings ? Settings->BinaryPatchFeatureName : FeatureName;
+ bAutoMergeRunning = true;
+ FCloudMergeProgressInfo Progress;
+ Progress.TotalFiles = 1;
+ Progress.CurrentFile = PatchFilePath;
+ Progress.bActive = Progress.bCurrentFileInProgress = true;
+ ReportMergeProgress(Progress);
+ TWeakObjectPtr<UCloudUpdateSubsystem> Self = this;
+ AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [Self, BaseFilePath, PatchFilePath, Selected]()
+ {
+  FString MergedPath;
+  const EBinaryMergeResult Result = FCloudBinaryMerge::ApplyPatchToFileEx(BaseFilePath, PatchFilePath, MergedPath, Selected);
+  AsyncTask(ENamedThreads::GameThread, [Self, BaseFilePath, Result]()
+  {
+   if (!Self.IsValid()) return;
+   FCloudMergeProgressInfo Completed = Self->MergeProgress;
+   Completed.CompletedFiles = 1;
+   Completed.SucceededFiles = Result == EBinaryMergeResult::Failed ? 0 : 1;
+   Completed.FailedFiles = Result == EBinaryMergeResult::Failed ? 1 : 0;
+   Completed.Progress = 1.0f;
+   Completed.bActive = Completed.bCurrentFileInProgress = false;
+   Completed.bRestartRequired = Result == EBinaryMergeResult::StagedForRestart;
+   Self->ReportMergeProgress(Completed);
+   Self->bAutoMergeRunning = false;
+   Self->OnBinaryPatchFinished.Broadcast(Result != EBinaryMergeResult::Failed, BaseFilePath,
+    Result == EBinaryMergeResult::StagedForRestart ? TEXT("合并已暂存，需启动前交换") : (Result == EBinaryMergeResult::Success ? TEXT("合并完成") : TEXT("合并失败")));
+  });
+ });
+ return true;
 }

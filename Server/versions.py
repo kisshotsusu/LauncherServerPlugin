@@ -39,7 +39,7 @@ def save_revoked_store(cfg, store):
 
 def _revoked_entry_from_descriptor(cfg, version_id):
     """从描述文件生成"被撤销版本"条目（versionId + 文件清单），供客户端精确删除。"""
-    desc = read_descriptor(cfg, version_id)
+    desc = read_descriptor(cfg, version_id, cfg.get("_selected_platform"))
     if not desc:
         return None
     files = []
@@ -54,7 +54,7 @@ def _revoked_entry_from_descriptor(cfg, version_id):
             "size": f.get("size", 0),
             "kind": f.get("kind", ""),
         })
-    return {"versionId": version_id, "type": desc.get("type", ""), "files": files}
+    return {"versionId": version_id, "platform": desc.get("platform", cfg["platforms"][0]), "type": desc.get("type", ""), "files": files}
 
 
 def _revoked_entry_from_base(cfg, platform, version_id):
@@ -78,7 +78,7 @@ def _revoked_entry_from_base(cfg, platform, version_id):
             "size": f.get("size", 0),
             "kind": f.get("kind", ""),
         })
-    return {"versionId": version_id, "type": "full", "files": files}
+    return {"versionId": version_id, "platform": platform, "type": "full", "files": files}
 
 
 def build_versions_index(cfg, explicit_order=None):
@@ -86,43 +86,51 @@ def build_versions_index(cfg, explicit_order=None):
     ensure_dirs(cfg)
     patch_versions = []
     versions_dir = cfg["versions_dir"]
-    if os.path.isdir(versions_dir):
-        for entry in sorted(os.listdir(versions_dir)):
-            desc_path = os.path.join(versions_dir, entry, "descriptor.json")
-            desc = _read_json(desc_path)
+    for platform in cfg["platforms"]:
+        platform_dir = os.path.join(versions_dir, platform)
+        if not os.path.isdir(platform_dir):
+            continue
+        for entry in sorted(os.listdir(platform_dir)):
+            if entry.startswith("."):
+                continue
+            desc = _read_json(os.path.join(platform_dir, entry, "descriptor.json"))
             if not desc:
                 continue
-            info = {
-                "versionId": desc.get("versionId", entry),
-                "baseVersionId": desc.get("baseVersionId", ""),
-                "date": desc.get("date", ""),
+            patch_versions.append({
+                "platform": platform, "versionId": entry,
+                "baseVersionId": desc.get("baseVersionId", ""), "date": desc.get("date", ""),
                 "type": desc.get("type", "patch"),
-                "url": f"/api/version/{quote(entry)}",
+                "gameVersion": desc.get("gameVersion", ""),
+                "resourceVersion": desc.get("resourceVersion") or entry,
+                "requiredGameVersion": desc.get("requiredGameVersion", ""),
+                "fileCount": len(desc.get("files", [])),
+                "url": f"/api/version/{quote(entry)}?platform={quote(platform)}",
                 "changedAssetCount": desc.get("changedAssetCount", 0),
                 "deletedAssetCount": desc.get("deletedAssetCount", 0),
                 "totalSizeBytes": sum(f.get("size", 0) for f in desc.get("files", [])),
-            }
-            patch_versions.append(info)
+            })
 
     # 基础包版本（多版本整包）
     base_versions = {}
-    base_ids_all = set()
     for platform in cfg["platforms"]:
         base_versions[platform] = []
         packages = get_base_packages(cfg, platform)
         for version in sorted(packages.keys(), key=version_key):
             base_versions[platform].append(version)
-            base_ids_all.add(version)
             # 基础包整包优先：移除版本库中同名的补丁/整包条目，避免重复
-            patch_versions = [v for v in patch_versions if v["versionId"] != version]
+            patch_versions = [v for v in patch_versions if v["versionId"] != version or v.get("platform") != platform]
             manifest = _read_json(os.path.join(
                 cfg["manifests_dir"], f"{cfg['project']}_{platform}_{version}.json"))
             total_size = sum(f.get("size", 0) for f in (manifest or {}).get("files", [])) if manifest else 0
             patch_versions.append({
+                "platform": platform,
                 "versionId": version,
                 "baseVersionId": "",
                 "date": (manifest or {}).get("generatedAt", ""),
                 "type": "full",
+                "gameVersion": (manifest or {}).get("gameVersion") or version,
+                "resourceVersion": (manifest or {}).get("resourceVersion") or version,
+                "fileCount": len((manifest or {}).get("files", [])),
                 "url": f"/api/version/{quote(version)}?platform={quote(platform)}",
                 "changedAssetCount": 0,
                 "deletedAssetCount": 0,
@@ -132,24 +140,23 @@ def build_versions_index(cfg, explicit_order=None):
     # 补丁按日期降序，整体再按版本号降序（基础包 2.0 会排在补丁 1.4 之前）
     versions = sorted(patch_versions, key=lambda v: version_key(v["versionId"]), reverse=True)
 
-    chain = []
-    if explicit_order:
-        order = [x.strip() for x in explicit_order.split(",") if x.strip()]
-        for vid in order:
-            for v in patch_versions:
-                if v["versionId"] == vid and v["type"] != "full":
-                    chain.append(vid)
-                    break
-    else:
-        # 无显式顺序时：按日期升序取 patch 版本作为更新链
-        chain = [v["versionId"] for v in sorted(patch_versions, key=lambda v: v["date"]) if v["type"] == "patch"]
-    # 基础包版本不进更新链（整包已包含其内容，避免客户端整包后再打同名补丁）
-    chain = [vid for vid in chain if vid not in base_ids_all]
+    platform_chains = {}
+    for platform in cfg["platforms"]:
+        candidates = [v for v in versions if v.get("platform") == platform and v["type"] == "patch"]
+        ids = {v["versionId"] for v in candidates}
+        order = (cfg.get("platform_settings", {}).get(platform) or {}).get("hotpatcherOrder", explicit_order or "")
+        if order:
+            chain = list(dict.fromkeys(v.strip() for v in order.split(",") if v.strip() in ids))
+        else:
+            chain = [v["versionId"] for v in sorted(candidates, key=lambda v: (v["date"], version_key(v["versionId"])))]
+        platform_chains[platform] = chain
+    chain = platform_chains.get(cfg.get("default_platform", cfg["platforms"][0]), [])
 
     all_ids = [v["versionId"] for v in patch_versions]
     current = max(all_ids, key=version_key) if all_ids else ""
     index = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
+        "platformUpdateChains": platform_chains,
         "project": cfg["project"],
         "platforms": cfg["platforms"],
         "current": current,
@@ -180,13 +187,13 @@ def build_versions_index(cfg, explicit_order=None):
             if revoke_superseded or not kept:
                 entry = _revoked_entry_from_base(cfg, platform, v)
                 if entry:
-                    revoked_base[v] = entry
+                    revoked_base[platform + "/" + v] = entry
 
     # 注入已删除版本的快照：版本若被重新发布（仍在 all_ids 中）则从撤销库移除
     revoked_store = load_revoked_store(cfg)
     cleaned = {}
     for vid, entry in revoked_store.items():
-        if vid in all_ids:
+        if any(v["versionId"] == entry.get("versionId", vid) and v.get("platform") == entry.get("platform", cfg["platforms"][0]) for v in patch_versions):
             continue
         cleaned[vid] = entry
     # 合并被取代/被隐藏的旧基础包（被取代的基础包即便仍配置也应撤销，故不按 all_ids 跳过）
@@ -206,7 +213,7 @@ def build_versions_index(cfg, explicit_order=None):
 def load_versions_index(cfg, rebuild=False):
     index_path = os.path.join(cfg["data_dir"], "versions.json")
     index = _read_json(index_path)
-    if index is None or rebuild:
+    if index is None or rebuild or index.get("schemaVersion") != 2 or any("platform" not in v for v in index.get("versions", [])):
         index = build_versions_index(cfg)
     return index
 
@@ -222,7 +229,7 @@ def filter_index_by_enabled(index, cfg):
     ev = cfg.get("enabled_versions") or {}
     configured = {}
     for platform, ids in ev.items():
-        if isinstance(ids, list) and ids:
+        if isinstance(ids, list) and platform in index.get("platforms", []):
             configured[str(platform)] = set(str(x) for x in ids)
     if not configured:
         return index
@@ -243,8 +250,7 @@ def filter_index_by_enabled(index, cfg):
             bv[platform] = [x for x in ids if x in configured[platform]]
     index["baseVersions"] = bv
     all_ids = [v.get("versionId") for v in index.get("versions", [])]
-    if all_ids:
-        index["current"] = max(all_ids, key=version_key)
+    index["current"] = max(all_ids, key=version_key, default="")
 
     # 被隐藏的版本（含整包基础包）：客户端若已下载应删除。从描述文件快照文件清单注入 revoked
     hidden_ids = [v.get("versionId") for v in original_versions
@@ -254,7 +260,7 @@ def filter_index_by_enabled(index, cfg):
     for vid in hidden_ids:
         if vid in seen:
             continue
-        entry = _revoked_entry_from_descriptor(cfg, vid)
+        entry = _revoked_entry_from_descriptor(dict(cfg, _selected_platform=index["platforms"][0]), vid)
         if entry:
             revoked.append(entry)
             seen.add(vid)
@@ -275,16 +281,42 @@ def _rewrite_descriptor_urls(cfg, desc):
             f["url"] = storage.url_for_key(url[len("/files/"):])
 
 
-def read_descriptor(cfg, version_id):
-    version_id = os.path.basename(unquote(version_id))
-    # 基础包版本：在任一平台中找到则动态生成整包描述（优先于版本文件库中的同名 full 描述）
-    for platform in cfg["platforms"]:
-        if version_id in get_base_packages(cfg, platform):
-            return build_base_descriptor(cfg, platform, version_id)
-    desc_path = os.path.join(cfg["versions_dir"], version_id, "descriptor.json")
-    desc = _read_json(desc_path)
+def read_descriptor(cfg, version_id, platform=None):
+    platform = platform or cfg.get("default_platform", cfg["platforms"][0])
+    if platform not in cfg["platforms"] or not version_id or version_id in (".", "..") or any(c in version_id for c in "/\\"):
+        return None
+    if version_id in get_base_packages(cfg, platform):
+        return build_base_descriptor(cfg, platform, version_id)
+    desc = _read_json(os.path.join(cfg["versions_dir"], platform, version_id, "descriptor.json"))
     if desc:
         _rewrite_descriptor_urls(cfg, desc)
-        return desc
-    return None
+    return desc
 
+
+
+def filter_index_by_platform(index, platform):
+    result = dict(index)
+    result["versions"] = [v for v in index.get("versions", []) if v.get("platform", index.get("platforms", [platform])[0]) == platform]
+    ids = {v["versionId"] for v in result["versions"] if v.get("type") == "patch"}
+    result["updateChain"] = list(dict.fromkeys(v for v in index.get("platformUpdateChains", {}).get(platform, index.get("updateChain", [])) if v in ids))
+    result["platformUpdateChains"] = {platform: result["updateChain"]}
+    result["baseVersions"] = {platform: index.get("baseVersions", {}).get(platform, [])}
+    result["current"] = max((v["versionId"] for v in result["versions"]), key=version_key, default="")
+    result["revoked"] = [v for v in index.get("revoked", []) if v.get("platform", index.get("platforms", [platform])[0]) == platform]
+    result["platforms"] = [platform]
+    return result
+
+
+def add_version_channels(index):
+    """Use a platform/visibility filtered index. baseVersionId is not a C++ build requirement."""
+    result = dict(index)
+    versions = result.get("versions", [])
+    full = [v for v in versions if v.get("type") == "full"]
+    newest = max(full, key=lambda v: version_key(v.get("gameVersion") or v["versionId"]), default=None)
+    result["gameVersion"] = (newest.get("gameVersion") or newest["versionId"]) if newest else ""
+    by_id = {v["versionId"]: v for v in versions}
+    chain = [v for v in result.get("updateChain", []) if v in by_id and by_id[v].get("type") == "patch"]
+    resource = by_id[chain[-1]] if chain else newest
+    result["resourceVersion"] = (resource.get("resourceVersion") or resource["versionId"]) if resource else ""
+    result["versionChannelsSchema"] = 1
+    return result

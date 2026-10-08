@@ -77,7 +77,7 @@ def generate_manifest(cfg, platform, base_version=None, force=False):
 
     files.sort(key=lambda x: x["path"])
     manifest = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "project": project,
         "platform": platform,
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -112,7 +112,8 @@ def build_base_descriptor(cfg, platform, base_version):
             "kind": "ExternFile",
         })
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
+        "platform": platform,
         "versionId": base_version,
         "baseVersionId": "",
         "date": manifest.get("generatedAt", ""),

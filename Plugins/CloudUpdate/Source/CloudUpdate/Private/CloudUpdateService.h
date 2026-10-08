@@ -30,7 +30,14 @@ public:
 	void ApplyUpdate(const FString& InVersionId);
 	void ApplyLatestUpdate();
 	void QueryPendingUpdateSize();
+ void QueryUpdatePlan();
+ FString GetLocalGameVersion() const;
+ FString GetPendingResourceVersion() const;
+ void PromotePendingResourceVersion();
+ const FCloudUpdatePlan& GetUpdatePlan() const { return UpdatePlan; }
+ const FCloudDownloadProgressInfo& GetDownloadProgress() const { return DownloadProgress; }
 	void Abort();
+	void DetachOwner() { Owner = nullptr; Abort(); }
 
 	FString GetLocalVersion() const;
 	void SetLocalVersion(const FString& InVersionId);
@@ -38,6 +45,10 @@ public:
 	void SetServerUrl(const FString& InUrl);
 
 private:
+#if WITH_DEV_AUTOMATION_TESTS
+	friend struct FCloudUpdateServiceTestAccess;
+ friend struct FCloudUpdateMetricsTestAccess;
+#endif
 	UCloudUpdateSubsystem* Owner = nullptr;
 
 	bool bBusy = false;
@@ -56,7 +67,54 @@ private:
 	bool bDirectIoStore = false;
 	bool bRestartRequired = false;
 	/** 查询更新大小时的待更新列表（复用 CheckForUpdates 解析结果） */
-	TArray<FCloudUpdateVersionInfo> SizeQueryPendingVersions;
+	bool bQueryingUpdateSize = false;
+	bool bResolvingLatestUpdate = false;
+ TArray<FString> LatestUpdateQueue;
+ struct FPlannedVersion
+ {
+  FCloudUpdateVersionInfo Info;
+  TArray<FCloudDownloadFile> Files;
+  bool bRestartRequired = false;
+ };
+ FCloudUpdatePlan UpdatePlan;
+ FCloudDownloadProgressInfo DownloadProgress;
+ FCloudMergeProgressInfo MergeProgress;
+ TArray<FPlannedVersion> PlannedVersions;
+ TArray<FCloudUpdateVersionInfo> PlanPendingVersions;
+ FString PlanLatestVersion;
+ FString PlanMessage;
+ int32 PlanDescriptorIndex = 0;
+ bool bQueryingPlan = false;
+ bool bTransferSessionActive = false;
+ struct FTransfer
+ {
+  FString Key;
+  int64 Size = 0;
+  int64 Bytes = 0;
+  bool bSizeKnown = false;
+  bool bCompleted = false;
+  bool bFailed = false;
+ };
+ TArray<FTransfer> Transfers;
+ int32 ActiveTransfer = INDEX_NONE;
+ uint32 TransferGeneration = 0;
+ FString PendingResourceVersion;
+ FString LocalVersionRecordPath;
+ FString GetVersionRecordPath() const;
+ void SavePendingResourceVersion(const FString& Version);
+
+ void ResolveNextPlanDescriptor();
+ void FinishPlan(bool bSuccess, const FString& Message);
+ bool ReadDescriptorFiles(const TSharedPtr<FJsonObject>& Json, TArray<FCloudDownloadFile>& OutFiles) const;
+ FString ResolveRemoteUrl(const FString& Url) const;
+ void InitializeTransferSession(const TArray<FPlannedVersion>& Versions);
+ void StartTrackedDownload(const FCloudDownloadFile& File, const FString& Path, TFunction<void(bool)> Callback, bool bFallback = false);
+ void UpdateTransferProgress(uint32 Generation, int64 Done, int64 Total);
+ void CompleteTransfer(uint32 Generation, bool bSuccess);
+ void BroadcastDownloadProgress();
+ void BeginMerge(const FString& File);
+ void CompleteMerge(bool bSuccess, bool bSkipped = false, bool bRestart = false);
+ void BroadcastMergeProgress();
 
 	/** 经二进制补丁合并后生成/更新的 ContentPak 基础文件路径，供最终挂载 */
 	TArray<FString> MergedPakPaths;

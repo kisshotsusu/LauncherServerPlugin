@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "versionId": "1.3",
+  "baseVersionId": "1.2",
+  "date": "2026.08.06-06.32.49",
+  "type": "patch",
+  "changedAssetCount": 1,
+  "deletedAssetCount": 0,
+  "restartRequired": false,
+  "ioStoreEnabled": false,
+  "files": [
+    {
+      "fileName": "1.3_Windows_001_P.pak",
+      "url": "/files/versions/Windows/1.3/files/1.3_Windows_001_P.pak",
+      "targetRelativePath": "1.3_Windows_001_P.pak",
+      "hash": "c8dba12544d3de9241ff39314178e864",
+      "size": 14182,
+      "kind": "ContentPak"
+    }
+  ],
+  "platform": "Windows"
+}

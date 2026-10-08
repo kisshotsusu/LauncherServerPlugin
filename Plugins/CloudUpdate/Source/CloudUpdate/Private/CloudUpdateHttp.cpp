@@ -32,7 +32,8 @@ using namespace CloudUpdatePrivate;
 void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, const TSharedPtr<FJsonObject>&)> InCallback)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	Request->SetURL(InUrl);
+	Request->SetURL(ResolveRemoteUrl(InUrl));
+ Request->SetDelegateThreadPolicy(EHttpRequestDelegateThreadPolicy::CompleteOnGameThread);
 	Request->SetVerb(TEXT("GET"));
 	Request->SetHeader(TEXT("Accept"), TEXT("application/json"));
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
@@ -51,8 +52,11 @@ void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, c
 			}
 		}
 	}
-	Request->OnProcessRequestComplete().BindLambda([InCallback](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
+ TSharedRef<bool> Completed = MakeShared<bool>(false);
+ Request->OnProcessRequestComplete().BindLambda([InCallback, Completed](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
 	{
+        if (*Completed) return;
+        *Completed = true;
 		TSharedPtr<FJsonObject> Json;
 		bool bOk = false;
 		if (bConnectedSuccessfully && Resp.IsValid() && EHttpResponseCodes::IsOk(Resp->GetResponseCode()))
@@ -66,7 +70,11 @@ void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, c
 			InCallback(bOk, Json);
 		}
 	});
-	Request->ProcessRequest();
+ if (!Request->ProcessRequest() && !*Completed)
+ {
+  *Completed = true;
+  if (InCallback) InCallback(false, nullptr);
+ }
 }
 
 void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
@@ -85,7 +93,8 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 	const FString TempPath = InTargetPath + TEXT(".download");
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	Request->SetURL(InUrl);
+	Request->SetURL(ResolveRemoteUrl(InUrl));
+ Request->SetDelegateThreadPolicy(EHttpRequestDelegateThreadPolicy::CompleteOnGameThread);
 	Request->SetVerb(TEXT("GET"));
 	if (Settings)
 	{
@@ -102,18 +111,24 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 		}
 	}
 	Request->SetTimeout(Settings ? Settings->HttpTimeoutSeconds : 60);
+ TSharedRef<int64> HeaderTotal = MakeShared<int64>(-1);
+ Request->OnHeaderReceived().BindLambda([HeaderTotal](FHttpRequestPtr Req, const FString& Name, const FString& Value)
+ {
+  if (Name.Equals(TEXT("Content-Length"), ESearchCase::IgnoreCase)) *HeaderTotal = FCString::Atoi64(*Value);
+ });
 	if (InProgress)
 	{
-		Request->OnRequestProgress64().BindLambda([InProgress](FHttpRequestPtr Req, uint64 BytesSent, uint64 BytesReceived)
+		Request->OnRequestProgress64().BindLambda([InProgress, HeaderTotal](FHttpRequestPtr Req, uint64 BytesSent, uint64 BytesReceived)
 		{
-			// Content-Length 在进度回调阶段不可直接获取（响应尚未完成）；
-			// 总大小由上层根据清单 size 累计后传入。
-			InProgress(static_cast<int64>(BytesReceived), -1);
+            InProgress(static_cast<int64>(BytesReceived), *HeaderTotal);
 		});
 	}
 	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
-	Request->OnProcessRequestComplete().BindLambda([WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
+ TSharedRef<bool> Completed = MakeShared<bool>(false);
+ Request->OnProcessRequestComplete().BindLambda([WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback, InProgress, Completed](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
 	{
+        if (*Completed) return;
+        *Completed = true;
 		auto Service = WeakThis.Pin();
 		if (!Service)
 		{
@@ -123,16 +138,15 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 			}
 			return;
 		}
+        if (Service->bAbortRequested)
+        { IFileManager::Get().Delete(*TempPath, false, true); if (InCallback) InCallback(false); return; }
 		const bool bHttpOk = bConnectedSuccessfully && Resp.IsValid() && EHttpResponseCodes::IsOk(Resp->GetResponseCode());
 		if (bHttpOk)
 		{
 			const TArray<uint8>& Content = Resp->GetContent();
+            if (InProgress) InProgress(Content.Num(), Content.Num());
 			if (FFileHelper::SaveArrayToFile(Content, *TempPath))
 			{
-				if (IFileManager::Get().FileExists(*InTargetPath))
-				{
-					IFileManager::Get().Delete(*InTargetPath, false, true);
-				}
 				if (IFileManager::Get().Move(*InTargetPath, *TempPath, true, true))
 				{
 					if (InCallback)
@@ -147,12 +161,16 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 		if (InRetriesLeft > 0)
 		{
 			UE_LOG(LogCloudUpdate, Warning, TEXT("下载失败 %s，剩余重试 %d 次"), *InUrl, InRetriesLeft);
-			Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft - 1, InCallback);
+			Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft - 1, InCallback, InProgress);
 		}
 		else if (InCallback)
 		{
 			InCallback(false);
 		}
 	});
-	Request->ProcessRequest();
+ if (!Request->ProcessRequest() && !*Completed)
+ {
+  *Completed = true;
+  if (InCallback) InCallback(false);
+ }
 }

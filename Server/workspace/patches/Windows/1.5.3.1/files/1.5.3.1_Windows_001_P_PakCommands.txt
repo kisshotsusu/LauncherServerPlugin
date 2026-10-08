@@ -1,0 +1,2 @@
+"D:/test/CodeBuild/Saved/HotPatcher/Cooked/Windows/CodeBuild/Content/ThirdPerson/Lvl_ThirdPerson.uexp" "../../../CodeBuild/Content/ThirdPerson/Lvl_ThirdPerson.uexp" -compress
+"D:/test/CodeBuild/Saved/HotPatcher/Cooked/Windows/CodeBuild/Content/ThirdPerson/Lvl_ThirdPerson.umap" "../../../CodeBuild/Content/ThirdPerson/Lvl_ThirdPerson.umap" -compress

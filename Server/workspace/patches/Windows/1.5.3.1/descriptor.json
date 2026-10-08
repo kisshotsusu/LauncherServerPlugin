@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "versionId": "1.5.3.1",
+  "baseVersionId": "1.5.3",
+  "date": "2026.08.26-07.58.44",
+  "type": "patch",
+  "changedAssetCount": 1,
+  "deletedAssetCount": 0,
+  "restartRequired": true,
+  "ioStoreEnabled": true,
+  "files": [
+    {
+      "fileName": "1.5.3.1_Windows_001_P.pak",
+      "url": "/files/versions/Windows/1.5.3.1/files/1.5.3.1_Windows_001_P.pak",
+      "targetRelativePath": "1.5.3.1_Windows_001_P.pak",
+      "hash": "4992570532ea045270f982fc6cff7792",
+      "size": 14182,
+      "kind": "ContentPak"
+    },
+    {
+      "fileName": "1.5.3.1_Windows_001_P.ucas",
+      "url": "/files/versions/Windows/1.5.3.1/files/1.5.3.1_Windows_001_P.ucas",
+      "targetRelativePath": "1.5.3.1_Windows_001_P.ucas",
+      "hash": "671984e3b72e2927ac7f08c7e6b2af35",
+      "size": 13920,
+      "kind": "IoStore"
+    },
+    {
+      "fileName": "1.5.3.1_Windows_001_P.utoc",
+      "url": "/files/versions/Windows/1.5.3.1/files/1.5.3.1_Windows_001_P.utoc",
+      "targetRelativePath": "1.5.3.1_Windows_001_P.utoc",
+      "hash": "049ce171c535f47f372443a5810cddc6",
+      "size": 413,
+      "kind": "IoStore"
+    },
+    {
+      "fileName": "global.ucas",
+      "url": "/files/versions/Windows/1.5.3.1/files/global.ucas",
+      "targetRelativePath": "global.ucas",
+      "hash": "017b74de1328b7a7c86f04a43b6d39e8",
+      "size": 3211152,
+      "kind": "IoStore"
+    },
+    {
+      "fileName": "global.utoc",
+      "url": "/files/versions/Windows/1.5.3.1/files/global.utoc",
+      "targetRelativePath": "global.utoc",
+      "hash": "fae15e784304fdfb79062c854cdfe0f2",
+      "size": 782,
+      "kind": "IoStore"
+    }
+  ],
+  "platform": "Windows"
+}

@@ -27,6 +27,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnCloudUpdateSizeQueryFinished, b
 /** 下载字节级进度：当前文件已完成字节、总字节、整体进度 0-1 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCloudDownloadProgress, int64, BytesDone, int64, BytesTotal, float, OverallProgress);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCloudUpdatePlanReady, bool, bSuccess, const FCloudUpdatePlan&, Plan, const FString&, Message);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCloudDetailedDownloadProgress, const FCloudDownloadProgressInfo&, Progress);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCloudMergeProgress, const FCloudMergeProgressInfo&, Progress);
+
 /**
  * 云更新运行时子系统
  * 提供：完整性检查、损坏文件云端修复、基于 HotPatcher JSON 的更新包下载与应用。
@@ -43,6 +47,49 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "CloudUpdate")
 	static UCloudUpdateSubsystem* GetCloudUpdateSubsystem();
+
+ /** Local game version comes from the installed build's ProjectVersion; resource patches never modify it. */
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|版本", meta = (DisplayName = "Get Local Game Version"))
+ FString GetLocalGameVersion() const;
+ /** Server getters are cached. Call QueryUpdatePlan and wait for OnUpdatePlanReady first. */
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|版本")
+ FString GetServerGameVersion() const;
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|版本")
+ FString GetLocalResourceVersion() const;
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|版本")
+ FString GetServerResourceVersion() const;
+ /** Downloaded resource version awaiting restart/activation. Empty means none. */
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|版本")
+ FString GetPendingResourceVersion() const;
+ /** Configure an initial resource version via project settings; legacy setter remains compatible. */
+ UFUNCTION(BlueprintCallable, Category = "CloudUpdate|版本")
+ void SetLocalResourceVersion(const FString& VersionId);
+
+ /** Fetch platform-specific index and descriptors, without downloading game/resource files. */
+ UFUNCTION(BlueprintCallable, Category = "CloudUpdate|更新信息")
+ void QueryUpdatePlan();
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|更新信息")
+ FCloudUpdatePlan GetUpdatePlan() const;
+ /** Compatible resource files. Check GetUpdatePlan().bValid before using the cached value. */
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|更新信息")
+ int32 GetRequiredUpdateFileCount() const;
+ /** Bytes. If bTotalBytesKnown is false this is only the sum of known sizes. */
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|更新信息")
+ int64 GetRequiredUpdateSizeBytes() const;
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|进度")
+ FCloudDownloadProgressInfo GetDownloadProgress() const;
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|进度")
+ FCloudMergeProgressInfo GetMergeProgress() const;
+
+ UPROPERTY(BlueprintAssignable, Category = "CloudUpdate|更新信息")
+ FOnCloudUpdatePlanReady OnUpdatePlanReady;
+ UPROPERTY(BlueprintAssignable, Category = "CloudUpdate|进度")
+ FOnCloudDetailedDownloadProgress OnDetailedDownloadProgress;
+ UPROPERTY(BlueprintAssignable, Category = "CloudUpdate|进度")
+ FOnCloudMergeProgress OnMergeProgress;
+
+ /** C++ internal reporting, always called on the game thread. */
+ void ReportMergeProgress(const FCloudMergeProgressInfo& Progress);
 
 	/** 启动完整性检查：下载服务端清单并与本地文件比对 */
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
@@ -64,18 +111,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void QueryPendingUpdateSize();
 
-	/** 一键更新到最新版本（先检查更新，若有可用更新则自动应用第一个待更新项） */
+	/** 按服务端依赖顺序更新；失败或需重启时停止，重启后再次调用可继续。 */
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void ApplyLatestUpdate();
 
-	/** 中止当前任务（当前 HTTP 请求完成后停止） */
+	/** 高级接口：区分立即完成、失败和暂存待重启。FeatureName 留空使用项目设置。 */
+    UFUNCTION(BlueprintCallable, Category = "CloudUpdate|二进制补丁", meta = (AdvancedDisplay = "FeatureName"))
+    EBinaryMergeResult ApplyBinaryPatchToBaseEx(const FString& BaseFilePath, const FString& PatchFilePath, FString& OutMergedPath, const FString& FeatureName = TEXT(""));
+
+ /** UI-friendly async merge. Returns false if another task is busy; completion uses OnBinaryPatchFinished. */
+ UFUNCTION(BlueprintCallable, Category = "CloudUpdate|二进制补丁", meta = (AdvancedDisplay = "FeatureName"))
+ bool ApplyBinaryPatchAsync(const FString& BaseFilePath, const FString& PatchFilePath, const FString& FeatureName = TEXT(""));
+
+    /** 中止当前任务（当前 HTTP 请求完成后停止） */
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void AbortCurrentTask();
 
 	UFUNCTION(BlueprintPure, Category = "CloudUpdate")
 	bool IsBusy() const;
 
-	/** 获取本地已应用版本号 */
+	/** 兼容接口：获取本地资源版本号，不代表游戏二进制版本。 */
 	UFUNCTION(BlueprintPure, Category = "CloudUpdate")
 	FString GetLocalVersion() const;
 
@@ -191,6 +246,7 @@ public:
 
 private:
 	TSharedPtr<FCloudUpdateService> Service;
+ FCloudMergeProgressInfo MergeProgress;
 	/** 防止同一目录被并发自动合并（仅由游戏线程读写，安全） */
 	bool bAutoMergeRunning = false;
 };

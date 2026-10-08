@@ -215,6 +215,7 @@ FBinaryMergeResult FCloudBinaryMerge::AutoMergeDirectory(
 	for (const FString& PatchPath : Patches)
 	{
 		// 补丁与基础文件同目录：X.patch -> X
+        if (ProgressCb) ProgressCb(Completed, Total, PatchPath, true);
 		const FString BasePath = GetBaseFileName(PatchPath);
 		bool bOk = false;
 		if (FPaths::FileExists(BasePath))
@@ -231,6 +232,7 @@ FBinaryMergeResult FCloudBinaryMerge::AutoMergeDirectory(
 			else
 			{
 				Result.Succeeded += 1;
+                Result.RestartRequiredCount += R == EBinaryMergeResult::StagedForRestart ? 1 : 0;
 			}
 		}
 		else

@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "project": "CodeBuild",
+  "platform": "Windows",
+  "generatedAt": "2026-08-26T16:45:41+0800",
+  "baseVersionId": "1.5.3",
+  "fileCount": 26,
+  "files": [
+    {
+      "path": "CodeBuild.exe",
+      "size": 171520,
+      "hash": "c5fd741d122026e6c0b8f9912e74f27e",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/CodeBuild-Win64-Shipping.exe",
+      "size": 166091776,
+      "hash": "acb1d869bc1c6f6662bfe0a46697809e",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/D3D12/x64/D3D12Core.dll",
+      "size": 4831768,
+      "hash": "2f1aff562bf7d3f5f0ecb3771f7eada4",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/D3D12/x64/d3d12SDKLayers.dll",
+      "size": 4943344,
+      "hash": "c5533f3b16e4f061aeb6b7a35d9a816a",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/DML/x64/DirectML.dll",
+      "size": 18538488,
+      "hash": "fe8e3c8a09f892607082025ffa048bae",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/tbb12.dll",
+      "size": 342456,
+      "hash": "660547ea8e3c388d2b8b3b1885c41db4",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/tbbmalloc.dll",
+      "size": 117176,
+      "hash": "bec814cb520da599628599203b902de2",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Content/Paks/global.ucas",
+      "size": 3211472,
+      "hash": "4e6dcd234620326101fd15991350d60f",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Content/Paks/global.utoc",
+      "size": 794,
+      "hash": "49883840b5eeb06016fb7934ddbc73bd",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Content/Paks/pakchunk0-Windows.pak",
+      "size": 11648687,
+      "hash": "33d210ca21659b5c5dc2324dd147bf7d",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Content/Paks/pakchunk0-Windows.ucas",
+      "size": 263691168,
+      "hash": "1e2000bbc5d9812cf9eb82afdf32cd81",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Content/Paks/pakchunk0-Windows.utoc",
+      "size": 225557,
+      "hash": "ce6d05d7992c7e74d14ef1ea1e32eb74",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/DbgHelp/dbghelp.dll",
+      "size": 2232688,
+      "hash": "ad90f34d54c81430e512eebf6c066eea",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/MsQuic/v220/win64/msquic.dll",
+      "size": 2547080,
+      "hash": "89fa982e695481a63e1ed4e3e2cf4073",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/NVIDIA/NVaftermath/Win64/GFSDK_Aftermath_Lib.x64.dll",
+      "size": 5799016,
+      "hash": "65e0514730936c3b49280f79fae3378d",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Ogg/Win64/VS2015/libogg_64.dll",
+      "size": 59832,
+      "hash": "dcf124d6866fdb284b9a0914616f025b",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vorbis/Win64/VS2015/libvorbis_64.dll",
+      "size": 1724856,
+      "hash": "30709983f43c207742b538406fe01171",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vorbis/Win64/VS2015/libvorbisfile_64.dll",
+      "size": 48568,
+      "hash": "f2bc1d0cf924abd484487b0d9fd958b2",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Windows/XAudio2_9/x64/xaudio2_9redist.dll",
+      "size": 858152,
+      "hash": "eede1fd74dd93e4c9d6ba9fc4b12ccfd",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Config/StagedBuild_CodeBuild.ini",
+      "size": 3,
+      "hash": "ecaa88f7fa0bf610a5a26cf545dcd3aa",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Content/Renderer/TessellationTable.bin",
+      "size": 259568,
+      "hash": "bc5d66a78840bfaff5bfc362de64afb8",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Content/Slate/Cursor/invisible.cur",
+      "size": 326,
+      "hash": "2eada1ffcee14930f2c53a4d31b95c91",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Extras/Redist/en-us/vc_redist.arm64.exe",
+      "size": 11751688,
+      "hash": "e40c23caf5fd70e47caf2d8024dc88a9",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Extras/Redist/en-us/vc_redist.x64.exe",
+      "size": 18569648,
+      "hash": "eead39a9f3466f2c1329406f9cbc460b",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Plugins/NNE/NNERuntimeORT/Binaries/ThirdParty/Onnxruntime/Win64/onnxruntime.dll",
+      "size": 17339384,
+      "hash": "7e4c016c55e3bb900988e9bbbd42b468",
+      "hashType": "md5"
+    },
+    {
+      "path": "NOTICES.txt",
+      "size": 111,
+      "hash": "8047c3c72d92ee635429ba2688cb845d",
+      "hashType": "md5"
+    }
+  ]
+}

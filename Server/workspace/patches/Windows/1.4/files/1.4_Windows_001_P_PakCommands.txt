@@ -1,0 +1,4 @@
+"D:/test/CodeBuild/Saved/HotPatcher/Cooked/Windows/CodeBuild/Content/ThirdPerson/Lvl_ThirdPerson.uexp" "../../../CodeBuild/Content/ThirdPerson/Lvl_ThirdPerson.uexp" -compress
+"D:/test/CodeBuild/Saved/HotPatcher/Cooked/Windows/CodeBuild/Content/ThirdPerson/Lvl_ThirdPerson.umap" "../../../CodeBuild/Content/ThirdPerson/Lvl_ThirdPerson.umap" -compress
+"D:/test/CodeBuild/Saved/HotPatcher/Cooked/Windows/CodeBuild/Content/ThirdPerson/Blueprints/BP_ThirdPersonCharacter.uasset" "../../../CodeBuild/Content/ThirdPerson/Blueprints/BP_ThirdPersonCharacter.uasset" -compress
+"D:/test/CodeBuild/Saved/HotPatcher/Cooked/Windows/CodeBuild/Content/ThirdPerson/Blueprints/BP_ThirdPersonCharacter.uexp" "../../../CodeBuild/Content/ThirdPerson/Blueprints/BP_ThirdPersonCharacter.uexp" -compress

@@ -10,6 +10,8 @@ import re
 import shutil
 import sys
 import time
+import tempfile
+import uuid
 from pathlib import Path
 
 from config import get_base_dir, load_config
@@ -66,9 +68,9 @@ def parse_diff_counts(diff, game_prefixes=DEFAULT_GAME_ASSET_PREFIXES):
     return add + modify, delete
 
 
-def find_diffs(source_dir, version_id):
+def find_diffs(source_dir, version_id, platform="Windows"):
     results = []
-    for folder in (source_dir, os.path.join(source_dir, "Windows")):
+    for folder in (source_dir, os.path.join(source_dir, platform)):
         if not os.path.isdir(folder):
             continue
         for name in os.listdir(folder):
@@ -86,8 +88,36 @@ def copy_file(src, dst):
 
 
 def import_version(source_dir, dest_versions_dir, version_id, platform, package_root):
+    """在临时目录完成导入后替换发布目录，重导入不保留已移除的旧补丁。"""
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", platform) or not re.fullmatch(r"[A-Za-z0-9_.-]+", version_id) or version_id in (".", ".."):
+        raise ValueError("平台或版本标识无效")
+    if not os.path.isdir(os.path.join(source_dir, version_id, platform)):
+        raise ValueError(f"版本 {version_id} 缺少 {platform} 产物目录")
+    root = os.path.abspath(os.path.join(dest_versions_dir, platform))
+    os.makedirs(root, exist_ok=True)
+    target = os.path.join(root, version_id)
+    stage = tempfile.mkdtemp(prefix=".import-", dir=root)
+    backup = os.path.join(root, ".replace-" + uuid.uuid4().hex)
+    try:
+        result = _import_version(source_dir, dest_versions_dir, version_id, platform, package_root, stage)
+        if os.path.exists(target):
+            os.replace(target, backup)
+        try:
+            os.replace(stage, target)
+        except Exception:
+            if os.path.exists(backup):
+                os.replace(backup, target)
+            raise
+        return result
+    finally:
+        for temporary in (stage, backup):
+            if os.path.isdir(temporary) and os.path.commonpath([root, os.path.abspath(temporary)]) == root:
+                shutil.rmtree(temporary)
+
+
+def _import_version(source_dir, dest_versions_dir, version_id, platform, package_root, destination):
     version_src = os.path.join(source_dir, version_id)
-    dest = os.path.join(dest_versions_dir, version_id)
+    dest = destination
     os.makedirs(dest, exist_ok=True)
 
     copied = []
@@ -102,19 +132,21 @@ def import_version(source_dir, dest_versions_dir, version_id, platform, package_
             copy_file(src, os.path.join(dest, os.path.basename(src)))
             copied.append(os.path.basename(src))
 
-    for diff_src in find_diffs(source_dir, version_id):
+    for diff_src in find_diffs(source_dir, version_id, platform):
         copy_file(diff_src, os.path.join(dest, os.path.basename(diff_src)))
         copied.append(os.path.basename(diff_src))
 
-    windows_src = os.path.join(version_src, "Windows")
-    windows_dest = os.path.join(dest, "Windows")
-    if os.path.isdir(windows_src):
-        for dirpath, dirnames, filenames in os.walk(windows_src):
+    platform_src = os.path.join(version_src, platform)
+    files_dest = os.path.join(dest, "files")
+    if not os.path.isdir(platform_src):
+        raise ValueError(f"版本 {version_id} 缺少 {platform} 产物目录：{platform_src}")
+    if os.path.isdir(platform_src):
+        for dirpath, dirnames, filenames in os.walk(platform_src):
             for name in filenames:
                 src = os.path.join(dirpath, name)
-                rel = os.path.relpath(src, windows_src)
-                copy_file(src, os.path.join(windows_dest, rel))
-                copied.append(f"Windows/{rel}")
+                rel = os.path.relpath(src, platform_src)
+                copy_file(src, os.path.join(files_dest, rel))
+                copied.append(f"files/{rel}")
 
     patch_config = read_json(os.path.join(dest, f"{version_id}_PatchConfig.json"))
     release = read_json(os.path.join(dest, f"{version_id}_Release.json"))
@@ -149,12 +181,12 @@ def import_version(source_dir, dest_versions_dir, version_id, platform, package_
                 }
 
     files = []
-    if os.path.isdir(windows_dest):
-        for name in sorted(os.listdir(windows_dest)):
+    if os.path.isdir(files_dest):
+        for name in sorted(os.listdir(files_dest)):
             lower = name.lower()
             if not (lower.endswith(".pak") or lower.endswith(".utoc") or lower.endswith(".ucas")):
                 continue
-            abs_path = os.path.join(windows_dest, name)
+            abs_path = os.path.join(files_dest, name)
             digest, size = hash_file(abs_path)
             if lower.endswith(".pak"):
                 known = pak_hashes.get(name, {})
@@ -165,7 +197,7 @@ def import_version(source_dir, dest_versions_dir, version_id, platform, package_
                 kind = "IoStore"
             files.append({
                 "fileName": name,
-                "url": f"/files/versions/{version_id}/Windows/{name}",
+                "url": f"/files/versions/{platform}/{version_id}/files/{name}",
                 "targetRelativePath": name,
                 "hash": digest,
                 "size": size,
@@ -216,7 +248,7 @@ def import_version(source_dir, dest_versions_dir, version_id, platform, package_
     changed, deleted = parse_diff_counts(diff, game_prefixes)
 
     descriptor = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "versionId": version_id,
         "baseVersionId": base_version_id,
         "date": date,
@@ -227,13 +259,14 @@ def import_version(source_dir, dest_versions_dir, version_id, platform, package_
         "ioStoreEnabled": b_io_store,
         "files": files,
     }
+    descriptor["platform"] = platform
     with open(os.path.join(dest, "descriptor.json"), "w", encoding="utf-8") as f:
         json.dump(descriptor, f, ensure_ascii=False, indent=2)
 
     return descriptor, copied
 
 
-def run_import(source_dir, data_dir, project, platform, order="", only=""):
+def run_import(source_dir, data_dir, project, platform, order="", only="", config=None):
     """执行导入，返回版本索引 dict。供 CLI / exe 直接调用。"""
     source_dir = os.path.abspath(source_dir or "")
     data_dir = os.path.abspath(data_dir or "")
@@ -251,7 +284,12 @@ def run_import(source_dir, data_dir, project, platform, order="", only=""):
         "manifest_exclude_patterns": [],
         "manifest_hash": "md5",
     }
-    package_root = get_base_dir(load_config(), platform)
+    cfg = dict(config) if config is not None else cfg
+    if order:
+        options = dict(cfg.get("platform_settings", {}))
+        options[platform] = dict(options.get(platform, {}), hotpatcherOrder=order)
+        cfg["platform_settings"] = options
+    package_root = get_base_dir(config if config is not None else load_config(), platform)
 
     print("-" * 50)
     print(f"补丁包位置 : {source_dir}")

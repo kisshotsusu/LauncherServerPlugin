@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "project": "CodeBuild",
+  "platform": "Windows",
+  "generatedAt": "2026-08-07T22:14:40+0800",
+  "baseVersionId": "1.0",
+  "fileCount": 22,
+  "files": [
+    {
+      "path": "CodeBuild.exe",
+      "size": 171520,
+      "hash": "f028efb3581f91c925c354c2b7121693",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/CodeBuild-Win64-Shipping.exe",
+      "size": 166063616,
+      "hash": "273847976603282e631e49ab95ecf985",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/D3D12/x64/D3D12Core.dll",
+      "size": 4831768,
+      "hash": "8794a74b06134f2ff120e5ada2a348c4",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/D3D12/x64/d3d12SDKLayers.dll",
+      "size": 4943344,
+      "hash": "8ea750a211d938eb45d88293dab82524",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/DML/x64/DirectML.dll",
+      "size": 18538488,
+      "hash": "fd5ff4f877b0619103eb603bf177fcc4",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/tbb12.dll",
+      "size": 342456,
+      "hash": "abd7c1184e9f6a5d08c03d54eb491744",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Binaries/Win64/tbbmalloc.dll",
+      "size": 117176,
+      "hash": "5e2fa0ebd7cde50d68a51ca859cff7d9",
+      "hashType": "md5"
+    },
+    {
+      "path": "CodeBuild/Content/Paks/pakchunk0-Windows.pak",
+      "size": 356780248,
+      "hash": "962b5a730a5a33879f4feea7ce169900",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/DbgHelp/dbghelp.dll",
+      "size": 2232688,
+      "hash": "1d776bfe6eca07067a30c2b266be221d",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/MsQuic/v220/win64/msquic.dll",
+      "size": 2547080,
+      "hash": "9ca4b1122dfa105b69ddfd112ff9e164",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/NVIDIA/NVaftermath/Win64/GFSDK_Aftermath_Lib.x64.dll",
+      "size": 5799016,
+      "hash": "d6bc8197556f3c7858d6b2a3de2f24f3",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Ogg/Win64/VS2015/libogg_64.dll",
+      "size": 59832,
+      "hash": "11a457a007eabbb71c44a5932e32b5d6",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vorbis/Win64/VS2015/libvorbis_64.dll",
+      "size": 1724856,
+      "hash": "63d85120fcb0452447ce3030995f19d2",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vorbis/Win64/VS2015/libvorbisfile_64.dll",
+      "size": 48568,
+      "hash": "6ec9b19c68c5b65344a07b6074d52213",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Windows/XAudio2_9/x64/xaudio2_9redist.dll",
+      "size": 858144,
+      "hash": "967ad5c9371523bd0d91190beab85754",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Config/StagedBuild_CodeBuild.ini",
+      "size": 3,
+      "hash": "ecaa88f7fa0bf610a5a26cf545dcd3aa",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Content/Renderer/TessellationTable.bin",
+      "size": 259568,
+      "hash": "bc5d66a78840bfaff5bfc362de64afb8",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Content/Slate/Cursor/invisible.cur",
+      "size": 326,
+      "hash": "2eada1ffcee14930f2c53a4d31b95c91",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Extras/Redist/en-us/vc_redist.arm64.exe",
+      "size": 11751688,
+      "hash": "83602aad8def0ee24c2f6172369e28b7",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Extras/Redist/en-us/vc_redist.x64.exe",
+      "size": 18569648,
+      "hash": "28b70c6a8db7baaf6bd915f14d0c4330",
+      "hashType": "md5"
+    },
+    {
+      "path": "Engine/Plugins/NNE/NNERuntimeORT/Binaries/ThirdParty/Onnxruntime/Win64/onnxruntime.dll",
+      "size": 17339384,
+      "hash": "2cc5272074f468982f0705f40e86980e",
+      "hashType": "md5"
+    },
+    {
+      "path": "NOTICES.txt",
+      "size": 111,
+      "hash": "8047c3c72d92ee635429ba2688cb845d",
+      "hashType": "md5"
+    }
+  ]
+}

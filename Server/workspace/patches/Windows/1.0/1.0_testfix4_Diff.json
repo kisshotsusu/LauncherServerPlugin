@@ -1,0 +1,53 @@
+{
+	"assetDiffInfo":
+	{
+		"addAssetDependInfo":
+		{
+			"assetsDependenciesMap":
+			{
+			}
+		},
+		"modifyAssetDependInfo":
+		{
+			"assetsDependenciesMap":
+			{
+				"Game":
+				{
+					"moduleCategory": "Game",
+					"assetDependencyDetails":
+					{
+						"/Game/ThirdPerson/Lvl_ThirdPerson":
+						{
+							"packagePath": "/Game/ThirdPerson/Lvl_ThirdPerson.Lvl_ThirdPerson",
+							"assetType": "World",
+							"guid": "7853692a6818df6433f46d3365b11914"
+						}
+					}
+				}
+			}
+		},
+		"deleteAssetDependInfo":
+		{
+			"assetsDependenciesMap":
+			{
+			}
+		}
+	},
+	"platformExternDiffInfo":
+	{
+		"windows":
+		{
+			"platform": "Windows",
+			"addExternalFiles": [],
+			"modifyExternalFiles": [],
+			"deleteExternalFiles": []
+		},
+		"allPlatforms":
+		{
+			"platform": "AllPlatforms",
+			"addExternalFiles": [],
+			"modifyExternalFiles": [],
+			"deleteExternalFiles": []
+		}
+	}
+}

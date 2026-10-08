@@ -21,6 +21,7 @@ struct CLOUDUPDATE_API FBinaryMergeResult
 	int32 Succeeded = 0;
 	/** 失败的文件数 */
 	int32 Failed = 0;
+ int32 RestartRequiredCount = 0;
 	/** 失败（无法合并）的补丁文件完整路径列表 */
 	TArray<FString> FailedFiles;
 };

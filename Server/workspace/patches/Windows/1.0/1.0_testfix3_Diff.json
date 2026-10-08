@@ -1,0 +1,571 @@
+{
+	"assetDiffInfo":
+	{
+		"addAssetDependInfo":
+		{
+			"assetsDependenciesMap":
+			{
+				"Game":
+				{
+					"moduleCategory": "Game",
+					"assetDependencyDetails":
+					{
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/RI/R8L7GQXCHQGMMKBPTBJTNA":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/RI/R8L7GQXCHQGMMKBPTBJTNA.R8L7GQXCHQGMMKBPTBJTNA",
+							"assetType": "WorldDataLayers",
+							"guid": "f53868b242035cd590997a1557a51d03"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/0/9R/UKIMD8EYGPZFS8OC6GX24A":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/0/9R/UKIMD8EYGPZFS8OC6GX24A.UKIMD8EYGPZFS8OC6GX24A",
+							"assetType": "StaticMeshActor",
+							"guid": "250ac0509fec83c0b662b4ee087299e0"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/EU/X5MT1GOX9C5UUGZAKRVC3R":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/EU/X5MT1GOX9C5UUGZAKRVC3R.X5MT1GOX9C5UUGZAKRVC3R",
+							"assetType": "StaticMeshActor",
+							"guid": "583027e9e5246f08c503caf1a2fa1c4e"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/K3/79QZQ7KG2RXNWMD6RSPKUM":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/K3/79QZQ7KG2RXNWMD6RSPKUM.79QZQ7KG2RXNWMD6RSPKUM",
+							"assetType": "StaticMeshActor",
+							"guid": "6af6acfb207001f3370fb4e9f72d0f55"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/KL/UYSRPQ5SOYIFVLEQINPH31":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/KL/UYSRPQ5SOYIFVLEQINPH31.UYSRPQ5SOYIFVLEQINPH31",
+							"assetType": "StaticMeshActor",
+							"guid": "ce6a588580d9ecf989a6b87a14f39b83"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/MV/2U2IE6JXO1320Q32RJQKSE":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/MV/2U2IE6JXO1320Q32RJQKSE.2U2IE6JXO1320Q32RJQKSE",
+							"assetType": "StaticMeshActor",
+							"guid": "c97e6b1cbd72e07d2fb309835ec01e24"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/X5/JDOWWCJ7DZVSHT4Y29GQ4D":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/1/X5/JDOWWCJ7DZVSHT4Y29GQ4D.JDOWWCJ7DZVSHT4Y29GQ4D",
+							"assetType": "StaticMeshActor",
+							"guid": "c1be0af3bdf8529b04a61ed63eb61375"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/2/AM/9YGDW7FMEY1CZD31VUYO11":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/2/AM/9YGDW7FMEY1CZD31VUYO11.9YGDW7FMEY1CZD31VUYO11",
+							"assetType": "StaticMeshActor",
+							"guid": "0efd5592d59cd0646d4635e3bf1d936f"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/2/AX/QEPSHOMS1K2ANUR3LXWOJM":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/2/AX/QEPSHOMS1K2ANUR3LXWOJM.QEPSHOMS1K2ANUR3LXWOJM",
+							"assetType": "StaticMeshActor",
+							"guid": "277460aced498700ad02b77ef0625195"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/2/TV/DYUIEBPX2N8UFXT326WX2O":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/2/TV/DYUIEBPX2N8UFXT326WX2O.DYUIEBPX2N8UFXT326WX2O",
+							"assetType": "StaticMeshActor",
+							"guid": "da67d7b679cf7b9a3d483a601cff2ab5"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/2/V0/9XTUAMN5S6UUCFB5K0ZGZM":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/2/V0/9XTUAMN5S6UUCFB5K0ZGZM.9XTUAMN5S6UUCFB5K0ZGZM",
+							"assetType": "StaticMeshActor",
+							"guid": "42b14be258b30018cc4fe530a9514037"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/0N/NTRPN55OWWUSD03K29ZOSH":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/0N/NTRPN55OWWUSD03K29ZOSH.NTRPN55OWWUSD03K29ZOSH",
+							"assetType": "VolumetricCloud",
+							"guid": "249253f2f1597662f96dc188e17f501d"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/C5/3LNK9WKCBL4YVMWIBXQZ1I":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/C5/3LNK9WKCBL4YVMWIBXQZ1I.3LNK9WKCBL4YVMWIBXQZ1I",
+							"assetType": "StaticMeshActor",
+							"guid": "dc7b74ce39d760501d2e4e30fe557ece"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/D3/XWEMBL7KZTNQP83W1KTMXE":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/D3/XWEMBL7KZTNQP83W1KTMXE.XWEMBL7KZTNQP83W1KTMXE",
+							"assetType": "StaticMeshActor",
+							"guid": "964ad45a70e3fef2b562367ed94c5972"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/E2/L159AMTR83MORHTF2GEOKE":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/E2/L159AMTR83MORHTF2GEOKE.L159AMTR83MORHTF2GEOKE",
+							"assetType": "StaticMeshActor",
+							"guid": "e8a3db36cdcd9b315036f6258e2d54f2"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/L5/790AP8RYBMX9YBLGTW6WE6":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/3/L5/790AP8RYBMX9YBLGTW6WE6.790AP8RYBMX9YBLGTW6WE6",
+							"assetType": "StaticMeshActor",
+							"guid": "60d6847983148258485f4318fd2a18eb"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/4/CQ/I205QOSSXONYWBP69RVMVA":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/4/CQ/I205QOSSXONYWBP69RVMVA.I205QOSSXONYWBP69RVMVA",
+							"assetType": "StaticMeshActor",
+							"guid": "bc597fdd6145a28633a50ccb4ea4c479"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/5/25/3IO0LF8AOO4YLSEAEN2JO1":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/5/25/3IO0LF8AOO4YLSEAEN2JO1.3IO0LF8AOO4YLSEAEN2JO1",
+							"assetType": "StaticMeshActor",
+							"guid": "5eb19e456c97078f2bbcbc1ea899e9de"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/5/9M/BJR5SDQDQW7QDFFPNUUMNX":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/5/9M/BJR5SDQDQW7QDFFPNUUMNX.BJR5SDQDQW7QDFFPNUUMNX",
+							"assetType": "StaticMeshActor",
+							"guid": "928b24e9cdfa3b02bbb3bd8746dc47a2"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/5/KG/ETKAO35ANVW90XFH3J8GJ2":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/5/KG/ETKAO35ANVW90XFH3J8GJ2.ETKAO35ANVW90XFH3J8GJ2",
+							"assetType": "StaticMeshActor",
+							"guid": "7b88fb8f342efb93bdb4212770a114bc"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/5/W9/ZAAGYIUQZ2W6WEO3HPXAX7":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/5/W9/ZAAGYIUQZ2W6WEO3HPXAX7.ZAAGYIUQZ2W6WEO3HPXAX7",
+							"assetType": "StaticMeshActor",
+							"guid": "3439fff62fbf91e53ec5ed841d51576b"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/3C/KAT90QYQLFOHNMOF9BEDZK":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/3C/KAT90QYQLFOHNMOF9BEDZK.KAT90QYQLFOHNMOF9BEDZK",
+							"assetType": "StaticMeshActor",
+							"guid": "7bdce35a13539b29e017460148bc3d9e"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/8I/HFL05AWIVBP8M8UXTV4H5K":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/8I/HFL05AWIVBP8M8UXTV4H5K.HFL05AWIVBP8M8UXTV4H5K",
+							"assetType": "StaticMeshActor",
+							"guid": "fdf50cc52f4889b0d4501faca39be993"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/G9/77SUGCMHUBU5E7FP1DLCVD":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/G9/77SUGCMHUBU5E7FP1DLCVD.77SUGCMHUBU5E7FP1DLCVD",
+							"assetType": "StaticMeshActor",
+							"guid": "30d7b6f8b1f104d6d1d8cbf8f4b27f39"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/UK/OT5UOZ3WBJ9P30TU3DBDEK":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/UK/OT5UOZ3WBJ9P30TU3DBDEK.OT5UOZ3WBJ9P30TU3DBDEK",
+							"assetType": "StaticMeshActor",
+							"guid": "a6296a430cec50ca1852a49352fda8f2"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/XM/SN8KJL01L24VVIYC52MNFR":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/XM/SN8KJL01L24VVIYC52MNFR.SN8KJL01L24VVIYC52MNFR",
+							"assetType": "StaticMeshActor",
+							"guid": "c01c8c04267165e81481deaa3e4467fd"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/YB/C5UDZYKFL5M0YW62JXMPIZ":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/6/YB/C5UDZYKFL5M0YW62JXMPIZ.C5UDZYKFL5M0YW62JXMPIZ",
+							"assetType": "StaticMeshActor",
+							"guid": "c2120e471e462d53023b4a81c6485ced"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/7/GV/W5DNM2FP1ON7VGU0C2BGMV":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/7/GV/W5DNM2FP1ON7VGU0C2BGMV.W5DNM2FP1ON7VGU0C2BGMV",
+							"assetType": "StaticMeshActor",
+							"guid": "25858f633423b68a52a194496232a91d"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/7/JD/OCW0UZT4ANZZD9YHEAOMAP":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/7/JD/OCW0UZT4ANZZD9YHEAOMAP.OCW0UZT4ANZZD9YHEAOMAP",
+							"assetType": "StaticMeshActor",
+							"guid": "76b3b5f01ed9b5eccc7739932b9199ca"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/7/O7/IHUOIGG1MW1YZY097JJ8O7":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/7/O7/IHUOIGG1MW1YZY097JJ8O7.IHUOIGG1MW1YZY097JJ8O7",
+							"assetType": "StaticMeshActor",
+							"guid": "9dfa1e693cceb1d256237da341fd1d65"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/7/XU/RW3P9HUUCOCG5TL3TPG6XF":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/7/XU/RW3P9HUUCOCG5TL3TPG6XF.RW3P9HUUCOCG5TL3TPG6XF",
+							"assetType": "StaticMeshActor",
+							"guid": "17aa1ad28cfb6851e970a653a7c6bc74"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/0N/1OONKTGJMLVBN21M6JE59I":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/0N/1OONKTGJMLVBN21M6JE59I.1OONKTGJMLVBN21M6JE59I",
+							"assetType": "StaticMeshActor",
+							"guid": "2788af044d9544bc54b04201d2d8d1c6"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/7A/C0UVMH95QVQO1KMTVK7MSB":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/7A/C0UVMH95QVQO1KMTVK7MSB.C0UVMH95QVQO1KMTVK7MSB",
+							"assetType": "StaticMeshActor",
+							"guid": "6bff48df653bf81860b05a1f22d9a19b"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/HN/XXZLD30WH49IXWEHJXSVAR":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/HN/XXZLD30WH49IXWEHJXSVAR.XXZLD30WH49IXWEHJXSVAR",
+							"assetType": "StaticMeshActor",
+							"guid": "936d059919883dbe1d3469147fd0c2fc"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/VS/XX060WNO6GEZU5BZQCLZPP":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/VS/XX060WNO6GEZU5BZQCLZPP.XX060WNO6GEZU5BZQCLZPP",
+							"assetType": "DirectionalLight",
+							"guid": "9816c826f98f81d578acf588b9d9bf76"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/WI/FHUVUALB8C8XRJ0PY9XXTI":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/WI/FHUVUALB8C8XRJ0PY9XXTI.FHUVUALB8C8XRJ0PY9XXTI",
+							"assetType": "StaticMeshActor",
+							"guid": "cc74f14e563f2b9790e9a13ec9aa7b04"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/XH/SKCKQTQDTE8ZNW6C0FCBRO":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/8/XH/SKCKQTQDTE8ZNW6C0FCBRO.SKCKQTQDTE8ZNW6C0FCBRO",
+							"assetType": "StaticMeshActor",
+							"guid": "cb23c677ef75e81701e4700cee4d21b2"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/5G/29Z6AXUGZPZ0CXHLK2DICG":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/5G/29Z6AXUGZPZ0CXHLK2DICG.29Z6AXUGZPZ0CXHLK2DICG",
+							"assetType": "Actor",
+							"guid": "635eec02919768c18682c7e98f253260"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/6V/AV0JKCFBVPU58UEBGB0GC0":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/6V/AV0JKCFBVPU58UEBGB0GC0.AV0JKCFBVPU58UEBGB0GC0",
+							"assetType": "StaticMeshActor",
+							"guid": "6c7d3863d99257f42323853ea936d8b9"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/EE/OCR348BHEJWLHO72TR249H":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/EE/OCR348BHEJWLHO72TR249H.OCR348BHEJWLHO72TR249H",
+							"assetType": "StaticMeshActor",
+							"guid": "46f339218c6da9c692ff1a19d308b0d2"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/LX/1K6D4FIEJMOF50LSVJKFMP":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/LX/1K6D4FIEJMOF50LSVJKFMP.1K6D4FIEJMOF50LSVJKFMP",
+							"assetType": "WorldPartitionMiniMap",
+							"guid": "46a327dd2561c0ff1b178234d2aa14a0"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/UM/1F7R5WQFM2D9KH7A94JFBU":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/9/UM/1F7R5WQFM2D9KH7A94JFBU.1F7R5WQFM2D9KH7A94JFBU",
+							"assetType": "StaticMeshActor",
+							"guid": "ef9ebfc819a5b6b9020a0b3a8383228d"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/A/3J/Q8CQM512VVS7UZZW0KQRSV":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/A/3J/Q8CQM512VVS7UZZW0KQRSV.Q8CQM512VVS7UZZW0KQRSV",
+							"assetType": "StaticMeshActor",
+							"guid": "88540115db687c2c370734a950d4a04a"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/A/8N/4L4W0MLV9WFUGRTMUBLBOP":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/A/8N/4L4W0MLV9WFUGRTMUBLBOP.4L4W0MLV9WFUGRTMUBLBOP",
+							"assetType": "StaticMeshActor",
+							"guid": "fd4add6d2845c5e8ae93375c2cb62498"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/A/BN/LKN4IB4C3UPW62GHBEKTIW":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/A/BN/LKN4IB4C3UPW62GHBEKTIW.LKN4IB4C3UPW62GHBEKTIW",
+							"assetType": "StaticMeshActor",
+							"guid": "2fa2a7b91e1caf936a6e2770ec502c76"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/A/IP/MGVQPE8M923OBBJLZBI1PC":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/A/IP/MGVQPE8M923OBBJLZBI1PC.MGVQPE8M923OBBJLZBI1PC",
+							"assetType": "StaticMeshActor",
+							"guid": "3f6e2d543e58cbbdb0deb9257ca41fdd"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/0L/IL99N1JAI1J4A2DFQBQL53":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/0L/IL99N1JAI1J4A2DFQBQL53.IL99N1JAI1J4A2DFQBQL53",
+							"assetType": "StaticMeshActor",
+							"guid": "7db7702c3b3a60e7c582fb21f7a24fe6"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/2F/XTDQUHCYJJV6JCH4OJSVLG":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/2F/XTDQUHCYJJV6JCH4OJSVLG.XTDQUHCYJJV6JCH4OJSVLG",
+							"assetType": "StaticMeshActor",
+							"guid": "b5575ddfdf50e9e0da215947ca3a3aab"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/HX/PES0ONLF01PSQTJCC5USD2":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/HX/PES0ONLF01PSQTJCC5USD2.PES0ONLF01PSQTJCC5USD2",
+							"assetType": "StaticMeshActor",
+							"guid": "4f653fddeac710a5c86927969134af71"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/P1/LRQT09TOYHOXK9DY22EIKE":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/P1/LRQT09TOYHOXK9DY22EIKE.LRQT09TOYHOXK9DY22EIKE",
+							"assetType": "StaticMeshActor",
+							"guid": "84510332c17a3fc558c213cbaf51f4a0"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/RX/297QBXCKTP06G7NIHIULK4":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/B/RX/297QBXCKTP06G7NIHIULK4.297QBXCKTP06G7NIHIULK4",
+							"assetType": "StaticMeshActor",
+							"guid": "8aa1bdc16847a6f456190e4ed5879633"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/C/27/6ZCCZ1F7ZO6DM3C8OLVGTF":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/C/27/6ZCCZ1F7ZO6DM3C8OLVGTF.6ZCCZ1F7ZO6DM3C8OLVGTF",
+							"assetType": "StaticMeshActor",
+							"guid": "754ffeaf9ba010d77c3989fdc2da17b3"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/C/EE/HZ5WNBFZRJYQPUA6X8TVVT":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/C/EE/HZ5WNBFZRJYQPUA6X8TVVT.HZ5WNBFZRJYQPUA6X8TVVT",
+							"assetType": "SkyAtmosphere",
+							"guid": "a9a142630b9a7be9b087ea37c5bdfc9e"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/C/HY/Q7CPP7VHOXBAMAJI90W626":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/C/HY/Q7CPP7VHOXBAMAJI90W626.Q7CPP7VHOXBAMAJI90W626",
+							"assetType": "PlayerStart",
+							"guid": "d0573ae044db849b0365dc18f6763e29"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/13/EPTYZCFZWXT7Z7XYKZ88XK":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/13/EPTYZCFZWXT7Z7XYKZ88XK.EPTYZCFZWXT7Z7XYKZ88XK",
+							"assetType": "StaticMeshActor",
+							"guid": "c0f452ff76cb5b9d3d9fb594a9da7a94"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/50/395Y4QE4IIEWI3KSE3SB6L":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/50/395Y4QE4IIEWI3KSE3SB6L.395Y4QE4IIEWI3KSE3SB6L",
+							"assetType": "StaticMeshActor",
+							"guid": "d089ad99f4e3561a448744f2f1770434"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/8U/VKFLMM0CV8ZCC0P3TQGTTM":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/8U/VKFLMM0CV8ZCC0P3TQGTTM.VKFLMM0CV8ZCC0P3TQGTTM",
+							"assetType": "StaticMeshActor",
+							"guid": "48f953fe677dc08d10ff36e9ea69816c"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/AY/KLCRMXKI9WR2P0GDY96C36":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/AY/KLCRMXKI9WR2P0GDY96C36.KLCRMXKI9WR2P0GDY96C36",
+							"assetType": "SkyLight",
+							"guid": "9964bcbfba97d679128022bef76f6e5a"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/K5/NQBPXM7AM8N39CBW4ZT57P":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/K5/NQBPXM7AM8N39CBW4ZT57P.NQBPXM7AM8N39CBW4ZT57P",
+							"assetType": "StaticMeshActor",
+							"guid": "b882e0503e3ba02d34e31ab92a456d24"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/M3/6T1XG4EDG4ZEE1U9HMYL4C":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/M3/6T1XG4EDG4ZEE1U9HMYL4C.6T1XG4EDG4ZEE1U9HMYL4C",
+							"assetType": "StaticMeshActor",
+							"guid": "839e8792830feabec6ea4b45c3c43467"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/MG/EDRUPW3EOYDDSI6HNSIVT1":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/D/MG/EDRUPW3EOYDDSI6HNSIVT1.EDRUPW3EOYDDSI6HNSIVT1",
+							"assetType": "StaticMeshActor",
+							"guid": "64cb7c0baa21483395cc6ba897174158"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/E/96/RFQP83S9K0LC7IW8CXS6C0":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/E/96/RFQP83S9K0LC7IW8CXS6C0.RFQP83S9K0LC7IW8CXS6C0",
+							"assetType": "ExponentialHeightFog",
+							"guid": "80cdb662747afc32845539cb5d75b678"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/E/JR/W7S9610Y7RWELGF93FZYAE":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/E/JR/W7S9610Y7RWELGF93FZYAE.W7S9610Y7RWELGF93FZYAE",
+							"assetType": "StaticMeshActor",
+							"guid": "6de7afd15117f888e1579ef16be5bdc6"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/E/SS/QXUZ4IXFNKHCYFWERA1HQA":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/E/SS/QXUZ4IXFNKHCYFWERA1HQA.QXUZ4IXFNKHCYFWERA1HQA",
+							"assetType": "StaticMeshActor",
+							"guid": "881092dc541820c58172abe437687e82"
+						},
+						"/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/F/4G/TYFCMQ9MC435YW6FZBF5FS":
+						{
+							"packagePath": "/Game/__ExternalActors__/ThirdPerson/Lvl_ThirdPerson/F/4G/TYFCMQ9MC435YW6FZBF5FS.TYFCMQ9MC435YW6FZBF5FS",
+							"assetType": "PostProcessVolume",
+							"guid": "3da4fa0f1519272a43e5a3a65e6883c9"
+						},
+						"/Game/__ExternalObjects__/ThirdPerson/Lvl_ThirdPerson/0/TQ/1UP2MCOIYXC0GTW985R4K0":
+						{
+							"packagePath": "/Game/__ExternalObjects__/ThirdPerson/Lvl_ThirdPerson/0/TQ/1UP2MCOIYXC0GTW985R4K0.1UP2MCOIYXC0GTW985R4K0",
+							"assetType": "ActorFolder",
+							"guid": "b44bb05a5e3aa5d219c31f73621af200"
+						},
+						"/Game/__ExternalObjects__/ThirdPerson/Lvl_ThirdPerson/5/TX/O6OLZU4WSCI3YRJS922SWL":
+						{
+							"packagePath": "/Game/__ExternalObjects__/ThirdPerson/Lvl_ThirdPerson/5/TX/O6OLZU4WSCI3YRJS922SWL.O6OLZU4WSCI3YRJS922SWL",
+							"assetType": "ActorFolder",
+							"guid": "8d6f8edc85c9dcc47f64a61253beda62"
+						}
+					}
+				},
+				"Engine":
+				{
+					"moduleCategory": "Engine",
+					"assetDependencyDetails":
+					{
+						"/Engine/EngineSky/T_Sky_Blue":
+						{
+							"packagePath": "/Engine/EngineSky/T_Sky_Blue.T_Sky_Blue",
+							"assetType": "Texture2D",
+							"guid": "06393f94e578354269355b1cc53fcf7c"
+						},
+						"/Engine/EngineSky/T_Sky_Clouds_M":
+						{
+							"packagePath": "/Engine/EngineSky/T_Sky_Clouds_M.T_Sky_Clouds_M",
+							"assetType": "Texture2D",
+							"guid": "6def9a179834c9fa1ec8f7c837552f6b"
+						},
+						"/Engine/EngineSky/T_Sky_Stars":
+						{
+							"packagePath": "/Engine/EngineSky/T_Sky_Stars.T_Sky_Stars",
+							"assetType": "Texture2D",
+							"guid": "30086ce9523ed0aa51dd370e24ae129a"
+						},
+						"/Engine/EngineSky/VolumetricClouds/VT_Lightning":
+						{
+							"packagePath": "/Engine/EngineSky/VolumetricClouds/VT_Lightning.VT_Lightning",
+							"assetType": "VolumeTexture",
+							"guid": "0f1c49635a09030ca90a634acf867e18"
+						},
+						"/Engine/Functions/Engine_MaterialFunctions01/Units/Km-to-Cm":
+						{
+							"packagePath": "/Engine/Functions/Engine_MaterialFunctions01/Units/Km-to-Cm.Km-to-Cm",
+							"assetType": "MaterialFunction",
+							"guid": "85995d5e9da5de07e8826f6dc0ce3536"
+						},
+						"/Engine/EngineSky/M_Sky_Panning_Clouds2":
+						{
+							"packagePath": "/Engine/EngineSky/M_Sky_Panning_Clouds2.M_Sky_Panning_Clouds2",
+							"assetType": "Material",
+							"guid": "0e4501ee4bb7c3fa088a5772887e4651"
+						},
+						"/Engine/EngineSky/SM_SkySphere":
+						{
+							"packagePath": "/Engine/EngineSky/SM_SkySphere.SM_SkySphere",
+							"assetType": "StaticMesh",
+							"guid": "ea72a61a0af9c29aa5abb4d7313681c5"
+						},
+						"/Engine/EngineSky/M_SimpleSkyDome":
+						{
+							"packagePath": "/Engine/EngineSky/M_SimpleSkyDome.M_SimpleSkyDome",
+							"assetType": "Material",
+							"guid": "3609db90f89124368c0be472e4d37a1a"
+						},
+						"/Engine/EngineSky/VolumetricClouds/T_CloudMask":
+						{
+							"packagePath": "/Engine/EngineSky/VolumetricClouds/T_CloudMask.T_CloudMask",
+							"assetType": "Texture2D",
+							"guid": "bba9215e67fb99731065caa866043cbc"
+						},
+						"/Engine/EngineSky/VolumetricClouds/T_CloudPattern":
+						{
+							"packagePath": "/Engine/EngineSky/VolumetricClouds/T_CloudPattern.T_CloudPattern",
+							"assetType": "Texture2D",
+							"guid": "2a07384e09eae11ee064e00cf27e20ba"
+						},
+						"/Engine/EngineSky/VolumetricClouds/T_Profile_08":
+						{
+							"packagePath": "/Engine/EngineSky/VolumetricClouds/T_Profile_08.T_Profile_08",
+							"assetType": "Texture2D",
+							"guid": "09c8a3878eacc2c8e976440270da9fed"
+						},
+						"/Engine/EngineSky/VolumetricClouds/VT_PerlinWorley_Balanced":
+						{
+							"packagePath": "/Engine/EngineSky/VolumetricClouds/VT_PerlinWorley_Balanced.VT_PerlinWorley_Balanced",
+							"assetType": "VolumeTexture",
+							"guid": "89a608b5a753f1248bc7e3e063ba4e11"
+						},
+						"/Engine/Functions/Engine_MaterialFunctions02/Utility/BreakOutFloat4Components":
+						{
+							"packagePath": "/Engine/Functions/Engine_MaterialFunctions02/Utility/BreakOutFloat4Components.BreakOutFloat4Components",
+							"assetType": "MaterialFunction",
+							"guid": "468161f593c2b71d2876f646c7027bf6"
+						},
+						"/Engine/Functions/Engine_MaterialFunctions02/Utility/MakeFloat4":
+						{
+							"packagePath": "/Engine/Functions/Engine_MaterialFunctions02/Utility/MakeFloat4.MakeFloat4",
+							"assetType": "MaterialFunction",
+							"guid": "e922be96bf20ea7f491231b1648ced40"
+						},
+						"/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst":
+						{
+							"packagePath": "/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst.m_SimpleVolumetricCloud_Inst",
+							"assetType": "MaterialInstanceConstant",
+							"guid": "887634502c8ec5dd3e14de208aa2e78e"
+						},
+						"/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud":
+						{
+							"packagePath": "/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud.m_SimpleVolumetricCloud",
+							"assetType": "Material",
+							"guid": "3768153fe1c672ade8ef5f8d0a3a536c"
+						},
+						"/Engine/MapTemplates/SM_Template_Map_Floor":
+						{
+							"packagePath": "/Engine/MapTemplates/SM_Template_Map_Floor.SM_Template_Map_Floor",
+							"assetType": "StaticMesh",
+							"guid": "9b1dbe1717fa7103b547616a76e665f8"
+						}
+					}
+				}
+			}
+		},
+		"modifyAssetDependInfo":
+		{
+			"assetsDependenciesMap":
+			{
+				"Game":
+				{
+					"moduleCategory": "Game",
+					"assetDependencyDetails":
+					{
+						"/Game/ThirdPerson/Lvl_ThirdPerson":
+						{
+							"packagePath": "/Game/ThirdPerson/Lvl_ThirdPerson.Lvl_ThirdPerson",
+							"assetType": "World",
+							"guid": "7853692a6818df6433f46d3365b11914"
+						}
+					}
+				}
+			}
+		},
+		"deleteAssetDependInfo":
+		{
+			"assetsDependenciesMap":
+			{
+			}
+		}
+	},
+	"platformExternDiffInfo":
+	{
+		"windows":
+		{
+			"platform": "Windows",
+			"addExternalFiles": [],
+			"modifyExternalFiles": [],
+			"deleteExternalFiles": []
+		},
+		"allPlatforms":
+		{
+			"platform": "AllPlatforms",
+			"addExternalFiles": [],
+			"modifyExternalFiles": [],
+			"deleteExternalFiles": []
+		}
+	}
+}

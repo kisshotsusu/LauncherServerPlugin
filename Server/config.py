@@ -90,59 +90,52 @@ def load_config(config_path=None):
     global _RESOLVED_CONFIG_PATH
     _RESOLVED_CONFIG_PATH = cfg["_config_path"]
     # 后续所有相对路径都以 config.json 所在目录为基准
+    config_dir = str(Path(config_path).resolve().parent)
     set_config_dir(cfg["_config_path"])
     cfg.setdefault("host", "0.0.0.0")
     cfg.setdefault("port", 8710)
     cfg.setdefault("project", "CodeBuild")
     cfg.setdefault("platforms", ["Windows"])
+    cfg["platforms"] = validate_platforms(cfg["platforms"])
+    cfg.setdefault("default_platform", cfg["platforms"][0])
+    if cfg["default_platform"] not in cfg["platforms"]:
+        cfg["default_platform"] = cfg["platforms"][0]
+    cfg.setdefault("platform_settings", {})
     cfg.setdefault("data_dir", "data")
     cfg.setdefault("web_dir", "web")
     cfg.setdefault("admin_token", "")
-    cfg.setdefault("package_roots", {})
     cfg.setdefault("base_packages", {})
     cfg.setdefault("manifest_exclude_patterns", [])
     cfg.setdefault("manifest_hash", "md5")
     cfg.setdefault("max_upload_mb", 2048)
-    cfg.setdefault("hotpatcher_source", "")
-    cfg.setdefault("hotpatcher_order", "")
     cfg.setdefault("version_library_dir", os.path.join(cfg["data_dir"], "versions"))
-    cfg["data_dir"] = resolve_server_path(cfg["data_dir"])
-    cfg["web_dir"] = resolve_server_path(cfg["web_dir"])
-    cfg["version_library_dir"] = resolve_server_path(cfg["version_library_dir"])
+    cfg["data_dir"] = resolve_server_path(cfg["data_dir"], config_dir)
+    cfg["web_dir"] = resolve_server_path(cfg["web_dir"], config_dir)
+    cfg["version_library_dir"] = resolve_server_path(cfg["version_library_dir"], config_dir)
     cfg["versions_dir"] = cfg["version_library_dir"]
-    cfg["hotpatcher_source"] = resolve_server_path(cfg["hotpatcher_source"])
 
-    # 全局基础包根目录：base_packages 中的条目若为非绝对路径，则相对它解析（全局地址）
-    cfg.setdefault("base_packages_root", "")
-    bp_root_abs = resolve_server_path(cfg.get("base_packages_root", ""))
-    cfg["base_packages_root"] = bp_root_abs
-
-    # 迁移旧的 package_roots（单基础包）到 base_packages（多版本基础包）
-    if not cfg["base_packages"] and cfg.get("package_roots"):
-        migrated = {}
-        for platform, root in cfg["package_roots"].items():
-            if isinstance(root, dict):
-                migrated[platform] = {
-                    str(k): resolve_base_package_path(v, bp_root_abs)
-                    for k, v in root.items()
-                }
-            else:
-                migrated[platform] = {"1.0": resolve_base_package_path(root, bp_root_abs)}
-        cfg["base_packages"] = migrated
-    else:
-        resolved_bp = {}
-        for platform, versions in cfg["base_packages"].items():
-            resolved_bp[platform] = {
-                str(version): resolve_base_package_path(path, bp_root_abs)
-                for version, path in (versions or {}).items()
-            }
-        cfg["base_packages"] = resolved_bp
-
-    # 兼容字段：package_roots 指向各平台最新基础包
-    cfg["package_roots"] = {}
-    for platform in cfg["platforms"]:
-        latest = get_latest_base_version(cfg, platform)
-        cfg["package_roots"][platform] = get_base_dir(cfg, platform, latest)
+    cfg["base_packages"] = {
+        platform: {str(version): resolve_base_package_path(path, resolve_server_path((cfg["platform_settings"].get(platform) or {}).get("basePackagesRoot", ""), config_dir) or config_dir)
+                   for version, path in (versions or {}).items()}
+        for platform, versions in cfg["base_packages"].items()
+    }
+    if cfg.get("workspace_dir"):
+        workspace = resolve_server_path(cfg["workspace_dir"], config_dir)
+        cfg["workspace_dir"] = workspace
+        cfg["data_dir"] = os.path.join(workspace, "data")
+        cfg["version_library_dir"] = cfg["versions_dir"] = os.path.join(workspace, "patches")
+        cfg["base_packages"] = {}
+        for platform in cfg["platforms"]:
+            base = os.path.join(workspace, "bases", platform)
+            cfg["base_packages"][platform] = {version: os.path.join(base, version) for version in sorted(os.listdir(base)) if not version.startswith(".") and os.path.isdir(os.path.join(base, version))} if os.path.isdir(base) else {}
+            options = cfg["platform_settings"].setdefault(platform, {})
+            options["basePackagesRoot"] = base
+            options["patchSourceDir"] = os.path.join(workspace, "imports", platform, "patch")
+        cfg["launcher_versions"] = {}
+        launcher = os.path.join(workspace, "launcher", "versions")
+        if os.path.isdir(launcher):
+            cfg["launcher_versions"] = {version: os.path.join(launcher, version) for version in os.listdir(launcher) if not version.startswith(".") and os.path.isdir(os.path.join(launcher, version))}
+        cfg["background_dir"] = os.path.join(workspace, "launcher", "background")
     cfg["manifests_dir"] = os.path.join(cfg["data_dir"], "manifests")
 
     # HTTPS 与对象存储（云 OSS/COS）配置默认值
@@ -160,7 +153,7 @@ def load_config(config_path=None):
     # 否则会跟随进程当前工作目录漂移（双击启动时尤其不可控）。
     launcher_versions = cfg.get("launcher_versions") or {}
     cfg["launcher_versions"] = {
-        str(version): resolve_server_path(path)
+        str(version): resolve_server_path(path, config_dir)
         for version, path in launcher_versions.items()
         if str(path).strip()
     }
@@ -169,7 +162,7 @@ def load_config(config_path=None):
     https_cfg = cfg.get("https") or {}
     for key in ("certFile", "keyFile"):
         if https_cfg.get(key):
-            https_cfg[key] = resolve_server_path(https_cfg[key])
+            https_cfg[key] = resolve_server_path(https_cfg[key], config_dir)
     cfg["https"] = https_cfg
 
     return cfg
@@ -179,6 +172,11 @@ def load_config(config_path=None):
 def ensure_dirs(cfg):
     os.makedirs(cfg["versions_dir"], exist_ok=True)
     os.makedirs(cfg["manifests_dir"], exist_ok=True)
+    if cfg.get("workspace_dir"):
+        for path in workspace_paths(cfg).values():
+            if isinstance(path, str): os.makedirs(path, exist_ok=True)
+        for platform in cfg["platforms"]:
+            for path in workspace_platform_paths(cfg, platform).values(): os.makedirs(path, exist_ok=True)
 
 
 
@@ -271,3 +269,23 @@ def launcher_bg_dir(cfg):
             return resolved
     return os.path.join(cfg["data_dir"], "launcher", "background")
 
+
+
+def validate_platforms(platforms):
+    if not isinstance(platforms, list) or not platforms or any(not isinstance(p, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", p) for p in platforms):
+        raise ValueError("至少保留一个平台，标识仅支持英文字母、数字、下划线和短横线")
+    if len({p.lower() for p in platforms}) != len(platforms):
+        raise ValueError("平台标识不能重复（不区分大小写）")
+    return list(platforms)
+
+
+def workspace_platform_paths(cfg, platform):
+    root = cfg["workspace_dir"]
+    return {"bases": os.path.join(root, "bases", platform), "patches": os.path.join(root, "patches", platform),
+            "baseImport": os.path.join(root, "imports", platform, "base"), "patchImport": os.path.join(root, "imports", platform, "patch")}
+
+
+def workspace_paths(cfg):
+    root = cfg["workspace_dir"]
+    return {"root": root, "data": os.path.join(root, "data"), "launcher": os.path.join(root, "launcher", "versions"),
+            "launcherImport": os.path.join(root, "imports", "launcher"), "launcherPublished": os.path.join(root, "data", "launcher"), "background": os.path.join(root, "launcher", "background")}

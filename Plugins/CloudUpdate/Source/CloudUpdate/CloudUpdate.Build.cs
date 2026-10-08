@@ -11,11 +11,15 @@ public class CloudUpdate : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			"DeveloperSettings"
+			"DeveloperSettings",
+			"UMG"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"Slate",
+			"SlateCore",
+			"EngineSettings",
 			"HTTP",
 			"Json",
 			"JsonUtilities",

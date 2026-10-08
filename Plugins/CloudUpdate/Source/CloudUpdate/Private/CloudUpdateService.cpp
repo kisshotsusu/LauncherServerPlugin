@@ -27,6 +27,7 @@
 #include "FlibPakHelper.h"
 
 #include "CloudUpdateUtil.h"
+#include "GeneralProjectSettings.h"
 using namespace CloudUpdatePrivate;
 
 FCloudUpdateService::FCloudUpdateService(UCloudUpdateSubsystem* InOwner)
@@ -120,12 +121,12 @@ FString FCloudUpdateService::GetManifestUrl() const
 
 FString FCloudUpdateService::GetVersionsUrl() const
 {
-	return GetServerUrl() / TEXT("api") / TEXT("versions");
+	return GetServerUrl() / TEXT("api") / TEXT("versions") + TEXT("?platform=") + FGenericPlatformHttp::UrlEncode(GetPlatform());
 }
 
 FString FCloudUpdateService::GetVersionUrl(const FString& InVersionId) const
 {
-	return GetServerUrl() / TEXT("api") / TEXT("version") / InVersionId
+	return GetServerUrl() / TEXT("api") / TEXT("version") / FGenericPlatformHttp::UrlEncode(InVersionId)
 		+ FString::Printf(TEXT("?platform=%s"), *FGenericPlatformHttp::UrlEncode(GetPlatform()));
 }
 
@@ -149,7 +150,7 @@ bool FCloudUpdateService::IsPathIgnored(const FString& InRelativePath) const
 
 FString FCloudUpdateService::LoadLocalVersion() const
 {
-	const FString Path = FPaths::ProjectSavedDir() / TEXT("CloudUpdate") / TEXT("local_version.json");
+	const FString Path = GetVersionRecordPath();
 	FString JsonStr;
 	if (FFileHelper::LoadFileToString(JsonStr, *Path))
 	{
@@ -158,7 +159,15 @@ FString FCloudUpdateService::LoadLocalVersion() const
 		TSharedPtr<FJsonObject> Json;
 		if (FJsonSerializer::Deserialize(Reader, Json) && Json.IsValid())
 		{
-			Json->TryGetStringField(TEXT("versionId"), Local.VersionId);
+            FString RecordedGame;
+            Json->TryGetStringField(TEXT("installedGameVersion"), RecordedGame);
+            if (!RecordedGame.IsEmpty() && RecordedGame != GetLocalGameVersion())
+            {
+                const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+                return Settings->InitialResourceVersionId.IsEmpty() ? Settings->CurrentVersionId : Settings->InitialResourceVersionId;
+            }
+			if (!Json->TryGetStringField(TEXT("resourceVersionId"), Local.VersionId))
+    Json->TryGetStringField(TEXT("versionId"), Local.VersionId);
 			if (!Local.VersionId.IsEmpty())
 			{
 				return Local.VersionId;
@@ -166,12 +175,12 @@ FString FCloudUpdateService::LoadLocalVersion() const
 		}
 	}
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
-	return Settings ? Settings->CurrentVersionId : TEXT("");
+	return Settings ? (Settings->InitialResourceVersionId.IsEmpty() ? Settings->CurrentVersionId : Settings->InitialResourceVersionId) : TEXT("");
 }
 
 void FCloudUpdateService::SaveLocalVersion(const FString& InVersionId)
 {
-	const FString Dir = FPaths::ProjectSavedDir() / TEXT("CloudUpdate");
+	const FString Dir = FPaths::GetPath(GetVersionRecordPath());
 	IFileManager::Get().MakeDirectory(*Dir, true);
 
 	FCloudLocalVersion Local;
@@ -179,23 +188,26 @@ void FCloudUpdateService::SaveLocalVersion(const FString& InVersionId)
 	Local.AppliedAt = FDateTime::Now().ToString();
 
 	FString JsonStr;
-	FJsonObjectConverter::UStructToJsonObjectString(Local, JsonStr);
-	const FString Path = Dir / TEXT("local_version.json");
+	TSharedRef<FJsonObject> Record = MakeShared<FJsonObject>();
+ Record->SetNumberField(TEXT("schemaVersion"), 2);
+ Record->SetStringField(TEXT("versionId"), InVersionId);
+ Record->SetStringField(TEXT("resourceVersionId"), InVersionId);
+ Record->SetStringField(TEXT("installedGameVersion"), GetLocalGameVersion());
+ Record->SetStringField(TEXT("appliedAt"), Local.AppliedAt);
+ FJsonSerializer::Serialize(Record, TJsonWriterFactory<>::Create(&JsonStr));
+	const FString Path = GetVersionRecordPath();
 	if (FFileHelper::SaveStringToFile(JsonStr, *Path))
 	{
 		UE_LOG(LogCloudUpdate, Log, TEXT("本地版本已记录：%s (%s)"), *InVersionId, *Path);
 	}
 
-	if (UCloudUpdateSettings* Settings = GetMutableDefault<UCloudUpdateSettings>())
-	{
-		Settings->CurrentVersionId = InVersionId;
-		Settings->SaveConfig();
-	}
 }
 
 void FCloudUpdateService::SetLocalVersion(const FString& InVersionId)
 {
-	SaveLocalVersion(InVersionId);
+    SaveLocalVersion(InVersionId);
+    UpdatePlan.bValid = false;
+    PlannedVersions.Reset();
 }
 
 FString FCloudUpdateService::GetLocalVersion() const
@@ -206,4 +218,77 @@ FString FCloudUpdateService::GetLocalVersion() const
 void FCloudUpdateService::Abort()
 {
 	bAbortRequested = true;
+}
+
+FString FCloudUpdateService::GetLocalGameVersion() const
+{
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ if (Settings && !Settings->GameVersionOverride.IsEmpty()) return Settings->GameVersionOverride;
+ return GetDefault<UGeneralProjectSettings>()->ProjectVersion;
+}
+
+FString FCloudUpdateService::GetVersionRecordPath() const
+{
+ return LocalVersionRecordPath.IsEmpty() ? FPaths::ProjectSavedDir() / TEXT("CloudUpdate/local_version.json") : LocalVersionRecordPath;
+}
+FString FCloudUpdateService::GetPendingResourceVersion() const
+{
+ FString Text, Pending, RecordedGame;
+ TSharedPtr<FJsonObject> Json;
+ if (FFileHelper::LoadFileToString(Text, *GetVersionRecordPath()) && FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Json) && Json.IsValid())
+ {
+  Json->TryGetStringField(TEXT("installedGameVersion"), RecordedGame);
+  if (!RecordedGame.IsEmpty() && RecordedGame != GetLocalGameVersion()) return TEXT("");
+  Json->TryGetStringField(TEXT("pendingResourceVersionId"), Pending);
+ }
+ return Pending;
+}
+void FCloudUpdateService::SavePendingResourceVersion(const FString& Version)
+{
+ TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
+ Json->SetNumberField(TEXT("schemaVersion"), 2);
+ Json->SetStringField(TEXT("versionId"), LoadLocalVersion());
+ Json->SetStringField(TEXT("resourceVersionId"), LoadLocalVersion());
+ Json->SetStringField(TEXT("installedGameVersion"), GetLocalGameVersion());
+ Json->SetStringField(TEXT("pendingResourceVersionId"), Version);
+ TArray<TSharedPtr<FJsonValue>> Files;
+ for (const FCloudDownloadFile& File : PendingFiles)
+ {
+  const FString Path = IsBinaryPatchEntry(File) ? ResolveBaseTargetPath(File) :
+   (File.Kind == ECloudDownloadKind::ExternFile ? GetLocalRoot() / File.TargetRelativePath : GetPakDir() / File.FileName);
+  TSharedRef<FJsonObject> Entry = MakeShared<FJsonObject>();
+  Entry->SetStringField(TEXT("path"), FPaths::ConvertRelativePathToFull(Path));
+  Entry->SetStringField(TEXT("hash"), IsBinaryPatchEntry(File) ? TEXT("") : File.Hash);
+  Files.Add(MakeShared<FJsonValueObject>(Entry));
+ }
+ Json->SetArrayField(TEXT("pendingFiles"), Files);
+ FString Text;
+ FJsonSerializer::Serialize(Json, TJsonWriterFactory<>::Create(&Text));
+ IFileManager::Get().MakeDirectory(*FPaths::GetPath(GetVersionRecordPath()), true);
+ FFileHelper::SaveStringToFile(Text, *GetVersionRecordPath());
+}
+void FCloudUpdateService::PromotePendingResourceVersion()
+{
+ const FString Pending = GetPendingResourceVersion();
+ if (Pending.IsEmpty()) return;
+ FString Text;
+ TSharedPtr<FJsonObject> Json;
+ if (!FFileHelper::LoadFileToString(Text, *GetVersionRecordPath()) || !FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Json) || !Json.IsValid()) return;
+ const TArray<TSharedPtr<FJsonValue>>* Values = nullptr;
+ if (!Json->TryGetArrayField(TEXT("pendingFiles"), Values) || Values->IsEmpty()) return;
+ for (const auto& Value : *Values)
+ {
+  if (!Value.IsValid() || Value->Type != EJson::Object) return;
+  const auto Entry = Value->AsObject();
+  FString Path, Hash;
+  Entry->TryGetStringField(TEXT("path"), Path);
+  Entry->TryGetStringField(TEXT("hash"), Hash);
+  if (Path.IsEmpty() || !IFileManager::Get().FileExists(*Path) || IFileManager::Get().FileExists(*(Path + TEXT(".pending")))) return;
+  if (!Hash.IsEmpty())
+  {
+   int64 Size = 0; FString Actual;
+   if (!CloudUpdatePrivate::ComputeFileHash(Path, Size, Actual) || !Actual.Equals(Hash, ESearchCase::IgnoreCase)) return;
+  }
+ }
+ SaveLocalVersion(Pending);
 }

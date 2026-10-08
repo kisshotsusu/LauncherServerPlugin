@@ -1,0 +1,150 @@
+{
+	"bByBaseVersion": true,
+	"baseVersion":
+	{
+		"filePath": "../../../../../test/CodeBuild/Saved/HotPatcher/1.0/1.0_Release.json"
+	},
+	"versionId": "1.2",
+	"bImportProjectSettings": false,
+	"bBinariesPatch": false,
+	"binariesPatchConfig":
+	{
+		"binariesPatchType": "None",
+		"encryptSettings":
+		{
+			"bUseDefaultCryptoIni": false,
+			"cryptoKeys":
+			{
+				"filePath": ""
+			}
+		},
+		"baseVersionPaks": [],
+		"matchRules": []
+	},
+	"bIncludeEngineIni": false,
+	"bIncludePluginIni": false,
+	"bIncludeProjectIni": false,
+	"bEnableExternFilesDiff": true,
+	"ignoreDeletionModulesAsset": [],
+	"addExternAssetsToPlatform": [],
+	"bIncludePakVersionFile": false,
+	"pakVersionFileMountPoint": "../../../CodeBuild/Versions/version.json",
+	"bEnableChunk": false,
+	"bCreateDefaultChunk": false,
+	"chunkInfos": [],
+	"bCookPatchAssets": true,
+	"cookAdvancedOptions":
+	{
+		"bCookParallelSerialize": false,
+		"numberOfAssetsPerFrame": 100,
+		"overrideNumberOfAssetsPerFrame":
+		{
+			"/Script/CoreUObject.Class'/Script/Engine.World'": 2
+		},
+		"bAccompanyCookForShader": false
+	},
+	"cookShaderOptions":
+	{
+		"bSharedShaderLibrary": false,
+		"bNativeShader": true,
+		"shaderNameRule": "CHUNK_NAME",
+		"customShaderName": "",
+		"shaderLibMountPointRegular": "[PROJECTDIR]/ShaderLibs"
+	},
+	"serializeAssetRegistryOptions":
+	{
+		"bSerializeAssetRegistry": false,
+		"bSerializeAssetRegistryManifest": false,
+		"assetRegistryMountPointRegular": "[PROJECTDIR]/AssetRegistry",
+		"assetRegistryRule": "PATCH",
+		"bCustomAssetRegistryName": false,
+		"assetRegistryNameRegular": "[CHUNK_NAME]_AssetRegistry.bin"
+	},
+	"ioStoreSettings":
+	{
+		"bIoStore": false,
+		"bAllowBulkDataInIoStore": false,
+		"ioStorePakListOptions": [],
+		"ioStoreCommandletOptions": [],
+		"platformContainers":
+		{
+		},
+		"bStoragePakList": true,
+		"bStorageBulkDataInfo": true
+	},
+	"unrealPakSettings":
+	{
+		"unrealPakListOptions": [],
+		"unrealCommandletOptions": [],
+		"bStoragePakList": true
+	},
+	"defaultPakListOptions": [
+		"-compress"
+	],
+	"defaultCommandletOptions": [
+		"-compress",
+		"-compressionformats=Zlib"
+	],
+	"encryptSettings":
+	{
+		"bUseDefaultCryptoIni": false,
+		"cryptoKeys":
+		{
+			"filePath": ""
+		}
+	},
+	"replacePakListTexts": [],
+	"pakTargetPlatforms": [
+		"Windows"
+	],
+	"bCustomPakNameRegular": false,
+	"pakNameRegular": "{VERSION}_{CHUNKNAME}_{PLATFORM}_001_P",
+	"bCustomPakPathRegular": false,
+	"pakPathRegular": "{CHUNKNAME}/{PLATFORM}",
+	"bStorageNewRelease": true,
+	"bStoragePakFileInfo": true,
+	"bIgnoreDeletedAssetsInfo": false,
+	"bStorageDeletedAssetsToNewReleaseJson": true,
+	"bStorageDiffAnalysisResults": true,
+	"bStorageUnrealPakList": true,
+	"bEnableProfiling": false,
+	"storageCookedDir": "[PROJECTDIR]/Saved/HotPatcher/Cooked",
+	"assetScanConfig":
+	{
+		"bPackageTracker": true,
+		"assetIncludeFilters": [
+			{
+				"path": "/Game"
+			}
+		],
+		"assetIgnoreFilters": [],
+		"bIncludeHasRefAssetsOnly": false,
+		"bAnalysisFilterDependencies": true,
+		"assetRegistryDependencyTypes": [
+			"Packages"
+		],
+		"includeSpecifyAssets": [],
+		"bRecursiveWidgetTree": true,
+		"bAnalysisMaterialInstance": true,
+		"bSupportWorldComposition": false,
+		"bForceSkipContent": true,
+		"forceSkipContentRules": [
+			{
+				"path": "/Game/__ExternalActors__"
+			},
+			{
+				"path": "/Game/__ExternalObjects__"
+			}
+		],
+		"forceSkipAssets": [],
+		"forceSkipClasses": []
+	},
+	"bStorageConfig": true,
+	"savePath":
+	{
+		"path": "[PROJECTDIR]/Saved/HotPatcher/"
+	},
+	"hashCalculator": "MD5",
+	"bStandaloneMode": true,
+	"additionalCommandletArgs": []
+}

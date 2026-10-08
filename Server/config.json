@@ -3,21 +3,13 @@
   "port": 8710,
   "project": "CodeBuild",
   "platforms": [
-    "Windows"
+    "Windows",
+    "Linux",
+    "Android"
   ],
-  "data_dir": "E:\\SVN\\LauncherServerPlugin\\Server\\data",
   "web_dir": "web",
   "admin_token": "",
-  "version_library_dir": "E:\\SVN\\LauncherServerPlugin\\Server\\data\\versions",
-  "base_packages_root": "D:\\test\\CodeBuild\\HotPatherPack",
   "revoke_superseded_base_packages": true,
-  "base_packages": {
-    "Windows": {
-      "1.0": "Windows",
-      "1.4": "WindowsIOStore",
-      "1.5.3": "Windows153"
-    }
-  },
   "manifest_exclude_patterns": [
     "**/*.pdb",
     "**/*.download",
@@ -27,8 +19,6 @@
   ],
   "manifest_hash": "md5",
   "max_upload_mb": 2048,
-  "hotpatcher_source": "D:\\test\\CodeBuild\\Saved\\HotPatcher",
-  "hotpatcher_order": "1.0,1.2,1.3,1.4",
   "game_asset_prefixes": [
     "/Game/"
   ],
@@ -39,17 +29,13 @@
       "1.5.3"
     ]
   },
-  "launcher_versions": {
-    "1.0.0": "E:\\SVN\\LauncherServerPlugin\\Server\\data\\launcher"
-  },
-  "background_dir": "../Luncher/Background",
   "api_endpoints": {
     "versions": true
   },
   "https": {
     "enabled": false,
-    "certFile": "E:\\SVN\\LauncherServerPlugin\\Server\\data\\ssl\\server.crt",
-    "keyFile": "E:\\SVN\\LauncherServerPlugin\\Server\\data\\ssl\\server.key",
+    "certFile": "E:\\SVN\\LauncherServerPlugin\\Server\\workspace\\data\\ssl\\server.crt",
+    "keyFile": "E:\\SVN\\LauncherServerPlugin\\Server\\workspace\\data\\ssl\\server.key",
     "autoGenSelfSigned": true,
     "country": "CN",
     "commonName": "CodeBuild"
@@ -61,5 +47,15 @@
       "web",
       "files"
     ]
-  }
+  },
+  "default_platform": "Windows",
+  "platform_settings": {
+    "Windows": {
+      "hotpatcherOrder": "1.0,1.2,1.3,1.4"
+    },
+    "Linux": {
+      "hotpatcherOrder": ""
+    }
+  },
+  "workspace_dir": "workspace"
 }

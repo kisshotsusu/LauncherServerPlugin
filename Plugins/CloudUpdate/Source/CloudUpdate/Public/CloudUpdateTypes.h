@@ -137,6 +137,15 @@ struct CLOUDUPDATE_API FCloudDownloadFile
 	/** 无法应用二进制补丁（无 HDiffPatch 或基础文件缺失）时，用于整文件回退下载的地址 */
 	UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
 	FString FallbackUrl;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bSizeKnown = false;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int64 FallbackFileSize = 0;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bFallbackSizeKnown = false;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bWillUseFallback = false;
 };
 
 /** 版本信息（来自管理服务器索引） */
@@ -151,8 +160,16 @@ struct CLOUDUPDATE_API FCloudUpdateVersionInfo
 	UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
 	FString BaseVersionId;
 
-	UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
-	FString Date;
+ /** Binary game build required by this resource release. Empty means legacy/unspecified. */
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString RequiredGameVersion;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString GameVersion;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString ResourceVersion;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString Date;
 
 	/** patch / full */
 	UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
@@ -201,4 +218,147 @@ struct FCloudLocalVersion
 
 	UPROPERTY()
 	FString AppliedAt;
+};
+/** Cached after QueryUpdatePlan/CheckForUpdates. Resource totals only include compatible patches. */
+USTRUCT(BlueprintType)
+struct CLOUDUPDATE_API FCloudUpdatePlan
+{
+ GENERATED_BODY()
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bValid = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bTotalBytesKnown = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bGamePackageBytesKnown = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bGameUpdateRequired = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bResourceUpdateRequiresGame = false;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bRestartRequired = false;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString PendingResourceVersion;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString LocalGameVersion;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString LocalResourceVersion;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString ServerGameVersion;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString ServerResourceVersion;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 RequiredFileCount = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int64 RequiredBytes = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 PendingResourceVersionCount = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 GamePackageFileCount = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int64 GamePackageBytes = 0;
+};
+
+/** Logical download totals across every version in this update session; progress is 0..1. */
+USTRUCT(BlueprintType)
+struct CLOUDUPDATE_API FCloudDownloadProgressInfo
+{
+ GENERATED_BODY()
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bActive = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bTotalBytesKnown = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 CompletedFiles = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 FailedFiles = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 TotalFiles = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int64 DownloadedBytes = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int64 TotalBytes = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int64 CurrentFileBytes = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int64 CurrentFileTotalBytes = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ float FileProgress = 0.0f;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ float ByteProgress = 0.0f;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ float CurrentFileProgress = 0.0f;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ float FilePercent = 0.0f;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ float BytePercent = 0.0f;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ float CurrentFilePercent = 0.0f;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString CurrentFile;
+};
+
+/** Actual file-level merge progress; backend has no within-file progress callback. */
+USTRUCT(BlueprintType)
+struct CLOUDUPDATE_API FCloudMergeProgressInfo
+{
+ GENERATED_BODY()
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bActive = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bCurrentFileInProgress = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ bool bRestartRequired = false;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 CompletedFiles = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 SucceededFiles = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 FailedFiles = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 SkippedFiles = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ int32 TotalFiles = 0;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ float Progress = 0.0f;
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ float Percent = 0.0f;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString CurrentFile;
 };

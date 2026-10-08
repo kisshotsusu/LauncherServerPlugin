@@ -73,7 +73,7 @@ class StorageBackend:
         if category == "packages":
             return f"packages/{platform}/{version}/{rel}"
         if category == "versions":
-            return f"versions/{version}/{rel}"
+            return f"versions/{platform}/{version}/{rel}"
         if category == "launcher":
             return f"launcher/{rel}"
         if category == "background":
@@ -131,7 +131,7 @@ class LocalStorage(StorageBackend):
             base = get_base_dir(self.cfg, platform, version)
             return self._safe(base, rel) if base else None
         if category == "versions":
-            return self._safe(os.path.join(self.cfg["versions_dir"], version), rel)
+            return self._safe(os.path.join(self.cfg["versions_dir"], platform, version), rel)
         if category == "launcher":
             return self._safe(os.path.join(self.cfg["data_dir"], "launcher"), rel)
         if category == "background":
@@ -152,10 +152,11 @@ class LocalStorage(StorageBackend):
             os.remove(p)
 
 
-class S3Storage(StorageBackend):
+class S3Storage(LocalStorage):
     is_remote = True
 
     def __init__(self, cfg):
+        super().__init__(cfg)
         s = (cfg.get("storage") or {}).get("s3") or {}
         self.scheme = "http" if (s.get("endpoint") or "").strip().lower().startswith("http://") else "https"
         ep = (s.get("endpoint") or "").strip()

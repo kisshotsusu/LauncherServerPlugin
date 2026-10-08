@@ -1,0 +1,14 @@
+{
+	"patcherAssetDetails": [
+		{
+			"packagePath": "/Game/ThirdPerson/Lvl_ThirdPerson.Lvl_ThirdPerson",
+			"assetType": "World",
+			"guid": "cd4d34cf6d18d394c74ca32c15a43f2d"
+		},
+		{
+			"packagePath": "/Game/ThirdPerson/Blueprints/BP_ThirdPersonCharacter.BP_ThirdPersonCharacter",
+			"assetType": "Blueprint",
+			"guid": "a82213509b257a19d3b68ba131fe6fe2"
+		}
+	]
+}
