@@ -9,6 +9,7 @@ namespace CloudUpdatePrivate
 	bool ComputeFileHash(const FString& InPath, int64& OutSize, FString& OutHash);
 	FString NormalizeSlashes(const FString& InPath);
 	bool IsSafeRelativePath(const FString& InPath);
+ bool IsGameBinaryPath(const FString& InPath);
 	TArray<FString> SplitVersionParts(const FString& InVersion);
 	bool IsVersionNewer(const FString& InA, const FString& InB);
 }

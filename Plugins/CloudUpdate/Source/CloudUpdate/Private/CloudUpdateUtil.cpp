@@ -118,3 +118,13 @@ namespace CloudUpdatePrivate
 		return false;
 	}
 }
+
+namespace CloudUpdatePrivate
+{
+ bool IsGameBinaryPath(const FString& InPath)
+ {
+  FString Name = InPath.ToLower();
+  Name.RemoveFromEnd(TEXT(".patch"));
+  return Name.EndsWith(TEXT(".exe")) || Name.EndsWith(TEXT(".dll")) || Name.EndsWith(TEXT(".so")) || Name.Contains(TEXT(".so.")) || Name.EndsWith(TEXT(".dylib"));
+ }
+}

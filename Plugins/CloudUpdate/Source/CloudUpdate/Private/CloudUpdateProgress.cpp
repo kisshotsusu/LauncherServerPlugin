@@ -118,8 +118,7 @@ void FCloudUpdateService::ResolveNextPlanDescriptor()
     }
     else
     {
-     const FString Ext = FPaths::GetExtension(File.FileName).ToLower();
-     if (Ext == TEXT("exe") || Ext == TEXT("dll") || Ext == TEXT("so") || Ext == TEXT("dylib"))
+     if (IsGameBinaryPath(File.FileName) || IsGameBinaryPath(File.TargetRelativePath))
      { Self->FinishPlan(false, TEXT("资源补丁包含游戏二进制文件，应发布为游戏整包：") + File.FileName); return; }
      ++Self->UpdatePlan.RequiredFileCount;
      Self->UpdatePlan.RequiredBytes += File.bWillUseFallback ? File.FallbackFileSize : File.FileSize;

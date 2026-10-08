@@ -13,6 +13,7 @@
 #include "HAL/PlatformProcess.h"
 #include "Features/IModularFeatures.h"
 #include "BinariesPatchFeature.h"
+#include "Interfaces/IPluginManager.h"
 
 struct FCloudUpdateMetricsTestAccess
 {
@@ -94,6 +95,7 @@ struct FCloudUpdateMetricsTestAccess
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCloudUpdateMetricsTest, "CloudUpdate.Service.VersionAndProgress", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FCloudUpdateMetricsTest::RunTest(const FString& Parameters)
 {
+ TestTrue(TEXT("Native binary increments are excluded from resource patches"), CloudUpdatePrivate::IsGameBinaryPath(TEXT("Game.exe.patch")) && CloudUpdatePrivate::IsGameBinaryPath(TEXT("Module.dll")) && !CloudUpdatePrivate::IsGameBinaryPath(TEXT("Game.pak.patch")));
  TestTrue(TEXT("File count and byte percent have independent denominators; stale callback ignored"), FCloudUpdateMetricsTestAccess::TestBytes());
  TestTrue(TEXT("Unknown byte total distinguished from a completed zero byte file"), FCloudUpdateMetricsTestAccess::TestUnknownAndZero());
  TestTrue(TEXT("File list accepts known zero size and rejects duplicate targets"), FCloudUpdateMetricsTestAccess::TestDescriptor());
@@ -124,7 +126,7 @@ public:
  {
   Settings = GetMutableDefault<UCloudUpdateSettings>();
   OldServer = Settings->ServerUrl; OldGame = Settings->GameVersionOverride; OldRoot = Settings->LocalRootOverride; OldFeature = Settings->BinaryPatchFeatureName; OldMerge = Settings->bEnableBinaryMerge;
-  Settings->ServerUrl = TEXT("http://127.0.0.1:18741"); Settings->GameVersionOverride = TEXT("1.0"); Settings->BinaryPatchFeatureName = TEXT("CloudUpdateTest"); Settings->bEnableBinaryMerge = true;
+  Settings->GameVersionOverride = TEXT("1.0"); Settings->BinaryPatchFeatureName = TEXT("CloudUpdateTest"); Settings->bEnableBinaryMerge = true;
   Root = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation/CloudUpdateHTTP") / FGuid::NewGuid().ToString());
   Settings->LocalRootOverride = Root; IFileManager::Get().MakeDirectory(*Root, true);
   FFileHelper::SaveStringToFile(TEXT("base"), *(Root / TEXT("base.bin")));
@@ -133,12 +135,17 @@ public:
   Service = MakeShared<FCloudUpdateService>(nullptr);
   FCloudUpdateMetricsTestAccess::UseVersionFile(*Service, Root / TEXT("version.json"));
   Service->SetLocalVersion(TEXT("0.0"));
-  Service->QueryUpdatePlan();
+  const FString Python = FPaths::ConvertRelativePathToFull(FPaths::EngineDir() / TEXT("Binaries/ThirdParty/Python3/Win64/python.exe"));
+  const FString Script = IPluginManager::Get().FindPlugin(TEXT("CloudUpdate"))->GetBaseDir() / TEXT("Source/CloudUpdate/Private/Tests/Fixtures/mock_update_server.py");
+  PortFile = Root / TEXT("port.txt");
+  const FString Args = FString::Printf(TEXT("\"%s\" \"%s\""), *Script, *PortFile);
+  ServerProcess = FPlatformProcess::CreateProc(*Python, *Args, true, true, true, nullptr, 0, nullptr, nullptr);
   Started = FPlatformTime::Seconds();
  }
  virtual ~FCloudUpdateHTTPTestCommand()
  {
   Service->Abort();
+  if (ServerProcess.IsValid()) { FPlatformProcess::TerminateProc(ServerProcess, true); FPlatformProcess::CloseProc(ServerProcess); }
   Settings->ServerUrl = OldServer; Settings->GameVersionOverride = OldGame; Settings->LocalRootOverride = OldRoot; Settings->BinaryPatchFeatureName = OldFeature; Settings->bEnableBinaryMerge = OldMerge;
   IModularFeatures::Get().UnregisterModularFeature(BINARIES_DIFF_PATCH_FEATURE_NAME, &CloudUpdateMockFeature);
   IFileManager::Get().DeleteDirectory(*Root, false, true);
@@ -146,6 +153,14 @@ public:
  virtual bool Update() override
  {
   if (FPlatformTime::Seconds() - Started > 45.0) { Test->AddError(TEXT("Mock HTTP update timed out")); return true; }
+  if (Stage == -1)
+  {
+   FString Port;
+   if (!ServerProcess.IsValid()) { Test->AddError(TEXT("Unable to launch bundled Python HTTP fixture")); return true; }
+   if (!FFileHelper::LoadFileToString(Port, *PortFile)) return false;
+   Settings->ServerUrl = TEXT("http://127.0.0.1:") + Port.TrimStartAndEnd();
+   Service->QueryUpdatePlan(); Stage = 0; return false;
+  }
   if (Stage == 0)
   {
    if (Service->IsBusy()) return false;
@@ -184,9 +199,10 @@ private:
  FAutomationTestBase* Test;
  UCloudUpdateSettings* Settings;
  TSharedPtr<FCloudUpdateService> Service;
- FString OldServer, OldGame, OldRoot, OldFeature, Root;
+ FString OldServer, OldGame, OldRoot, OldFeature, Root, PortFile;
+ FProcHandle ServerProcess;
  bool OldMerge = false, bSawIntermediate = false;
- int32 Stage = 0;
+ int32 Stage = -1;
  double Started = 0;
 };
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCloudUpdateHTTPTest, "CloudUpdate.Service.MockHTTPIntegration", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

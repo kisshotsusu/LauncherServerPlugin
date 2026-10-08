@@ -654,14 +654,18 @@ void FCloudUpdateService::ParseDescriptor(const TSharedPtr<FJsonObject>& InJson)
  InJson->TryGetBoolField(TEXT("restartRequired"), bRestartRequired);
  for (const FCloudDownloadFile& File : PendingFiles)
  {
-  const FString Ext = FPaths::GetExtension(File.FileName).ToLower();
-  if (Ext == TEXT("exe") || Ext == TEXT("dll") || Ext == TEXT("so") || Ext == TEXT("dylib")) { PendingFiles.Reset(); return; }
+  if (IsGameBinaryPath(File.FileName) || IsGameBinaryPath(File.TargetRelativePath)) { PendingFiles.Reset(); return; }
   bIoStoreApplied |= File.Kind == ECloudDownloadKind::IoStoreContainer;
  }
 }
 
 void FCloudUpdateService::StartDownloadUpdateFiles()
 {
+ for (const FCloudDownloadFile& File : PendingFiles)
+ {
+  if (IsGameBinaryPath(File.FileName) || IsGameBinaryPath(File.TargetRelativePath))
+  { FinishUpdate(false, TEXT("游戏二进制及其增量补丁必须由启动器更新")); return; }
+ }
 	if (PendingFiles.IsEmpty())
 	{
 		FinishUpdate(false, TEXT("更新描述中没有可下载的文件"));
