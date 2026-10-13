@@ -123,6 +123,7 @@
   .field input, .field select { width:100%; }
 
   .context-bar {display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:18px}
+  .context-bar.hidden {display:none}
   .context-bar strong {font-size:15px}.platform-tabs {display:flex;gap:6px;flex-wrap:wrap}.platform-tabs button{background:#f1f5f9;color:#475569}.platform-tabs button.active{background:#2563eb;color:#fff}
   .scope-tag{padding:3px 8px;border-radius:6px;background:#eff6ff;color:#2563eb;font-size:12px}
   .setup-steps{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.setup-steps span{padding:8px 12px;background:#f1f5f9;border-radius:8px;font-size:12px}.setup-steps .done{background:#ecfdf5;color:#047857}
@@ -153,6 +154,7 @@
           <span class="caret">▾</span><span>服务器管理</span>
         </button>
         <div class="nav-children" id="nav-server">
+          <button class="nav-item child" data-tab="dirs" data-parent="server" onclick="switchTab('dirs')">📁 存储管理</button>
           <button class="nav-item child" data-tab="projects" data-parent="server" onclick="switchTab('projects')">🗂️ 项目管理</button>
           <button class="nav-item child" data-tab="apis" data-parent="server" onclick="switchTab('apis')">🔌 接口管理</button>
           <button class="nav-item child" data-tab="cert" data-parent="server" onclick="switchTab('cert')">🔐 证书管理</button>
@@ -166,6 +168,9 @@
           <span class="caret">▾</span><span id="navProjectHeader">项目内部</span>
         </button>
         <div class="nav-children" id="nav-project">
+          <button class="nav-item child" data-tab="packages" data-parent="project" onclick="switchTab('packages')">📥 包导入</button>
+          <button class="nav-item child" data-tab="oss" data-parent="project" onclick="switchTab('oss')">🗄️ 对象存储</button>
+          <button class="nav-item child" data-tab="files" data-parent="project" onclick="switchTab('files')">☁️ 云端文件</button>
           <button class="nav-item child" data-tab="versions" data-parent="project" onclick="switchTab('versions')">📦 版本管理</button>
           <button class="nav-item child" data-tab="manifest" data-parent="project" onclick="switchTab('manifest')">✅ 完整性清单</button>
           <button class="nav-item child" data-tab="launcher" data-parent="project" onclick="switchTab('launcher')">🚀 启动器管理</button>
@@ -173,16 +178,6 @@
         </div>
       </div>
 
-      <div class="nav-group">
-        <button class="nav-parent" data-nav="storage" onclick="toggleNav('storage')">
-          <span class="caret">▾</span><span>存储管理</span>
-        </button>
-        <div class="nav-children" id="nav-storage">
-          <button class="nav-item child" data-tab="dirs" data-parent="storage" onclick="switchTab('dirs')">📁 目录位置</button>
-          <button class="nav-item child" data-tab="oss" data-parent="storage" onclick="switchTab('oss')">🗄️ 对象存储</button>
-          <button class="nav-item child" data-tab="files" data-parent="storage" onclick="switchTab('files')">☁️ 云端文件</button>
-        </div>
-      </div>
     </nav>
     <div class="sidebar-footer">
       <div id="sideProject">项目：-</div>
@@ -205,7 +200,7 @@
       <input type="password" id="tokenInput" placeholder="留空则不需要" style="width:180px" onchange="saveToken()">
     </div>
 
-    <div class="context-bar"><div><span class="muted">当前项目</span> <strong id="contextProject">—</strong></div><span class="scope-tag">平台配置</span><div class="platform-tabs" id="platformTabs"></div><button class="ghost" onclick="openPlatformManager(window.__PROJECT__)">＋ 配置平台</button><span class="spacer"></span><span class="muted">控制台 v2.2</span></div>
+    <div class="context-bar"><div><span class="muted">当前项目</span> <strong id="contextProject">—</strong></div><span class="scope-tag">平台配置</span><div class="platform-tabs" id="platformTabs"></div><button class="ghost" onclick="openPlatformManager(window.__PROJECT__)">＋ 配置平台</button><span class="spacer"></span><span class="muted">控制台 v2.5</span></div>
     <div class="breadcrumb" id="breadcrumb"></div>
 
     <div id="tab-overview" class="tab-panel">
@@ -220,7 +215,7 @@
         <div class="btn-row" style="margin-top:8px">
           <button class="ghost" onclick="loadAll()">刷新状态</button>
           <button class="ghost" onclick="reindex()">重建版本索引</button>
-          <button class="ghost" onclick="importHotPatcher()" id="btnImport">一键导入 HotPatcher</button>
+          <button class="ghost" onclick="switchTab('packages')" id="btnImport">导入基础包 / 补丁包</button>
           <button class="ghost" onclick="regenerateAllManifests()">重新生成全部完整性清单</button>
           <button class="red" onclick="restartServer()">重启服务器</button>
         </div>
@@ -254,12 +249,17 @@
     </div>
 
     <div id="tab-dirs" class="tab-panel hidden">
-      <div class="card"><h3>项目工作空间</h3><p class="setup-tip">一个目录管理这个项目的全部平台、基础包、补丁、启动器和包数据。目录自动组织，无需逐个平台填写存储位置。</p>
-        <label for="workspaceRoot">工作空间根目录</label><div class="field-row"><input id="workspaceRoot" placeholder="选择项目工作空间目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button><button class="green" id="saveWorkspaceButton" onclick="saveWorkspace()">保存并初始化</button><button class="ghost" onclick="renderWorkspace()">刷新待导入包</button></div>
-        <div class="setup-steps"><span>① 选择工作空间</span><span>② 放入各平台导入目录</span><span>③ 导入后管理版本与发布</span></div>
-        <div class="muted" id="workspaceHint"></div>
+      <div class="card"><h3>项目工作空间</h3><p class="setup-tip">服务器只管理每个项目的工作空间。包的来源选择、导入和版本管理在项目内部操作。</p>
+        <label for="workspaceProject">项目</label><select id="workspaceProject" onchange="selectWorkspaceProject(this.value)" style="width:100%;margin:8px 0 16px"></select>
+        <label for="workspaceRoot">工作空间根目录</label><div class="field-row"><input id="workspaceRoot" placeholder="选择项目工作空间目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button><button class="green" id="saveWorkspaceButton" onclick="saveWorkspace()">保存工作空间</button></div>
+        <p class="muted" id="workspaceHint"></p>
       </div>
-      <div id="workspaceContents"></div>
+    </div>
+    <div id="tab-packages" class="tab-panel hidden">
+      <div class="card"><h3>包导入 · <span id="packagePlatform"></span></h3><p class="setup-tip">选择服务器上的产物目录，导入后由项目自动管理。来源文件保留，不需要手动整理工作空间。</p><div class="setup-steps"><span>① 选择平台</span><span>② 选择来源目录</span><span>③ 导入并管理版本</span></div><div id="packageImportHint" class="muted"></div></div>
+      <div class="card" style="margin-top:16px"><h3>基础包</h3><label for="baseSource">基础包来源目录</label><div class="field-row"><input id="baseSource" oninput="capturePackageDraft()" placeholder="选择完整游戏打包目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button></div><label for="baseImportVersion" style="display:block;margin-top:12px">基础包版本号</label><div class="field-row"><input id="baseImportVersion" oninput="capturePackageDraft()" placeholder="例如 1.0"><button class="green" id="baseImportButton" onclick="importProjectPackage('base')">导入基础包</button></div><p id="importedBases" class="muted"></p></div>
+      <div class="card" style="margin-top:16px"><h3>补丁包</h3><label for="patchSource">补丁包来源目录</label><div class="field-row"><input id="patchSource" oninput="capturePackageDraft()" placeholder="选择 HotPatcher 输出目录或单个版本目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button></div><p class="setup-tip">输出目录包含 版本/版本_Release.json 和 版本/平台/；也可以直接选择该版本文件夹。</p><button class="green" id="patchImportButton" onclick="importProjectPackage('patch')">导入补丁包</button><p id="importedPatches" class="muted"></p></div>
+      <div class="btn-row" style="margin-top:16px"><button class="ghost" onclick="switchTab('versions')">管理已导入版本</button></div>
     </div>
 
     <div id="tab-oss" class="tab-panel hidden">
@@ -463,15 +463,15 @@
     <div id="tab-launcher" class="tab-panel hidden">
       <div class="card">
         <h3>启动器版本（历史管理）</h3>
-        <div class="muted">像游戏基础包一样维护“版本文件夹”历史；发布时把所选文件夹中的 Launcher.exe / SelfUpdater.exe / ui/ 快照到 data/launcher，客户端启动自检自动升级。客户端只需 Launcher.exe，界面资源与 SelfUpdater 首次运行时会自动从服务器拉取到 app/ 子目录。当前发布：<span id="launcherVerSub" style="color:var(--accent2)">-</span></div>
+        <div class="muted">像游戏基础包一样维护“版本文件夹”历史；发布时把所选文件夹中的 Launcher.exe / SelfUpdater.exe / ui/ 生成发布快照，客户端启动自检自动升级。客户端只需 Launcher.exe，界面资源与 SelfUpdater 首次运行时会自动从服务器拉取到 app/ 子目录。当前发布：<span id="launcherVerSub" style="color:var(--accent2)">-</span></div>
         <table style="margin-top:10px">
-          <thead><tr><th>版本</th><th>文件夹</th><th>文件</th><th>Launcher.exe 大小</th><th>操作</th></tr></thead>
-          <tbody id="launcherVersionsBody"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
+          <thead><tr><th>版本</th><th>文件</th><th>Launcher.exe 大小</th><th>操作</th></tr></thead>
+          <tbody id="launcherVersionsBody"><tr><td colspan="4" class="empty">加载中...</td></tr></tbody>
         </table>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
-          <input id="addLauncherVersion" placeholder="版本号 如 1.1.0" style="width:130px">
+          <select id="addLauncherVersion" style="min-width:180px"></select>
           <span class="muted">从工作空间 imports/launcher/版本号 导入（须含 Launcher.exe）</span>
-          <button class="green" onclick="addLauncherVersion()">导入版本</button>
+          <button id="addLauncherButton" class="green" onclick="addLauncherVersion()">导入版本</button><button class="ghost" onclick="loadAll()">刷新待导入版本</button>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
           <label class="muted">发布说明（可选）</label>
@@ -481,7 +481,7 @@
       <div class="card" style="margin-top:16px">
         <h3>背景序列帧（工作空间）</h3>
         <div class="muted">把 PNG 序列帧放入工作空间 launcher/background（按文件名排序），客户端启动自检自动下载新版背景。当前版本：<span id="bgVersion" style="color:var(--accent2)">-</span> · <span id="bgInfo">-</span></div>
-        <div class="field-row" style="margin-top:12px"><input id="setBgDir" readonly style="flex:1"><button class="ghost" onclick="switchTab('dirs')">查看工作空间</button></div>
+
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
           <label class="muted">序列帧 FPS</label>
           <input id="setBgFps" type="number" min="1" style="width:90px">
@@ -645,7 +645,8 @@ function apiUrl(url, prefix = window.__PREFIX__ || '') {
   return u.pathname + u.search;
 }
 async function api(url, opts = {}) {
-  const resp = await fetch(apiUrl(url), {...opts, headers: {...headers(), ...(opts.headers || {})}});
+  const {projectPrefix = window.__PREFIX__ || '', ...requestOptions} = opts;
+  const resp = await fetch(apiUrl(url, projectPrefix), {...requestOptions, headers: {...headers(), ...(opts.headers || {})}});
   const data = await resp.json().catch(() => null);
   if (!resp.ok || (data && data.ok === false)) throw new Error((data && (data.error || data.message)) || ('HTTP ' + resp.status));
   return data;
@@ -687,7 +688,7 @@ function fmtSize(bytes) {
   return v.toFixed(1) + ' ' + u[i];
 }
 
-const TAB_TITLES = { overview: '总览', projects: '项目管理', apis: '接口管理', cert: '证书管理', access: '访问格式管理', control: '运行状态', versions: '版本管理', manifest: '完整性清单', launcher: '启动器管理', settings: '项目设置', dirs: '目录位置', oss: '对象存储', files: '云端文件' };
+const TAB_TITLES = { overview: '总览', projects: '项目管理', apis: '接口管理', cert: '证书管理', access: '访问格式管理', control: '运行状态', versions: '版本管理', manifest: '完整性清单', launcher: '启动器管理', settings: '项目设置', packages: '包导入', dirs: '存储管理', oss: '对象存储', files: '云端文件' };
 // 父子页面层级关系：服务器管理（父）> 项目内部（子，挂在当前项目下）> 存储管理
 const NAV_TREE = {
   overview: { path: ['总览'] },
@@ -700,9 +701,10 @@ const NAV_TREE = {
   manifest: { parent: 'project', path: ['{project}', '完整性清单'] },
   launcher: { parent: 'project', path: ['{project}', '启动器管理'] },
   settings: { parent: 'project', path: ['{project}', '项目设置'] },
-  dirs:     { parent: 'storage', path: ['存储管理', '目录位置'] },
-  oss:      { parent: 'storage', path: ['存储管理', '对象存储'] },
-  files:    { parent: 'storage', path: ['存储管理', '云端文件'] },
+  dirs:     { parent: 'server', path: ['服务器管理', '存储管理'] },
+  packages: { parent: 'project', path: ['{project}', '包导入'] },
+  oss:      { parent: 'project', path: ['{project}', '对象存储'] },
+  files:    { parent: 'project', path: ['{project}', '云端文件'] },
 };
 function toggleNav(id) {
   const box = $('nav-' + id);
@@ -733,6 +735,7 @@ function switchTab(name) {
   const panel = $('tab-' + name);
   if (panel) panel.classList.remove('hidden');
   $('pageTitle').textContent = TAB_TITLES[name] || name;
+  document.querySelector('.context-bar').classList.toggle('hidden', ['projects','dirs','apis','cert','access','control'].includes(name));
   // 展开当前页面所属的父级，确保父子层级可见
   const item = document.querySelector('.nav-item[data-tab="' + name + '"]');
   const p = item && item.dataset.parent;
@@ -741,6 +744,7 @@ function switchTab(name) {
 }
 
 async function switchPlatform(platform) {
+  capturePackageDraft();
   if (platform === state.selectedPlatform) return;
   document.querySelectorAll('#tab-settings input, #tab-settings select, #tab-settings textarea, #tab-oss input, #tab-oss select, #workspaceRoot').forEach(el => {
     if (el.id) state.sharedDrafts[el.id] = {value:el.value, checked:el.checked};
@@ -755,31 +759,67 @@ function renderPlatformContext() {
   $('contextProject').textContent = state.config.project || window.__PROJECT__;
   $('platformTabs').innerHTML = (state.config.platforms || []).map(p => `<button class="${p === state.selectedPlatform ? 'active' : ''}" onclick="switchPlatform('${esc(p)}')">${esc(p)}</button>`).join('');
 }
-function workspacePath(path) {
-  return `<div class="field-row"><input readonly value="${esc(path)}" title="${esc(path)}"><button class="ghost" onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(()=>toast('目录路径已复制','ok'))">复制</button></div>`;
+function workspacePrefix() {
+  const key = $('workspaceProject').value || window.__PROJECT__;
+  const project = ((state.status || {}).projects || []).find(p => p.key === key);
+  return project ? (project.prefix === '/' ? '' : project.prefix) : window.__PREFIX__ || '';
+}
+async function selectWorkspaceProject(key) {
+  delete state.sharedDrafts.workspaceRoot;
+  state.workspaceProject = key;
+  try { await renderWorkspace(); } catch(e) { toast(e.message,'err'); }
 }
 async function renderWorkspace() {
-  const data = await api('/api/workspace');
-  state.workspace = data;
+  const projects = (state.status || {}).projects || [];
+  const key = state.workspaceProject || window.__PROJECT__;
+  $('workspaceProject').innerHTML = projects.map(p=>`<option value="${esc(p.key)}">${esc(p.display)} · ${esc(p.key)}</option>`).join('');
+  $('workspaceProject').value = projects.some(p=>p.key===key) ? key : window.__PROJECT__;
+  const selected = $('workspaceProject').value;
+  const data = await api('/api/workspace',{projectPrefix:workspacePrefix()});
+  if (selected !== $('workspaceProject').value) return;
   if (!state.sharedDrafts.workspaceRoot) $('workspaceRoot').value = data.configured ? data.paths.root : data.suggestedRoot;
-  $('workspaceHint').textContent = data.configured ? '所有目录统一位于工作空间内；改变根目录会迁移整个工作空间，新目录须为空。' : '首次保存会自动创建各平台与公共目录。';
-  if (!data.configured) {$('workspaceContents').innerHTML='<div class="card empty">先选择工作空间，再放入需要导入的包。</div>';return;}
-  $('workspaceContents').innerHTML = data.platforms.map(p => `<section class="card" style="margin-top:14px"><h3>${esc(p.platform)} <span class="scope-tag">基础包 ${p.baseVersions.length} · 补丁 ${p.patchVersions.length}</span></h3>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:12px">
-      <div><strong>基础包存储</strong>${workspacePath(p.bases)}<div class="setup-tip">已导入：${esc(p.baseVersions.join('、') || '暂无')}</div><strong style="display:block;margin-top:12px">基础包导入目录</strong>${workspacePath(p.baseImport)}<div class="setup-tip">将完整打包内容放入此目录下的版本文件夹，如 1.0/。</div><div class="field-row"><select id="baseImport-${esc(p.platform)}" style="flex:1">${p.pendingBases.map(v=>`<option>${esc(v)}</option>`).join('') || '<option value="">暂无待导入版本</option>'}</select><button class="green" ${p.pendingBases.length?'':'disabled'} onclick="importWorkspaceBase('${esc(p.platform)}')">导入基础包</button></div></div>
-      <div><strong>补丁包存储</strong>${workspacePath(p.patches)}<div class="setup-tip">已导入：${esc(p.patchVersions.join('、') || '暂无')}</div><strong style="display:block;margin-top:12px">补丁包导入目录</strong>${workspacePath(p.patchImport)}<div class="setup-tip">放入 HotPatcher 输出：版本/版本_Release.json 与版本/${esc(p.platform)}/。</div><button class="green" style="margin-top:8px" onclick="importWorkspacePatch('${esc(p.platform)}')">导入 ${esc(p.platform)} 补丁</button></div>
-    </div></section>`).join('') + `<section class="card" style="margin-top:14px"><h3>启动器与包数据</h3><strong>启动器版本存储</strong>${workspacePath(data.paths.launcher)}<strong style="display:block;margin-top:12px">启动器导入目录</strong>${workspacePath(data.paths.launcherImport)}<div class="setup-tip">按版本文件夹放入 Launcher.exe、SelfUpdater.exe 和 ui/。导入后在启动器管理页面发布。</div><div class="field-row"><input id="workspaceLauncherVersion" placeholder="导入的启动器版本，例如 1.0"><button class="green" onclick="importWorkspaceLauncher()">导入启动器</button></div><strong style="display:block;margin-top:12px">启动器发布资源</strong>${workspacePath(data.paths.launcherPublished)}<strong style="display:block;margin-top:12px">启动器背景目录</strong>${workspacePath(data.paths.background)}<strong style="display:block;margin-top:12px">包数据存储</strong>${workspacePath(data.paths.data)}<div class="setup-tip">版本索引、完整性清单、撤销记录和回收站自动保存在此目录。</div></section>`;
+  $('workspaceHint').textContent = data.configured ? '更改根目录会整体迁移项目工作空间，目标目录必须为空。内部文件由项目自动管理。' : '保存后自动初始化项目工作空间。';
+  const own = selected === window.__PROJECT__ ? data : await api('/api/workspace');
+  state.workspace = own;
+  renderPendingLaunchers();
+  renderProjectPackages();
+}
+function renderProjectPackages() {
+  const data = state.workspace || {};
+  const platform = state.selectedPlatform;
+  const current = (data.platforms || []).find(p=>p.platform===platform) || {};
+  $('packagePlatform').textContent = platform || '';
+  $('packageImportHint').textContent = data.configured ? '导入成功后可在版本管理中控制开放下载。' : '请先在服务器管理的存储管理中设置项目工作空间。';
+  const drafts = ((state.packageDrafts || {})[platform] || {});
+  const sources = current.sources || {};
+  $('baseSource').value = drafts.baseSource ?? sources.base ?? '';
+  $('patchSource').value = drafts.patchSource ?? sources.patch ?? '';
+  $('baseImportVersion').value = drafts.baseImportVersion || '';
+  $('importedBases').textContent = '已导入版本：' + ((current.baseVersions || []).join('、') || '暂无');
+  $('importedPatches').textContent = '已导入版本：' + ((current.patchVersions || []).join('、') || '暂无');
+  $('baseImportButton').disabled = $('patchImportButton').disabled = !data.configured || !!state.packageImportBusy;
+}
+function capturePackageDraft() {
+  state.packageDrafts ||= {};
+  if (state.selectedPlatform) state.packageDrafts[state.selectedPlatform] = Object.fromEntries(['baseSource','patchSource','baseImportVersion'].map(id=>[id,$(id).value]));
 }
 async function saveWorkspace() {
   const button=$('saveWorkspaceButton');button.disabled=true;
-  try {const r=await api('/api/workspace',{method:'POST',headers:headers(true),body:JSON.stringify({root:$('workspaceRoot').value.trim()})});delete state.sharedDrafts.workspaceRoot;toast(r.message,'ok');await loadAll();switchTab('dirs');}catch(e){toast(e.message,'err');}finally{button.disabled=false;}
+  try {const r=await api('/api/workspace',{projectPrefix:workspacePrefix(),method:'POST',headers:headers(true),body:JSON.stringify({root:$('workspaceRoot').value.trim()})});delete state.sharedDrafts.workspaceRoot;toast(r.message,'ok');await loadAll();switchTab('dirs');}catch(e){toast(e.message,'err');}finally{button.disabled=false;}
 }
-async function importWorkspace(category, platform, version) {
-  try {const r=await api('/api/workspace/import',{method:'POST',headers:headers(true),body:JSON.stringify({category,platform,version})});toast(r.message,'ok');await loadAll();switchTab('dirs');}catch(e){toast(e.message,'err');}
+async function importProjectPackage(category) {
+  if (state.packageImportBusy) return;
+  const source = $(category==='base'?'baseSource':'patchSource').value.trim();
+  const version = $('baseImportVersion').value.trim();
+  if (!source || (category==='base' && !version)) {toast('请选择来源目录' + (category==='base'?'并填写基础包版本号':''),'err');return;}
+  const platform = state.selectedPlatform;
+  capturePackageDraft();state.packageImportBusy=true;renderProjectPackages();
+  try {
+    const r=await api('/api/workspace/import',{method:'POST',headers:headers(true),body:JSON.stringify({category,platform,source,version})});
+    if (category==='base') state.packageDrafts[platform].baseImportVersion='';
+    toast(r.message,'ok');await loadAll();switchTab('packages');
+  }catch(e){toast(e.message,'err');}finally{state.packageImportBusy=false;renderProjectPackages();}
 }
-function importWorkspaceBase(platform) {return importWorkspace('base',platform,$('baseImport-'+platform).value);}
-function importWorkspacePatch(platform) {return importWorkspace('patch',platform);}
-function importWorkspaceLauncher() {return importWorkspace('launcher',state.selectedPlatform,$('workspaceLauncherVersion').value.trim());}
 
 async function loadAll() {
   const generation = state.loadGeneration = (state.loadGeneration || 0) + 1;
@@ -965,18 +1005,6 @@ async function reindex() {
     toast(r.message, 'ok');
     await loadAll();
   } catch (e) { toast(e.message, 'err'); }
-}
-
-async function importHotPatcher() {
-  if (!confirm('确认导入 ' + state.selectedPlatform + ' 平台的 HotPatcher 产物？')) return;
-  const btn = $('btnImport');
-  btn.disabled = true;
-  try {
-    const r = await api('/api/import/hotpatcher', { method: 'POST', headers: headers(true), body: JSON.stringify({platform: state.selectedPlatform}) });
-    toast((r.ok ? '导入完成' : '导入失败') + '\n' + (r.output || r.error || '').slice(-1500), r.ok ? 'ok' : 'err');
-    await loadAll();
-  } catch (e) { toast(e.message, 'err'); }
-  btn.disabled = false;
 }
 
 function renderManifestTab() {
@@ -1226,7 +1254,13 @@ async function regenerateAllManifests() {
 }
 
 // ---------- 启动器管理 ----------
+function renderPendingLaunchers() {
+  const pending = (state.workspace || {}).pendingLaunchers || [];
+  $('addLauncherVersion').innerHTML = pending.map(v=>`<option>${esc(v)}</option>`).join('') || '<option value="">暂无待导入启动器</option>';
+  $('addLauncherButton').disabled = !pending.length;
+}
 function renderLauncherTab() {
+  renderPendingLaunchers();
   const lv = state.launcherVer;
   $('launcherVerSub').textContent = lv && lv.version
     ? (lv.version + (lv.note ? ' · ' + lv.note : ''))
@@ -1236,12 +1270,11 @@ function renderLauncherTab() {
   const rows = state.launcherVersions || [];
   const body = $('launcherVersionsBody');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="5" class="empty">暂无版本，请添加版本文件夹</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" class="empty">暂无版本，请导入启动器</td></tr>';
   } else {
     body.innerHTML = rows.map(v => `
       <tr>
         <td><strong>${esc(v.version)}</strong>${v.version === state.launcherPublished ? ' <span class="badge online" style="padding:2px 8px">当前发布</span>' : ''}</td>
-        <td class="muted" style="word-break:break-all">${esc(v.path)}</td>
         <td>${v.launcherExe ? 'Launcher.exe' : ''}${v.launcherExe && v.selfUpdaterExe ? ' + ' : ''}${v.selfUpdaterExe ? 'SelfUpdater.exe' : ''}${!v.launcherExe ? '<span style="color:var(--danger)">缺 Launcher.exe</span>' : ''}</td>
         <td>${v.exeSize ? fmtSize(v.exeSize) : '-'}</td>
         <td class="btn-row">
@@ -1254,7 +1287,6 @@ function renderLauncherTab() {
   const bg = state.bg || {};
   $('bgVersion').textContent = bg.version || '未配置';
   $('bgInfo').textContent = bg.version ? (bg.files.length + ' 张图 · FPS ' + bg.frameFps) : '-';
-  $('setBgDir').value = bg.dir || '';
   $('setBgFps').value = bg.frameFps || 12;
   $('bgFileList').innerHTML = bg.files && bg.files.length
     ? bg.files.map(f => `<div class="file-row"><span class="fname">${esc(f.name)}</span><span class="muted">${fmtSize(f.size)}</span></div>`).join('')
@@ -1449,7 +1481,7 @@ async function renderProjects() {
     const origin = location.origin;
     grid.innerHTML = state.projectsList.map(p => {
       const url = origin + (p.prefix === '/' ? '/' : p.prefix + '/');
-      const space = p.workspaceDir || p.dataDir || ('projects/' + p.key + '/workspace');
+
       const actions = [`<button class="ghost small" onclick="switchProject('${esc(p.key)}')">打开空间</button>`];
       actions.push(`<button class="green small" onclick="openPlatformManager('${esc(p.key)}')">配置平台</button>`);
       actions.push(`<button class="ghost small" onclick="openRenameProject('${esc(p.key)}','${esc(p.display)}')">重命名</button>`);
@@ -1465,10 +1497,10 @@ async function renderProjects() {
         </div>
         <div class="proj-meta">
           <div>访问地址：<a href="${esc(url)}" target="_blank">${esc(url)}</a></div>
-          <div>项目空间：<code>${esc(space)}</code></div>
+
           <div>版本数：<b>${p.versionCount}</b></div>
         </div>
-        <div class="platform-card"><strong>支持的平台</strong><div style="margin-top:8px">${(p.platforms || []).map(platform => `<a href="${esc(url)}?platform=${encodeURIComponent(platform)}#dirs">${esc(platform)}${platform === p.defaultPlatform ? ' · 默认' : ''} → 配置</a>`).join('') || '尚未配置'}</div></div>
+        <div class="platform-card"><strong>支持的平台</strong><div style="margin-top:8px">${(p.platforms || []).map(platform => `<a href="${esc(url)}?platform=${encodeURIComponent(platform)}#packages">${esc(platform)}${platform === p.defaultPlatform ? ' · 默认' : ''} → 配置</a>`).join('') || '尚未配置'}</div></div>
         <div class="proj-actions">${actions.join('')}</div>
       </div>`;
     }).join('') + `<div class="proj-card create-card" onclick="openCreateProject()">＋ 新建项目</div>`;
@@ -1478,7 +1510,7 @@ async function renderProjects() {
 }
 
 function platformChoices(platforms, selected) {
-  return [...new Set(['Windows','Linux','Mac','Android','IOS',...platforms])].map(p => `<label class="platform-choice"><input type="checkbox" name="platformChoice" value="${esc(p)}" ${selected.includes(p) ? 'checked' : ''} onchange="updateDefaultPlatforms()">${esc(p)}</label>`).join('');
+  return [...new Set(['Windows','Linux','Mac','Android','Android_ASTC','Android_ETC2','Android_DXT','IOS',...platforms])].map(p => `<label class="platform-choice"><input type="checkbox" name="platformChoice" value="${esc(p)}" ${selected.includes(p) ? 'checked' : ''} onchange="updateDefaultPlatforms()">${esc(p)}</label>`).join('');
 }
 function updateDefaultPlatforms() {
   const platforms = [...document.querySelectorAll('#platformChoices input:checked')].map(e => e.value);
@@ -1647,6 +1679,7 @@ function dirPickerUp() {
 function dirPickerChoose() {
   if (!folderTarget) { toast('未找到目标输入框', 'err'); return; }
   folderTarget.value = folderPath;
+  if (['baseSource','patchSource'].includes(folderTarget.id)) capturePackageDraft();
   toast('已选择：' + (folderPath || '(根目录)'), 'ok');
   closeModal();
 }

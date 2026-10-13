@@ -191,6 +191,12 @@ void FCloudUpdateService::CheckIntegrity(ECloudCheckMode InMode)
 			return;
 		}
 		Service->ParseManifest(Json);
+		if (!MatchesResponsePlatform(Json, Service->GetPlatform()))
+		{
+			Service->ServerManifest = FCloudUpdateManifest();
+			Service->FinishIntegrityCheck(false, {}, TEXT("服务器返回的完整性清单平台不一致"));
+			return;
+		}
 		Service->RunLocalComparison();
 	});
 }
@@ -220,6 +226,7 @@ void FCloudUpdateService::RepairIssues()
 
 void FCloudUpdateService::StartRepair()
 {
+	bRestartRequired = false;
 	CurrentFileIndex = 0;
 	CompletedFiles = 0;
 	FailedFiles = 0;
@@ -230,7 +237,8 @@ void FCloudUpdateService::DownloadNextRepairFile()
 {
 	if (bAbortRequested || CurrentFileIndex >= PendingIssues.Num())
 	{
-		const FString Message = FString::Printf(TEXT("修复完成：成功 %d / 失败 %d"), CompletedFiles, FailedFiles);
+		const FString Message = FString::Printf(TEXT("修复完成：成功 %d / 失败 %d%s"), CompletedFiles, FailedFiles,
+            bRestartRequired ? TEXT("；暂存资源将在重启后生效") : TEXT(""));
         const bool bSuccess = !bAbortRequested && FailedFiles == 0;
         const int32 RepairedCount = CompletedFiles;
         SetBusy(false);
@@ -262,7 +270,7 @@ void FCloudUpdateService::DownloadNextRepairFile()
 		{
 			Service->OnRepairFileDownloaded(bOk, Issue);
 		}
-	});
+	}, nullptr, Issue.ExpectedHash, Issue.ExpectedSize);
 }
 
 void FCloudUpdateService::OnRepairFileDownloaded(bool bSuccess, const FCloudFileIssue& InIssue)
@@ -275,7 +283,8 @@ void FCloudUpdateService::OnRepairFileDownloaded(bool bSuccess, const FCloudFile
 		{
 			int64 Size = 0;
 			FString Hash;
-			const FString Target = GetLocalRoot() / InIssue.RelativePath;
+			FString Target = GetLocalRoot() / InIssue.RelativePath;
+            if (IFileManager::Get().FileExists(*(Target + TEXT(".pending")))) Target += TEXT(".pending");
 			ComputeFileHash(Target, Size, Hash);
 			if (!Hash.Equals(InIssue.ExpectedHash, ESearchCase::IgnoreCase))
 			{

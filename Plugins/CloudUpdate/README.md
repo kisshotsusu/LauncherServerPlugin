@@ -81,13 +81,15 @@ Plugins/CloudUpdate/
 
 - `Maps/L_CloudUpdate`：非 World Partition 的空关卡，没有第三人称角色或场景；World Settings 已指定更新入口 GameMode。
 - `UI/BP_CloudUpdateGameMode`：继承 `CloudUpdateUIGameMode`，其 `UpdateWidgetClass` 已指定 `WBP_CloudUpdate`。
-- `UI/WBP_CloudUpdate`：继承 `CloudUpdateScreen` 的空白 UMG 画布，用来制作自己的更新界面。
+- `UI/WBP_CloudUpdate`：继承 `CloudUpdateScreen` 的更新面板，包含平台、游戏/资源版本、计划、总下载/当前文件/合并进度及操作按钮。
 - `Source/CloudUpdate/Public/UI`、`Private/UI`：独立的运行时 UI 入口，无 UnrealEd 依赖。
 - `Private/Tests`：任务生命周期回归测试，仅在开发测试构建中编译。
 
-打开关卡并运行后，PlayerController 会自动创建 WBP_CloudUpdate、加入视口、显示鼠标并设置 UI 输入模式，退出关卡时移除控件。空白控件目前不含按钮，也不会自动请求更新服务器。原项目默认启动地图保持现有配置。
+打开使用该 GameMode 的关卡并运行后，PlayerController 会自动创建 WBP_CloudUpdate、加入视口、显示鼠标并设置 UI 输入模式，退出关卡时移除控件。用户点击“检查更新”后异步查询平台对应的完整更新计划；不会打开页面就自动下载。原项目默认启动地图保持现有配置。
 
-在 WBP_CloudUpdate 的 Construct 中使用 `Get Update Subsystem`：先绑定 OnUpdateCheckFinished / OnUpdateProgress / OnDownloadProgress / OnUpdateFinished，再调用 CheckForUpdates；在 Destruct 中解除自己的事件绑定（不要 Unbind All，以免移除其他控件的监听）。按钮可调用 ApplyLatestUpdate、CheckIntegrity、RepairIssues、AbortCurrentTask，并根据 IsBusy 控制按钮可用性。
+CloudUpdateScreen 的 NativeConstruct / NativeDestruct 自动绑定和解除自身监听；WBP 不需重复绑定。按钮名 CheckButton / UpdateButton / CancelButton 对应 QueryUpdatePlan / ApplyLatestUpdate / AbortCurrentTask。文本名 PlatformText / VersionsText / StatusText / SummaryText / DownloadText / FileProgressText / MergeText 和进度条 DownloadProgress / FileProgress / MergeProgress 可供自定义子控件复用。异步完成后才展示服务器结果，失败时可重试；需要游戏包更新或有待生效资源时禁用资源更新按钮，忙碌期间防止重复请求。未知总大小显示明确提示和循环进度，不伪造百分比；合并只有文件级进度。按钮固定在滚动内容下方，安卓使用 SafeZone。
+
+原 PreConstruct 单版本显示与 Construct 手工拆分版本字符串的入口已断开，原函数保留作参考。更新面板不改写本地版本，只有资源更新成功或启动后完成激活才改变资源记录。
 
 `ApplyLatestUpdate` 现在只沿用服务端 updateChain 顺序，依次应用与当前游戏版本兼容的资源补丁。游戏整包（full）交给启动器在退出游戏后安装。失败或需重启时停止；OnUpdateFinished 的 VersionId 是实际应用到的版本，需重启时它不一定已达到服务器最新版本。重启并确认暂存补丁交换成功后，再调用以继续后续版本。
 
@@ -110,7 +112,11 @@ Plugins/CloudUpdate/
 
 ## 双版本与详细进度 API（2026-10-09）
 
-**游戏版本**来自打包时的 Project Settings -> Description -> Project Version，或插件设置中的 GameVersionOverride。更改 C++ 并发布新游戏包时应提升该版本；资源更新永远不修改游戏版本。**资源版本**来自 Saved/CloudUpdate/local_version.json，初始值使用 InitialResourceVersionId，留空兼容旧 CurrentVersionId。旧 GetLocalVersion / SetLocalVersion 现在明确表示资源版本；二者都不会改写游戏包版本。资源版本写入 JSON，不再回写初始配置。
+**游戏版本**来自打包时的 Project Settings -> Description -> Project Version，或插件设置中的 GameVersionOverride。更改 C++ 并发布新游戏包时应提升该版本；资源更新永远不修改游戏版本。**资源版本**来自 Saved/CloudUpdate/<自动检测通道>/local_version.json，初始值使用 InitialResourceVersionId，留空兼容旧 CurrentVersionId。旧 GetLocalVersion / SetLocalVersion 现在明确表示资源版本；二者都不会改写游戏包版本。资源版本写入带 platform 字段的 JSON，不回写项目的初始配置。
+
+平台配置属性 Platform 已删除。GetUpdatePlatform 蓝图纯函数返回当前自动检测的更新通道。Windows/Linux/Mac/IOS 等使用运行平台标识；安卓使用插件在 APK 中生成的 com.cloudUpdate.CookFlavor 元数据精确识别 Android_ASTC、Android_ETC2、Android_DXT、Android_Multi 和 Android_OpenXR。旧 APK 可使用引擎 CookedFlavors 元数据兼容识别；这是 APK 打包格式，不按手机 GPU 支持列表选择，以免下载与基础包不匹配的数据。项目配置无需写入 Platform，旧配置键也不再参与请求。
+
+版本索引、描述和完整性检查请求自动携带相同的 platform 参数；服务器从该平台的版本链计算 gameVersion/resourceVersion，不使用项目级统一服务器版本。客户端已生效/待生效资源记录按通道隔离，明确标记为其它平台的记录不会加载。旧共用 local_version.json 只有明确携带匹配 platform 时才兼容读取；未标记平台的旧文件保留原样，不猜测它属于哪个平台，初次使用新记录时回到本构建的初始资源版本。
 
 ### 查询节点
 

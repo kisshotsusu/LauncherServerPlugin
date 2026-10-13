@@ -296,6 +296,7 @@ def read_descriptor(cfg, version_id, platform=None):
 
 def filter_index_by_platform(index, platform):
     result = dict(index)
+    result["platform"] = platform
     result["versions"] = [v for v in index.get("versions", []) if v.get("platform", index.get("platforms", [platform])[0]) == platform]
     ids = {v["versionId"] for v in result["versions"] if v.get("type") == "patch"}
     result["updateChain"] = list(dict.fromkeys(v for v in index.get("platformUpdateChains", {}).get(platform, index.get("updateChain", [])) if v in ids))

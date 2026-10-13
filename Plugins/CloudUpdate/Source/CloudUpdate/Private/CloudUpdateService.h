@@ -101,6 +101,7 @@ private:
  FString PendingResourceVersion;
  FString LocalVersionRecordPath;
  FString GetVersionRecordPath() const;
+ bool ReadLocalVersionRecord(TSharedPtr<FJsonObject>& OutRecord) const;
  void SavePendingResourceVersion(const FString& Version);
 
  void ResolveNextPlanDescriptor();
@@ -133,7 +134,8 @@ private:
 	void FetchJson(const FString& InUrl, TFunction<void(bool, const TSharedPtr<FJsonObject>&)> InCallback);
 	void DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
 		TFunction<void(bool)> InCallback,
-		TFunction<void(int64 /*BytesDone*/, int64 /*TotalBytes*/)> InProgress = nullptr);
+		TFunction<void(int64 /*BytesDone*/, int64 /*TotalBytes*/)> InProgress = nullptr,
+        const FString& ExpectedHash = TEXT(""), int64 ExpectedSize = -1);
 
 	// ---------- 完整性检查 ----------
 	void ParseManifest(const TSharedPtr<FJsonObject>& InJson);
@@ -163,7 +165,7 @@ private:
 	void StartDownloadUpdateFiles();
 	void DownloadNextUpdateFile();
 	void OnUpdateFileDownloaded(bool bSuccess, const FCloudDownloadFile& InFile);
-	void MountPendingPaks();
+	bool MountPendingPaks();
 	void FinishUpdate(bool bSuccess, const FString& InMessage);
 
 	// ---------- 二进制补丁合并 ----------

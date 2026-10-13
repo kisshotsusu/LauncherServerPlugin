@@ -4,7 +4,6 @@ UCloudUpdateSettings::UCloudUpdateSettings()
 {
 	ServerUrl = TEXT("http://127.0.0.1:8710");
 	ProjectName = TEXT("CodeBuild");
-	Platform = TEXT("Windows");
 	HotPatcherBaseUrl = TEXT("");
 	ServerToken = TEXT("");
 	LocalRootOverride = TEXT("");

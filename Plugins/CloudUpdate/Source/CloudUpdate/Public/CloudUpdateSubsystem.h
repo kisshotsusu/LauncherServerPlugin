@@ -42,6 +42,9 @@ class CLOUDUPDATE_API UCloudUpdateSubsystem : public UEngineSubsystem
 	GENERATED_BODY()
 
 public:
+ /** Runtime update channel, detected automatically; Android includes its packaged cook flavor. */
+ UFUNCTION(BlueprintPure, Category = "CloudUpdate|Info")
+ FString GetUpdatePlatform() const;
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 

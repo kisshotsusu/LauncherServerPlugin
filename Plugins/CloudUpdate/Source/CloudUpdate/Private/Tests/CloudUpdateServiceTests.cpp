@@ -52,3 +52,6 @@ bool FCloudUpdateServiceRegressionTest::RunTest(const FString& Parameters)
  return true;
 }
 #endif
+
+#include "CloudUpdatePlatformTests.inl"
+#include "CloudUpdateUITests.inl"

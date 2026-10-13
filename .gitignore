@@ -64,6 +64,9 @@ Luncher/*.user
 # cc 项目空间（运行时项目数据，不入库）
 Server/projects/cc/
 
+# 服务器工作区（运行时数据：基础包/导入包/补丁等，体积大，不入库）
+Server/workspace/
+
 # Python bytecode / caches (build artifacts, never commit)
 __pycache__/
 *.py[cod]

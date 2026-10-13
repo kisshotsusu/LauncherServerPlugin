@@ -139,6 +139,9 @@ struct CLOUDUPDATE_API FCloudDownloadFile
 	FString FallbackUrl;
 
  UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
+ FString FallbackHash;
+
+ UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
  bool bSizeKnown = false;
  UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
  int64 FallbackFileSize = 0;

@@ -26,7 +26,7 @@ bool FCloudUpdateService::ReadDescriptorFiles(const TSharedPtr<FJsonObject>& Jso
 {
  OutFiles.Reset();
  const TArray<TSharedPtr<FJsonValue>>* Values = nullptr;
- if (!Json.IsValid() || !Json->TryGetArrayField(TEXT("files"), Values)) return false;
+ if (!MatchesResponsePlatform(Json, GetPlatform()) || !Json->TryGetArrayField(TEXT("files"), Values)) return false;
  TSet<FString> Targets;
  for (const TSharedPtr<FJsonValue>& Value : *Values)
  {
@@ -41,6 +41,7 @@ bool FCloudUpdateService::ReadDescriptorFiles(const TSharedPtr<FJsonObject>& Jso
   if (File.FileSize < 0) return false;
   Obj->TryGetBoolField(TEXT("binaryPatch"), File.bBinaryPatch);
   Obj->TryGetStringField(TEXT("fallbackUrl"), File.FallbackUrl);
+  Obj->TryGetStringField(TEXT("fallbackHash"), File.FallbackHash);
   File.bFallbackSizeKnown = Obj->TryGetNumberField(TEXT("fallbackSize"), File.FallbackFileSize) && File.FallbackFileSize >= 0;
   FString Kind;
   Obj->TryGetStringField(TEXT("kind"), Kind);
@@ -56,7 +57,8 @@ bool FCloudUpdateService::ReadDescriptorFiles(const TSharedPtr<FJsonObject>& Jso
   if (File.TargetRelativePath.IsEmpty()) File.TargetRelativePath = File.FileName;
   if (File.FileName.IsEmpty() || File.Url.IsEmpty() || File.FileName != FPaths::GetCleanFilename(File.FileName)
    || !IsSafeRelativePath(File.FileName) || !IsSafeRelativePath(File.TargetRelativePath)) return false;
-  const FString TargetKey = FString::FromInt(static_cast<int32>(File.Kind)) + TEXT(":") + File.TargetRelativePath.ToLower();
+  const FString TargetKey = FString::FromInt(static_cast<int32>(File.Kind)) + TEXT(":") +
+   (File.Kind == ECloudDownloadKind::ExternFile ? File.TargetRelativePath : File.FileName).ToLower();
   if (Targets.Contains(TargetKey)) return false;
   Targets.Add(TargetKey);
   File.Url = ResolveRemoteUrl(File.Url);
@@ -293,7 +295,7 @@ void FCloudUpdateService::StartTrackedDownload(const FCloudDownloadFile& File, c
     if (Self) Self->UpdateTransferProgress(Generation, Done, Total);
    };
    if (IsInGameThread()) Report(); else AsyncTask(ENamedThreads::GameThread, MoveTemp(Report));
-  });
+  }, bFallback ? File.FallbackHash : File.Hash, bFallback ? (File.bFallbackSizeKnown ? File.FallbackFileSize : -1) : (File.bSizeKnown ? File.FileSize : -1));
 }
 
 void FCloudUpdateService::BroadcastMergeProgress()

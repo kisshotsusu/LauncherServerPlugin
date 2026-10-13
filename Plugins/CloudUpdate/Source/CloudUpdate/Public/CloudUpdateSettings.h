@@ -46,10 +46,6 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "项目名"))
 	FString ProjectName;
 
-	/** 目标平台，例如 Windows */
-	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "平台"))
-	FString Platform;
-
 	/**
 	 * 直接模式：填写 HotPatcher 产物 HTTP 根地址后，客户端将直接按
 	 * {根}/{版本号}/{版本号}_PatchConfig.json 与 _PakFilesInfo.json 解析下载包。

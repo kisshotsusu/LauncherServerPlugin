@@ -17,6 +17,43 @@
 
 struct FCloudUpdateMetricsTestAccess
 {
+ static bool TestPlatformVersionIsolation(const FString& Root)
+ {
+  FCloudUpdateService Service(nullptr);
+  const FString Channel = Service.GetPlatform();
+  const bool Scoped = Service.GetVersionRecordPath().Contains(TEXT("/CloudUpdate/") + Channel + TEXT("/local_version.json"));
+  const FString Initial = UCloudUpdateSettings::Get()->InitialResourceVersionId;
+  const FString Legacy = UCloudUpdateSettings::Get()->CurrentVersionId;
+  const FString Game = Service.GetLocalGameVersion();
+  Service.LocalVersionRecordPath = Root / TEXT("scoped-version.json");
+  Service.SaveLocalVersion(TEXT("platform-specific-42"));
+  FString Text;
+  TSharedPtr<FJsonObject> Record;
+  FFileHelper::LoadFileToString(Text, *Service.LocalVersionRecordPath);
+  FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Record);
+  if (!Record.IsValid()) return false;
+  const bool Saved = Record->GetStringField(TEXT("platform")) == Channel && Service.GetLocalVersion() == TEXT("platform-specific-42");
+  Record->SetStringField(TEXT("platform"), Channel == TEXT("Windows") ? TEXT("Android_ASTC") : TEXT("Windows"));
+  Record->SetStringField(TEXT("pendingResourceVersionId"), TEXT("other-platform-pending"));
+  FJsonSerializer::Serialize(Record.ToSharedRef(), TJsonWriterFactory<>::Create(&Text));
+  FFileHelper::SaveStringToFile(Text, *Service.LocalVersionRecordPath);
+  const bool Isolated = Service.GetLocalVersion() != TEXT("platform-specific-42") && Service.GetPendingResourceVersion().IsEmpty();
+  return Scoped && Saved && Isolated && Game == Service.GetLocalGameVersion()
+   && Initial == UCloudUpdateSettings::Get()->InitialResourceVersionId && Legacy == UCloudUpdateSettings::Get()->CurrentVersionId;
+ }
+ static void DownloadVerified(FCloudUpdateService& Service, const FString& Path, const FString& Hash, int64 Size, TFunction<void(bool)> Callback)
+ { Service.DownloadFileTo(Service.GetServerUrl() / TEXT("files/first.bin"), Path, 0, MoveTemp(Callback), nullptr, Hash, Size); }
+ static bool CheckStagedRepair(FCloudUpdateService& Service, const FString& Root)
+ {
+  FFileHelper::SaveStringToFile(TEXT("old"), *(Root / TEXT("repair.bin")));
+  FFileHelper::SaveStringToFile(TEXT("repaired"), *(Root / TEXT("repair.bin.pending")));
+  FCloudFileIssue Issue; Issue.RelativePath = TEXT("repair.bin");
+  CloudUpdatePrivate::ComputeFileHash(Root / TEXT("repair.bin.pending"), Issue.ExpectedSize, Issue.ExpectedHash);
+  Service.CompletedFiles = Service.FailedFiles = Service.CurrentFileIndex = 0;
+  Service.PendingIssues = {Issue}; Service.bRestartRequired = true;
+  Service.OnRepairFileDownloaded(true, Issue);
+  return Service.CompletedFiles == 1 && Service.FailedFiles == 0;
+ }
  static void UseVersionFile(FCloudUpdateService& Service, const FString& Path) { Service.LocalVersionRecordPath = Path; }
  static FCloudMergeProgressInfo Merge(const FCloudUpdateService& Service) { return Service.MergeProgress; }
  static bool TestBytes()
@@ -101,6 +138,7 @@ bool FCloudUpdateMetricsTest::RunTest(const FString& Parameters)
  TestTrue(TEXT("File list accepts known zero size and rejects duplicate targets"), FCloudUpdateMetricsTestAccess::TestDescriptor());
  const FString Root = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation/CloudUpdate") / FGuid::NewGuid().ToString());
  IFileManager::Get().MakeDirectory(*Root, true);
+ TestTrue(TEXT("Runtime channel scopes records; other platform active/pending versions ignored; project initial versions never rewritten"), FCloudUpdateMetricsTestAccess::TestPlatformVersionIsolation(Root));
  TestTrue(TEXT("Pending resource release remains inactive while .pending exists"), FCloudUpdateMetricsTestAccess::TestPendingActivation(Root));
  IFileManager::Get().DeleteDirectory(*Root, false, true);
  return true;
@@ -125,7 +163,8 @@ public:
  explicit FCloudUpdateHTTPTestCommand(FAutomationTestBase* InTest) : Test(InTest)
  {
   Settings = GetMutableDefault<UCloudUpdateSettings>();
-  OldServer = Settings->ServerUrl; OldGame = Settings->GameVersionOverride; OldRoot = Settings->LocalRootOverride; OldFeature = Settings->BinaryPatchFeatureName; OldMerge = Settings->bEnableBinaryMerge;
+  OldServer = Settings->ServerUrl; OldGame = Settings->GameVersionOverride; OldRoot = Settings->LocalRootOverride; OldFeature = Settings->BinaryPatchFeatureName; OldMerge = Settings->bEnableBinaryMerge; OldVerify = Settings->bVerifyDownloadHash;
+  Settings->bVerifyDownloadHash = true;
   Settings->GameVersionOverride = TEXT("1.0"); Settings->BinaryPatchFeatureName = TEXT("CloudUpdateTest"); Settings->bEnableBinaryMerge = true;
   Root = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation/CloudUpdateHTTP") / FGuid::NewGuid().ToString());
   Settings->LocalRootOverride = Root; IFileManager::Get().MakeDirectory(*Root, true);
@@ -145,6 +184,7 @@ public:
  virtual ~FCloudUpdateHTTPTestCommand()
  {
   Service->Abort();
+  Settings->bVerifyDownloadHash = OldVerify;
   if (ServerProcess.IsValid()) { FPlatformProcess::TerminateProc(ServerProcess, true); FPlatformProcess::CloseProc(ServerProcess); }
   Settings->ServerUrl = OldServer; Settings->GameVersionOverride = OldGame; Settings->LocalRootOverride = OldRoot; Settings->BinaryPatchFeatureName = OldFeature; Settings->bEnableBinaryMerge = OldMerge;
   IModularFeatures::Get().UnregisterModularFeature(BINARIES_DIFF_PATCH_FEATURE_NAME, &CloudUpdateMockFeature);
@@ -153,6 +193,20 @@ public:
  virtual bool Update() override
  {
   if (FPlatformTime::Seconds() - Started > 45.0) { Test->AddError(TEXT("Mock HTTP update timed out")); return true; }
+  if (Stage >= 2)
+  {
+   if (!bIntegrityDone) return false;
+   FString Protected;
+   FFileHelper::LoadFileToString(Protected, *(Root / TEXT("protected.bin")));
+   Test->TestFalse(Stage == 2 ? TEXT("Bad hash rejected") : TEXT("Bad size rejected"), bIntegritySuccess);
+   Test->TestEqual(TEXT("Rejected download preserves installed file"), Protected, FString(TEXT("protected")));
+   Test->TestFalse(TEXT("Rejected download removes temporary file"), IFileManager::Get().FileExists(*(Root / TEXT("protected.bin.download"))));
+   if (Stage == 3) { Test->TestTrue(TEXT("Staged repair verifies pending bytes instead of old installed bytes"), FCloudUpdateMetricsTestAccess::CheckStagedRepair(*Service, Root)); return true; }
+   Stage = 3; bIntegrityDone = false;
+   FCloudUpdateMetricsTestAccess::DownloadVerified(*Service, Root / TEXT("protected.bin"), TEXT(""), 16385,
+     [this](bool Success) { bIntegritySuccess = Success; bIntegrityDone = true; });
+   return false;
+  }
   if (Stage == -1)
   {
    FString Port;
@@ -193,7 +247,12 @@ public:
   Test->TestEqual(TEXT("Merge percent"), Merge.Percent, 100.0f);
   Test->TestEqual(TEXT("Fallback output installed"), IFileManager::Get().FileSize(*(Root / TEXT("fallback.bin"))), static_cast<int64>(128));
   Test->TestFalse(TEXT("Game binary was not downloaded into running game"), IFileManager::Get().FileExists(*(Root / TEXT("game.exe"))));
-  return true;
+  Stage = 2;
+  FFileHelper::SaveStringToFile(TEXT("protected"), *(Root / TEXT("protected.bin")));
+  bIntegrityDone = false;
+  FCloudUpdateMetricsTestAccess::DownloadVerified(*Service, Root / TEXT("protected.bin"), TEXT("00000000000000000000000000000000"), 16384,
+    [this](bool Success) { bIntegritySuccess = Success; bIntegrityDone = true; });
+  return false;
  }
 private:
  FAutomationTestBase* Test;
@@ -201,7 +260,7 @@ private:
  TSharedPtr<FCloudUpdateService> Service;
  FString OldServer, OldGame, OldRoot, OldFeature, Root, PortFile;
  FProcHandle ServerProcess;
- bool OldMerge = false, bSawIntermediate = false;
+  bool OldMerge = false, bSawIntermediate = false, OldVerify = false, bIntegrityDone = false, bIntegritySuccess = false;
  int32 Stage = -1;
  double Started = 0;
 };

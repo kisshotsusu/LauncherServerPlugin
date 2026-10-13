@@ -79,7 +79,7 @@ void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, c
 
 void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
 	TFunction<void(bool)> InCallback,
-	TFunction<void(int64, int64)> InProgress)
+	TFunction<void(int64, int64)> InProgress, const FString& ExpectedHash, int64 ExpectedSize)
 {
 	if (bAbortRequested)
 	{
@@ -91,11 +91,17 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 	}
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(InTargetPath), true);
 	const FString TempPath = InTargetPath + TEXT(".download");
+    FArchive* Writer = IFileManager::Get().CreateFileWriter(*TempPath);
+    if (!Writer) { if (InCallback) InCallback(false); return; }
+    TSharedPtr<FArchive> WriterOwner = MakeShareable(Writer);
+    TSharedRef<FArchive> Stream = WriterOwner.ToSharedRef();
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 	Request->SetURL(ResolveRemoteUrl(InUrl));
  Request->SetDelegateThreadPolicy(EHttpRequestDelegateThreadPolicy::CompleteOnGameThread);
 	Request->SetVerb(TEXT("GET"));
+    if (!Request->SetResponseBodyReceiveStream(Stream))
+    { Stream->Close(); IFileManager::Get().Delete(*TempPath, false, true); if (InCallback) InCallback(false); return; }
 	if (Settings)
 	{
 		if (!Settings->ServerToken.IsEmpty())
@@ -125,13 +131,15 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 	}
 	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
  TSharedRef<bool> Completed = MakeShared<bool>(false);
- Request->OnProcessRequestComplete().BindLambda([WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback, InProgress, Completed](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
+ Request->OnProcessRequestComplete().BindLambda([WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback, InProgress, Completed, Stream, ExpectedHash, ExpectedSize](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
 	{
         if (*Completed) return;
         *Completed = true;
+        const bool bStreamOk = Stream->Close() && !Stream->IsError();
 		auto Service = WeakThis.Pin();
 		if (!Service)
 		{
+            IFileManager::Get().Delete(*TempPath, false, true);
 			if (InCallback)
 			{
 				InCallback(false);
@@ -140,15 +148,24 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 		}
         if (Service->bAbortRequested)
         { IFileManager::Get().Delete(*TempPath, false, true); if (InCallback) InCallback(false); return; }
-		const bool bHttpOk = bConnectedSuccessfully && Resp.IsValid() && EHttpResponseCodes::IsOk(Resp->GetResponseCode());
+		bool bHttpOk = bStreamOk && bConnectedSuccessfully && Resp.IsValid() && EHttpResponseCodes::IsOk(Resp->GetResponseCode());
+        const int64 ReceivedSize = IFileManager::Get().FileSize(*TempPath);
+        bHttpOk &= ReceivedSize >= 0 && (ExpectedSize < 0 || ReceivedSize == ExpectedSize);
+        if (bHttpOk && !ExpectedHash.IsEmpty() && (!UCloudUpdateSettings::Get() || UCloudUpdateSettings::Get()->bVerifyDownloadHash))
+        {
+            int64 Size = 0; FString Hash;
+            bHttpOk = ComputeFileHash(TempPath, Size, Hash) && Hash.Equals(ExpectedHash, ESearchCase::IgnoreCase);
+        }
 		if (bHttpOk)
 		{
-			const TArray<uint8>& Content = Resp->GetContent();
-            if (InProgress) InProgress(Content.Num(), Content.Num());
-			if (FFileHelper::SaveArrayToFile(Content, *TempPath))
+            if (InProgress) InProgress(ReceivedSize, ReceivedSize);
+            // IoStore and replacements of mounted files are committed on restart.
+            const bool bIoStore = InTargetPath.EndsWith(TEXT(".utoc")) || InTargetPath.EndsWith(TEXT(".ucas"));
+			if (bIoStore || IFileManager::Get().Move(*InTargetPath, *TempPath, true, true))
 			{
-				if (IFileManager::Get().Move(*InTargetPath, *TempPath, true, true))
+				if (!bIoStore || IFileManager::Get().Move(*(InTargetPath + TEXT(".pending")), *TempPath, true, true))
 				{
+                    Service->bRestartRequired |= bIoStore;
 					if (InCallback)
 					{
 						InCallback(true);
@@ -156,12 +173,14 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
 					return;
 				}
 			}
+            else if (IFileManager::Get().Move(*(InTargetPath + TEXT(".pending")), *TempPath, true, true))
+            { Service->bRestartRequired = true; if (InCallback) InCallback(true); return; }
 		}
 		IFileManager::Get().Delete(*TempPath, false, true);
 		if (InRetriesLeft > 0)
 		{
 			UE_LOG(LogCloudUpdate, Warning, TEXT("下载失败 %s，剩余重试 %d 次"), *InUrl, InRetriesLeft);
-			Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft - 1, InCallback, InProgress);
+			Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft - 1, InCallback, InProgress, ExpectedHash, ExpectedSize);
 		}
 		else if (InCallback)
 		{
@@ -171,6 +190,7 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
  if (!Request->ProcessRequest() && !*Completed)
  {
   *Completed = true;
+  Stream->Close(); IFileManager::Get().Delete(*TempPath, false, true);
   if (InCallback) InCallback(false);
  }
 }

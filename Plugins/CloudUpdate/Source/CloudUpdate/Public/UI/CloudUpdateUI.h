@@ -4,11 +4,12 @@
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/PlayerController.h"
+#include "CloudUpdateTypes.h"
 #include "CloudUpdateUI.generated.h"
 
 class UCloudUpdateSubsystem;
 
-/** Base for update screens. Bind subsystem delegates in Construct and unbind in Destruct. */
+/** Shared update screen behavior; named designer widgets are optional and delegates are owned by this view. */
 UCLASS(Abstract, Blueprintable)
 class CLOUDUPDATE_API UCloudUpdateScreen : public UUserWidget
 {
@@ -16,6 +17,32 @@ class CLOUDUPDATE_API UCloudUpdateScreen : public UUserWidget
 public:
  UFUNCTION(BlueprintPure, Category = "CloudUpdate|UI")
  UCloudUpdateSubsystem* GetUpdateSubsystem() const;
+protected:
+ virtual void NativeConstruct() override;
+ virtual void NativeDestruct() override;
+ virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+private:
+#if WITH_DEV_AUTOMATION_TESTS
+ friend class FCloudUpdateScreenTest;
+#endif
+ UPROPERTY(Transient)
+ TObjectPtr<UCloudUpdateSubsystem> BoundSubsystem;
+ bool bChecking = false;
+ bool bApplying = false;
+ bool bCancelRequested = false;
+ float RefreshElapsed = 0.f;
+ void RefreshVersions();
+ void RefreshButtons();
+ void SetStatus(const FText& Text, bool bError = false);
+ void UnbindSubsystem();
+ UFUNCTION() void CheckClicked();
+ UFUNCTION() void UpdateClicked();
+ UFUNCTION() void CancelClicked();
+ UFUNCTION() void CloseClicked();
+ UFUNCTION() void PlanReady(bool bSuccess, const FCloudUpdatePlan& Plan, const FString& Message);
+ UFUNCTION() void DownloadChanged(const FCloudDownloadProgressInfo& Progress);
+ UFUNCTION() void MergeChanged(const FCloudMergeProgressInfo& Progress);
+ UFUNCTION() void UpdateFinished(bool bSuccess, bool bRestartRequired, const FString& VersionId, const FString& Message);
 };
 
 /** Local UI controller; no character or gameplay input is needed for the update level. */

@@ -3,6 +3,7 @@
 #include "CloudUpdateService.h"
 #include "CloudUpdateSettings.h"
 #include "CloudUpdateBinaryMerge.h"
+#include "CloudUpdateUtil.h"
 #include "Engine/Engine.h"
 #include "HttpModule.h"
 #include "Async/Async.h"
@@ -11,6 +12,11 @@
 UCloudUpdateSubsystem* UCloudUpdateSubsystem::GetCloudUpdateSubsystem()
 {
 	return GEngine ? GEngine->GetEngineSubsystem<UCloudUpdateSubsystem>() : nullptr;
+}
+
+FString UCloudUpdateSubsystem::GetUpdatePlatform() const
+{
+ return CloudUpdatePrivate::GetRuntimeUpdatePlatform();
 }
 
 void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)

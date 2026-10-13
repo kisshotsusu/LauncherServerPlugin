@@ -78,7 +78,7 @@ from versions import (
     save_revoked_store,
 )
 from storage import get_storage
-from importer import run_import
+from importer import run_import, import_version, base_import_source
 import certgen
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -300,7 +300,7 @@ def resolve_project_path(raw_path):
 
 
 class UpdateHandler(BaseHTTPRequestHandler):
-    server_version = "CloudUpdateServer/2.2"
+    server_version = "CloudUpdateServer/2.5"
     cfg = None
     server = None
 
@@ -456,7 +456,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
         self._send_json({
             "ok": True,
             "server": "CloudUpdateServer",
-            "consoleVersion": "2.2",
+            "consoleVersion": "2.5",
             "activePlatform": getattr(self, "platform", self.cfg["platforms"][0]),
             "storageBackend": "s3" if storage.is_remote else "local",
             "authRequired": bool(self.cfg.get("admin_token")),
@@ -594,19 +594,32 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "root": root, "path": rel_dir.replace("\\", "/"), "parent": parent, "entries": entries,
         })
 
+    @staticmethod
+    def _pending_workspace_versions(folder, existing, required=None):
+        if not os.path.isdir(folder):
+            return []
+        return [v for v in sorted(os.listdir(folder))
+                if re.fullmatch(r"[A-Za-z0-9_.-]+", v) and not v.startswith(".")
+                and v not in existing and os.path.isdir(os.path.join(folder, v))
+                and os.listdir(os.path.join(folder, v))
+                and (not required or os.path.isfile(os.path.join(folder, v, required)))]
+
     def _api_workspace(self):
         if not self.cfg.get("workspace_dir"):
             self._send_json({"ok": True, "configured": False, "suggestedRoot": self._resolve_path("workspace")})
             return
         paths = workspace_paths(self.cfg)
         platforms = []
+        index = load_versions_index(self.cfg)
         for platform in self.cfg["platforms"]:
             item = {"platform": platform, **workspace_platform_paths(self.cfg, platform)}
             item["baseVersions"] = list(self.cfg["base_packages"].get(platform, {}))
-            item["patchVersions"] = [v["versionId"] for v in filter_index_by_platform(load_versions_index(self.cfg), platform).get("versions", []) if v["type"] != "full"]
-            item["pendingBases"] = [v for v in sorted(os.listdir(item["baseImport"])) if os.path.isdir(os.path.join(item["baseImport"], v)) and not v.startswith(".")] if os.path.isdir(item["baseImport"]) else []
+            item["sources"] = (self.cfg.get("import_sources") or {}).get(platform, {})
+            item["patchVersions"] = [v["versionId"] for v in filter_index_by_platform(index, platform).get("versions", []) if v["type"] != "full"]
+            item["pendingBases"] = self._pending_workspace_versions(item["baseImport"], item["baseVersions"])
             platforms.append(item)
-        self._send_json({"ok": True, "configured": True, "paths": paths, "platforms": platforms})
+        pending = self._pending_workspace_versions(paths["launcherImport"], self.cfg["launcher_versions"], "Launcher.exe")
+        self._send_json({"ok": True, "configured": True, "paths": paths, "platforms": platforms, "pendingLaunchers": pending})
 
     def _admin_workspace(self):
         data = self._json_body()
@@ -614,24 +627,48 @@ class UpdateHandler(BaseHTTPRequestHandler):
         value = data.get("root")
         if not isinstance(value, str) or not value.strip():
             self._send_json({"error": "请选择工作空间目录"}, status=400); return
-        root = self._resolve_path(value.strip())
+        root = os.path.realpath(self._resolve_path(value.strip()))
         current = self.cfg.get("workspace_dir")
-        # 已有工作空间变更时一并迁移，避免配置指向空目录。
-        if current and os.path.normcase(current) != os.path.normcase(root):
+        def overlaps(left, right):
+            left, right = os.path.normcase(os.path.realpath(left)), os.path.normcase(os.path.realpath(right))
             try:
-                overlapping = os.path.commonpath([current, root]) in (current, root)
+                return os.path.commonpath([left, right]) in (left, right)
             except ValueError:
-                overlapping = False
-            if overlapping:
-                self._send_json({"error": "新旧工作空间不能相互包含"}, status=400); return
-            if os.path.exists(root) and os.listdir(root):
-                self._send_json({"error": "新工作空间必须为空，避免覆盖已有内容"}, status=400); return
-            if os.path.isdir(root): os.rmdir(root)
-            os.makedirs(os.path.dirname(root), exist_ok=True)
-            shutil.move(current, root)
-        self.cfg = _apply_config_updates({"workspace_dir": root}, self.cfg)
-        ensure_dirs(self.cfg)
-        build_versions_index(self.cfg)
+                return False
+        for key in PROJECT_REGISTRY.get("projects", {}):
+            if key == self.project: continue
+            other = load_project_cfg(key)
+            if other and other.get("workspace_dir") and overlaps(root, other["workspace_dir"]):
+                self._send_json({"error": "工作空间不能与其它项目的工作空间重叠"}, status=400); return
+        changing = current and os.path.normcase(os.path.realpath(current)) != os.path.normcase(root)
+        if os.path.exists(root) and not os.path.isdir(root):
+            self._send_json({"error": "工作空间目标必须是目录，不能是文件"}, status=400); return
+        if changing and overlaps(current, root):
+            self._send_json({"error": "新旧工作空间不能相互包含"}, status=400); return
+        if changing and os.path.isdir(root) and os.listdir(root):
+            self._send_json({"error": "新工作空间必须为空，避免覆盖已有内容"}, status=400); return
+        moved = False
+        try:
+            if changing and os.path.isdir(current):
+                if os.path.isdir(root): os.rmdir(root)
+                os.makedirs(os.path.dirname(root), exist_ok=True)
+                shutil.move(current, root)
+                moved = True
+            updates = {"workspace_dir": root}
+            if changing:
+                https = dict(self.cfg.get("https") or {})
+                for key in ("certFile", "keyFile"):
+                    path = https.get(key)
+                    if path and overlaps(current, path) and os.path.normcase(os.path.realpath(path)) != os.path.normcase(os.path.realpath(current)):
+                        https[key] = os.path.join(root, os.path.relpath(path, current))
+                updates["https"] = https
+            self.cfg = _apply_config_updates(updates, self.cfg)
+            ensure_dirs(self.cfg)
+            build_versions_index(self.cfg)
+        except OSError as exc:
+            if moved and (_read_json(self.cfg["_config_path"]) or {}).get("workspace_dir") != root:
+                shutil.move(root, current)
+            self._send_json({"error": "工作空间保存失败：" + str(exc)}, status=400); return
         self._send_json({"ok": True, "message": "项目工作空间已保存并创建所有目录"})
 
     def _admin_workspace_import(self):
@@ -650,6 +687,10 @@ class UpdateHandler(BaseHTTPRequestHandler):
         if category == "base":
             paths = workspace_platform_paths(self.cfg, platform)
             source = os.path.join(paths["baseImport"], version); target = os.path.join(paths["bases"], version)
+            if "source" in data:
+                if not isinstance(data["source"], str) or not data["source"].strip():
+                    self._send_json({"error": "请选择基础包来源目录"}, status=400); return
+                source = self._resolve_path(data["source"].strip())
         elif category == "launcher":
             paths = workspace_paths(self.cfg)
             source = os.path.join(paths["launcherImport"], version); target = os.path.join(paths["launcher"], version)
@@ -659,25 +700,68 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "导入类型必须是 base、patch 或 launcher"}, status=400); return
         if not os.path.isdir(source) or not os.listdir(source):
             self._send_json({"error": "导入目录不存在或为空：" + source}, status=400); return
+        selected_source = source
+        if category == "base":
+            try:
+                source = base_import_source(source, platform)
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=400); return
         if os.path.exists(target):
             self._send_json({"error": "这个版本已经存在，请使用新的版本号"}, status=409); return
+        source_real, target_real = os.path.normcase(os.path.realpath(source)), os.path.normcase(os.path.realpath(target))
+        try:
+            overlapping = os.path.commonpath([source_real, target_real]) in (source_real, target_real)
+        except ValueError:
+            overlapping = False
+        if overlapping:
+            self._send_json({"error": "来源目录不能包含导入目标，也不能位于导入目标内"}, status=400); return
         import tempfile
         stage = tempfile.mkdtemp(prefix=".import-", dir=os.path.dirname(target))
         try:
             shutil.copytree(source, stage, dirs_exist_ok=True)
             os.replace(stage, target)
+        except OSError as exc:
+            self._send_json({"error": "包导入失败：" + str(exc)}, status=400); return
         finally:
             if os.path.isdir(stage): shutil.rmtree(stage)
         self.cfg = load_config(self.cfg["_config_path"])
         _PROJECT_CFG_CACHE[self.project] = (self.cfg, os.path.getmtime(self.cfg["_config_path"]))
         build_versions_index(self.cfg)
+        if category == "base":
+            storage = get_storage(self.cfg)
+            if storage.is_remote: _sync_versions_to_s3(self.cfg, storage)
+            if "source" in data: self._remember_import_source(platform, category, selected_source)
         self._send_json({"ok": True, "message": "已导入 " + category + " / " + version})
+
+    def _remember_import_source(self, platform, category, source):
+        sources = dict(self.cfg.get("import_sources") or {})
+        sources[platform] = dict(sources.get(platform) or {}, **{category: source})
+        self.cfg = _apply_config_updates({"import_sources": sources}, self.cfg)
 
     def _admin_import_payload(self, data):
         platform = self._body_platform(data)
         if not platform: return
         try:
-            _do_import_core(self.cfg, platform)
+            if "source" in data:
+                if not isinstance(data["source"], str) or not data["source"].strip():
+                    raise ValueError("请选择补丁包来源目录")
+                source = self._resolve_path(data["source"].strip())
+                if not os.path.isdir(source):
+                    raise ValueError("补丁包来源目录不存在")
+                managed = os.path.normcase(os.path.realpath(self.cfg["versions_dir"]))
+                selected = os.path.normcase(os.path.realpath(source))
+                try:
+                    overlapping = os.path.commonpath([managed, selected]) in (managed, selected)
+                except ValueError:
+                    overlapping = False
+                if overlapping:
+                    raise ValueError("补丁来源不能与项目内部补丁存储目录重叠")
+                options = dict(self.cfg.get("platform_settings") or {})
+                options[platform] = dict(options.get(platform) or {}, patchSourceDir=source)
+                _do_import_core(dict(self.cfg, platform_settings=options), platform)
+                self._remember_import_source(platform, "patch", source)
+            else:
+                _do_import_core(self.cfg, platform)
             self._send_json({"ok": True, "message": platform + " 补丁导入完成"})
         except (Exception, SystemExit) as exc:
             self._send_json({"error": "补丁导入失败：" + str(exc)}, status=400)
@@ -706,7 +790,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
 
     def _api_dirs_list(self, query):
         """列出服务器本地目录，供管理页面文件夹选择器使用。"""
-        if not self._auth_ok():
+        if not (self._auth_ok() or self._server_admin_ok()):
             self._send_json({"ok": False, "error": "未授权：需要 Bearer 管理令牌"}, status=401)
             return
         raw = (query.get("path") or [""])[0].strip()
@@ -964,7 +1048,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
                 text = f.read()
             injection = (
                 "<script>window.__PREFIX__=%s;window.__PROJECT__=%s;window.__DEFAULT_PROJECT__=%s;window.__PROJECTS_LIST__=%s;"
-                "window.__PLATFORM__=%s;window.__CONSOLE_VERSION__='2.2';"
+                "window.__PLATFORM__=%s;window.__CONSOLE_VERSION__='2.5';"
                 "window.__SWITCH_PROJECT__=function(k){if(k)location.pathname='/' + k + '/';};"
                 "</script>"
                 % (json.dumps(self.project_prefix), json.dumps(self.project),
@@ -1046,6 +1130,12 @@ class UpdateHandler(BaseHTTPRequestHandler):
                 return
             self._admin_rename_project()
             return
+        if path == "/api/workspace":
+            if not self._server_admin_ok():
+                self._send_json({"error": "需要服务器管理员令牌"}, status=401)
+                return
+            self._admin_workspace()
+            return
         if path == "/api/server/apis":
             if not self._server_admin_ok():
                 self._send_json({"ok": False, "error": "需要服务器管理员令牌"}, status=401)
@@ -1087,8 +1177,6 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._admin_launcher_bg_clear()
         elif path == "/api/launcher/background":
             self._admin_launcher_bg()
-        elif path == "/api/workspace":
-            self._admin_workspace()
         elif path == "/api/workspace/import":
             self._admin_workspace_import()
         elif path == "/api/platform/config":
@@ -1699,35 +1787,9 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": str(exc)}, status=500)
 
     def _admin_import(self):
-        try:
-            data = self._json_body() if int(self.headers.get("Content-Length", "0") or "0") else {}
-            if data is None:
-                return
-            if not isinstance(data, dict):
-                self._send_json({"error": "请求体必须为对象"}, status=400)
-                return
-            platform = self._body_platform(data)
-            if not platform:
-                return
-            if platform not in self.cfg["platforms"]:
-                self._send_json({"error": "未知平台"}, status=400)
-                return
-            options = self.cfg.get("platform_settings", {}).get(platform, {})
-            src = self._resolve_path(options.get("patchSourceDir", ""))
-            if not src or not os.path.isdir(src):
-                self._send_json({"ok": False, "error": f"未配置或找不到 HotPatcher 产物目录：{src}"}, status=400)
-                return
-            entries = [e for e in sorted(os.listdir(src))
-                       if os.path.isfile(os.path.join(src, e, f"{e}_Release.json"))]
-            if not entries:
-                self._send_json({"ok": False, "error": f"在 {src} 未找到任何 HotPatcher 版本（缺少 *_Release.json）"}, status=400)
-                return
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                _do_import_core(self.cfg, platform)
-            self._send_json({"ok": True, "output": buf.getvalue(), "message": "导入完成"})
-        except Exception as exc:
-            self._send_json({"ok": False, "error": str(exc), "output": ""}, status=500)
+        data = self._json_body() if int(self.headers.get("Content-Length", "0") or "0") else {}
+        if data is not None:
+            self._admin_import_payload(data)
 
     def _admin_set_enabled(self):
         data = self._json_body()
@@ -1938,6 +2000,9 @@ class UpdateHandler(BaseHTTPRequestHandler):
     def _admin_platform_config(self):
         data = self._json_body()
         if data is None:
+            return
+        if self.cfg.get("workspace_dir") and any(key in data for key in ("basePackagesRoot", "patchSourceDir", "basePackages")):
+            self._send_json({"error": "目录由工作空间统一管理，请使用工作空间导入接口"}, status=400)
             return
         platform = self._body_platform(data)
         if not platform:
@@ -2297,7 +2362,7 @@ def _sync_versions_to_s3(cfg, storage):
 
 def _do_import_core(cfg, platform=None):
     """执行 HotPatcher 导入 + 远程存储同步（打印到 stdout，供 CLI 与网页共用）。"""
-    platform = platform or cfg["platforms"][0]
+    platform = platform or cfg.get("default_platform", cfg["platforms"][0])
     options = cfg.get("platform_settings", {}).get(platform, {})
     run_import(resolve_server_path(options.get("patchSourceDir", ""), os.path.dirname(cfg["_config_path"])), cfg["data_dir"], cfg["project"],
                platform, options.get("hotpatcherOrder", ""), config=cfg)

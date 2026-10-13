@@ -5,9 +5,119 @@
 #include "HAL/PlatformFileManager.h"
 #include "Misc/SecureHash.h"
 #include "Misc/Paths.h"
+#include "CloudUpdateTypes.h"
+#include "CloudUpdateBinaryMerge.h"
+#include "Dom/JsonObject.h"
+#include "HAL/PlatformProperties.h"
+#if PLATFORM_ANDROID && USE_ANDROID_JNI
+#include "Android/AndroidApplication.h"
+#include "Android/AndroidJavaEnv.h"
+#include "Android/AndroidJNI.h"
+#endif
 
 namespace CloudUpdatePrivate
 {
+ FString ResolveUpdatePlatform(const FString& RuntimePlatform, const FString& AndroidCookFlavor)
+ {
+  if (RuntimePlatform != TEXT("Android")) return RuntimePlatform;
+  FString Flavor = AndroidCookFlavor.TrimStartAndEnd();
+  Flavor.RemoveFromStart(TEXT("_"));
+  Flavor.RemoveFromEnd(TEXT("Client"));
+  Flavor.RemoveFromEnd(TEXT("Server"));
+  if (Flavor.Contains(TEXT(","))) return TEXT("Android_Multi");
+  for (const TCHAR* Known : {TEXT("ASTC"), TEXT("ETC2"), TEXT("DXT"), TEXT("Multi"), TEXT("OpenXR")})
+   if (Flavor.Equals(Known, ESearchCase::IgnoreCase)) return FString(TEXT("Android_")) + Known;
+  return TEXT("Android");
+ }
+
+ FString GetRuntimeUpdatePlatform()
+ {
+  FString Flavor;
+#if PLATFORM_ANDROID && USE_ANDROID_JNI
+  if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
+  {
+   const auto ReadMetadata = [Env](const FString& Key)
+   {
+    auto Argument = FJavaHelper::ToJavaString(Env, Key);
+    return FJavaHelper::FStringFromLocalRef(Env, static_cast<jstring>(FJavaWrapper::CallObjectMethod(
+     Env, FJavaWrapper::GameActivityThis, FJavaWrapper::AndroidThunkJava_GetMetaDataString, *Argument)));
+   };
+   if (FJavaWrapper::GameActivityThis && FJavaWrapper::AndroidThunkJava_GetMetaDataString)
+   {
+    Flavor = ReadMetadata(TEXT("com.cloudUpdate.CookFlavor"));
+    if (Flavor.IsEmpty()) Flavor = ReadMetadata(TEXT("com.epicgames.unreal.GameActivity.CookedFlavors"));
+   }
+  }
+#endif
+  return ResolveUpdatePlatform(FPlatformProperties::IniPlatformName(), Flavor);
+ }
+ bool MatchesResponsePlatform(const TSharedPtr<FJsonObject>& Json, const FString& Platform)
+ {
+  if (!Json.IsValid()) return false;
+  if (!Json->HasField(TEXT("platform"))) return true; // Legacy single-platform servers.
+  FString ReturnedPlatform;
+  return Json->TryGetStringField(TEXT("platform"), ReturnedPlatform)
+   && ReturnedPlatform.Equals(Platform, ESearchCase::IgnoreCase);
+ }
+ bool BuildHotPatcherFiles(const TSharedPtr<FJsonObject>& Json, const FString& Platform, const FString& BaseUrl,
+   const FString& Version, bool bIoStore, TArray<FCloudDownloadFile>& OutFiles, FString& OutError)
+ {
+  OutFiles.Reset();
+  const TSharedPtr<FJsonObject>* Map = nullptr;
+  const TSharedPtr<FJsonObject>* PlatformInfo = nullptr;
+  const TArray<TSharedPtr<FJsonValue>>* Infos = nullptr;
+  if (!Json.IsValid() || !Json->TryGetObjectField(TEXT("pakFilesMap"), Map)
+   || !(*Map)->TryGetObjectField(Platform, PlatformInfo)
+   || !(*PlatformInfo)->TryGetArrayField(TEXT("pakFileInfos"), Infos))
+  { OutError = TEXT("HotPatcher 文件清单缺少目标平台：") + Platform; return false; }
+  TSet<FString> Names;
+  for (const TSharedPtr<FJsonValue>& Value : *Infos)
+  {
+   if (!Value.IsValid() || Value->Type != EJson::Object) return false;
+   const auto Info = Value->AsObject();
+   FCloudDownloadFile File;
+   Info->TryGetStringField(TEXT("fileName"), File.FileName);
+   if (!IsSafeRelativePath(File.FileName) || File.FileName != FPaths::GetCleanFilename(File.FileName)
+    || IsGameBinaryPath(File.FileName) || Names.Contains(File.FileName.ToLower()))
+   { OutError = TEXT("HotPatcher 文件名无效或重复：") + File.FileName; OutFiles.Reset(); return false; }
+   Names.Add(File.FileName.ToLower());
+   Info->TryGetStringField(TEXT("hash"), File.Hash);
+   File.bSizeKnown = Info->TryGetNumberField(TEXT("fileSize"), File.FileSize);
+   if (!File.bSizeKnown) File.bSizeKnown = Info->TryGetNumberField(TEXT("size"), File.FileSize);
+   if (File.FileSize < 0) { OutFiles.Reset(); return false; }
+   File.Url = BaseUrl / Version / Platform / File.FileName;
+   File.TargetRelativePath = File.FileName;
+   File.bBinaryPatch = FCloudBinaryMerge::IsPatchFile(File.FileName);
+   const FString BaseName = File.bBinaryPatch ? FCloudBinaryMerge::GetBaseFileName(File.FileName) : File.FileName;
+   File.Kind = BaseName.EndsWith(TEXT(".pak")) ? ECloudDownloadKind::ContentPak :
+    (BaseName.EndsWith(TEXT(".utoc")) || BaseName.EndsWith(TEXT(".ucas"))) ? ECloudDownloadKind::IoStoreContainer : ECloudDownloadKind::ExternFile;
+   if (File.bBinaryPatch) File.FallbackUrl = BaseUrl / Version / Platform / BaseName;
+   OutFiles.Add(MoveTemp(File));
+  }
+  // Legacy HotPatcher lists only pak sidecars for IoStore. Add the paired files
+  // once, while respecting modern lists which already carry size/hash metadata.
+  if (bIoStore)
+  {
+   const auto ListedFiles = OutFiles;
+   for (const auto& File : ListedFiles)
+   {
+    if (File.bBinaryPatch || !File.FileName.EndsWith(TEXT(".pak"))) continue;
+    for (const FString& Extension : {FString(TEXT(".utoc")), FString(TEXT(".ucas"))})
+    {
+     const FString Name = FPaths::GetBaseFilename(File.FileName) + Extension;
+     if (Names.Contains(Name.ToLower())) continue;
+     Names.Add(Name.ToLower());
+     FCloudDownloadFile Container;
+     Container.FileName = Container.TargetRelativePath = Name;
+     Container.Url = BaseUrl / Version / Platform / Name;
+     Container.Kind = ECloudDownloadKind::IoStoreContainer;
+     OutFiles.Add(MoveTemp(Container));
+    }
+   }
+  }
+  if (OutFiles.IsEmpty()) { OutError = TEXT("目标平台没有可下载的资源文件"); return false; }
+  return true;
+ }
 	FString BytesToHex(const uint8* InBytes, int32 InCount)
 	{
 		static const TCHAR* HexDigits = TEXT("0123456789abcdef");

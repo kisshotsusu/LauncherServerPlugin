@@ -170,6 +170,7 @@ def load_config(config_path=None):
 
 
 def ensure_dirs(cfg):
+    os.makedirs(cfg["data_dir"], exist_ok=True)
     os.makedirs(cfg["versions_dir"], exist_ok=True)
     os.makedirs(cfg["manifests_dir"], exist_ok=True)
     if cfg.get("workspace_dir"):

@@ -32,6 +32,11 @@ using namespace CloudUpdatePrivate;
 
 void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJson)
 {
+    if (!MatchesResponsePlatform(InJson, GetPlatform()))
+    {
+        HandleCheckForUpdatesFinished(false, false, TEXT(""), {}, TEXT("服务器返回的更新平台与当前平台不一致"));
+        return;
+    }
     if (bAbortRequested)
     {
         HandleCheckForUpdatesFinished(false, false, TEXT(""), {}, TEXT("任务已取消"));
@@ -48,6 +53,7 @@ void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJs
 			{
 				continue;
 			}
+			if (!MatchesResponsePlatform(Obj, GetPlatform())) continue;
 			FCloudUpdateVersionInfo Info;
 			Obj->TryGetStringField(TEXT("versionId"), Info.VersionId);
 			Obj->TryGetStringField(TEXT("baseVersionId"), Info.BaseVersionId);
@@ -147,6 +153,7 @@ void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJs
 				continue;
 			}
 			FString Rid;
+			if (!MatchesResponsePlatform(Obj, GetPlatform())) continue;
 			Obj->TryGetStringField(TEXT("versionId"), Rid);
 			if (Rid.IsEmpty() || !Rid.Equals(LocalVersion, ESearchCase::IgnoreCase))
 			{
@@ -486,7 +493,13 @@ void FCloudUpdateService::OnPatchConfigFetched(const TSharedPtr<FJsonObject>& In
 	const TArray<TSharedPtr<FJsonValue>>* PlatformValues = nullptr;
 	if (InJson->TryGetArrayField(TEXT("pakTargetPlatforms"), PlatformValues) && PlatformValues->Num() > 0)
 	{
-		(*PlatformValues)[0]->TryGetString(Platform);
+        bool bPlatformFound = false;
+        for (const auto& Value : *PlatformValues)
+        {
+            FString Candidate;
+            if (Value.IsValid() && Value->TryGetString(Candidate) && Candidate == Platform) bPlatformFound = true;
+        }
+        if (!bPlatformFound) { FinishUpdate(false, TEXT("HotPatcher 补丁不包含运行平台：") + Platform); return; }
 	}
 
 	bDirectIoStore = bIoStore;
@@ -520,133 +533,17 @@ void FCloudUpdateService::OnPatchConfigFetched(const TSharedPtr<FJsonObject>& In
 
 void FCloudUpdateService::OnPakFilesInfoFetched(const TSharedPtr<FJsonObject>& InJson)
 {
-	const TSharedPtr<FJsonObject>* PlatformMapObj = nullptr;
-	if (!InJson->TryGetObjectField(TEXT("pakFilesMap"), PlatformMapObj) || !PlatformMapObj->IsValid())
-	{
-		FinishUpdate(false, TEXT("PakFilesInfo 中缺少 pakFilesMap"));
-		return;
-	}
-
-	TArray<FString> PakNames;
-	const TSharedPtr<FJsonObject>* PlatformObj = nullptr;
-	FString Platform = GetPlatform();
-	if ((*PlatformMapObj)->TryGetObjectField(Platform, PlatformObj) && PlatformObj->IsValid())
-	{
-		const TArray<TSharedPtr<FJsonValue>>* PakInfos = nullptr;
-		if ((*PlatformObj)->TryGetArrayField(TEXT("pakFileInfos"), PakInfos))
-		{
-			for (const TSharedPtr<FJsonValue>& Value : *PakInfos)
-			{
-				const TSharedPtr<FJsonObject> Obj = Value->AsObject();
-				if (!Obj.IsValid())
-				{
-					continue;
-				}
-				FString FileName;
-				Obj->TryGetStringField(TEXT("fileName"), FileName);
-				if (!FileName.IsEmpty())
-				{
-					PakNames.Add(FileName);
-				}
-			}
-		}
-	}
-
-	if (PakNames.IsEmpty())
-	{
-		FinishUpdate(false, TEXT("PakFilesInfo 中没有找到该平台的 Pak 文件"));
-		return;
-	}
-
-	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
-	FString Base = Settings ? Settings->HotPatcherBaseUrl : TEXT("");
-	while (Base.EndsWith(TEXT("/")))
-	{
-		Base.LeftChopInline(1);
-	}
-
-		for (const FString& PakName : PakNames)
-	{
-		const FString PakUrl = Base / PendingVersionId / TEXT("Windows") / PakName;
-
-		// 二进制补丁条目：下载 .patch 并合并到基础容器；缺失 HDiffPatch 时回退整文件
-		if (FCloudBinaryMerge::IsPatchFile(PakName))
-		{
-			FCloudDownloadFile File;
-			File.FileName = PakName;
-			File.Url = PakUrl;
-			File.TargetRelativePath = PakName;
-			File.bBinaryPatch = true;
-			// 根据基础名后缀推断容器类型，避免把 .utoc.patch / .ucas.patch 误判为 ContentPak
-			const FString BaseName = FCloudBinaryMerge::GetBaseFileName(PakName);
-			if (BaseName.EndsWith(TEXT(".pak"), ESearchCase::IgnoreCase))
-			{
-				File.Kind = ECloudDownloadKind::ContentPak;
-			}
-			else if (BaseName.EndsWith(TEXT(".utoc"), ESearchCase::IgnoreCase)
-				|| BaseName.EndsWith(TEXT(".ucas"), ESearchCase::IgnoreCase))
-			{
-				File.Kind = ECloudDownloadKind::IoStoreContainer;
-			}
-			else
-			{
-				File.Kind = ECloudDownloadKind::ExternFile;
-			}
-			File.FallbackUrl = Base / PendingVersionId / TEXT("Windows") / BaseName;
-			PendingFiles.Add(File);
-			continue;
-		}
-
-		FCloudDownloadFile File;
-		File.FileName = PakName;
-		File.Url = PakUrl;
-		File.TargetRelativePath = PakName;
-		File.Kind = ECloudDownloadKind::ContentPak;
-		PendingFiles.Add(File);
-
-		if (bDirectIoStore)
-		{
-			FString BaseName = PakName;
-			BaseName.RemoveFromEnd(TEXT(".pak"));
-			const FString Utoc = BaseName + TEXT(".utoc");
-			const FString Ucas = BaseName + TEXT(".ucas");
-			FCloudDownloadFile UtocFile;
-			UtocFile.FileName = Utoc;
-			UtocFile.Url = Base / PendingVersionId / TEXT("Windows") / Utoc;
-			UtocFile.TargetRelativePath = Utoc;
-			UtocFile.Kind = ECloudDownloadKind::IoStoreContainer;
-			PendingFiles.Add(MoveTemp(UtocFile));
-
-			FCloudDownloadFile UcasFile;
-			UcasFile.FileName = Ucas;
-			UcasFile.Url = Base / PendingVersionId / TEXT("Windows") / Ucas;
-			UcasFile.TargetRelativePath = Ucas;
-			UcasFile.Kind = ECloudDownloadKind::IoStoreContainer;
-			PendingFiles.Add(MoveTemp(UcasFile));
-		}
-	}
-
-	if (bDirectIoStore)
-	{
-		FCloudDownloadFile GlobalUtoc;
-		GlobalUtoc.FileName = TEXT("global.utoc");
-		GlobalUtoc.Url = Base / PendingVersionId / TEXT("Windows") / TEXT("global.utoc");
-		GlobalUtoc.TargetRelativePath = TEXT("global.utoc");
-		GlobalUtoc.Kind = ECloudDownloadKind::IoStoreContainer;
-		PendingFiles.Add(MoveTemp(GlobalUtoc));
-
-		FCloudDownloadFile GlobalUcas;
-		GlobalUcas.FileName = TEXT("global.ucas");
-		GlobalUcas.Url = Base / PendingVersionId / TEXT("Windows") / TEXT("global.ucas");
-		GlobalUcas.TargetRelativePath = TEXT("global.ucas");
-		GlobalUcas.Kind = ECloudDownloadKind::IoStoreContainer;
-		PendingFiles.Add(MoveTemp(GlobalUcas));
-	}
-
-	UE_LOG(LogCloudUpdate, Log, TEXT("根据 HotPatcher JSON 生成 %d 个待下载文件"), PendingFiles.Num());
-	StartDownloadUpdateFiles();
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ FString Base = Settings ? Settings->HotPatcherBaseUrl : TEXT("");
+ while (Base.EndsWith(TEXT("/"))) Base.LeftChopInline(1);
+ FString Error;
+ if (!BuildHotPatcherFiles(InJson, GetPlatform(), Base, PendingVersionId, bDirectIoStore, PendingFiles, Error))
+ {
+  FinishUpdate(false, Error.IsEmpty() ? TEXT("HotPatcher 文件清单无效") : Error);
+  return;
+ }
+ StartDownloadUpdateFiles();
 }
-
 void FCloudUpdateService::ParseDescriptor(const TSharedPtr<FJsonObject>& InJson)
 {
  if (!ReadDescriptorFiles(InJson, PendingFiles)) { PendingFiles.Reset(); return; }
@@ -704,7 +601,7 @@ void FCloudUpdateService::DownloadNextUpdateFile()
 			FinishUpdate(false, FString::Printf(TEXT("更新失败：成功 %d / 失败 %d"), CompletedFiles, FailedFiles));
 			return;
 		}
-		MountPendingPaks();
+		if (!MountPendingPaks()) { FinishUpdate(false, TEXT("补丁文件已下载，但挂载失败；资源版本未推进")); return; }
         const FString ResourceVersion = PendingResourceVersion.IsEmpty() ? PendingVersionId : PendingResourceVersion;
         if (bRestartRequired) SavePendingResourceVersion(ResourceVersion);
         else SaveLocalVersion(ResourceVersion);
@@ -931,8 +828,10 @@ void FCloudUpdateService::OnBinaryPatchApplied(bool bSuccess, const FCloudDownlo
 	DownloadNextUpdateFile();
 }
 
-void FCloudUpdateService::MountPendingPaks()
+bool FCloudUpdateService::MountPendingPaks()
 {
+    if (bRestartRequired) return true;
+    bool bAllMounted = true;
 	for (const FCloudDownloadFile& File : PendingFiles)
 	{
 		if (File.Kind != ECloudDownloadKind::ContentPak)
@@ -946,6 +845,7 @@ void FCloudUpdateService::MountPendingPaks()
 		}
 		const int32 Order = UFlibPakHelper::GetPakOrderByPakPath(PakPath);
 		const bool bMounted = UFlibPakHelper::MountPak(PakPath, Order, TEXT(""));
+        bAllMounted &= bMounted;
 		UE_LOG(LogCloudUpdate, Log, TEXT("挂载 %s (Order=%d) -> %s"), *PakPath, Order, bMounted ? TEXT("成功") : TEXT("失败/编辑器下跳过"));
 	}
 
@@ -958,6 +858,7 @@ void FCloudUpdateService::MountPendingPaks()
 		}
 		const int32 Order = UFlibPakHelper::GetPakOrderByPakPath(PakPath);
 		const bool bMounted = UFlibPakHelper::MountPak(PakPath, Order, TEXT(""));
+        bAllMounted &= bMounted;
 		UE_LOG(LogCloudUpdate, Log, TEXT("挂载(补丁合并) %s (Order=%d) -> %s"), *PakPath, Order, bMounted ? TEXT("成功") : TEXT("失败/编辑器下跳过"));
 	}
 
@@ -965,6 +866,7 @@ void FCloudUpdateService::MountPendingPaks()
 	{
 		UE_LOG(LogCloudUpdate, Log, TEXT("本次更新包含 IoStore 容器，重启后由引擎自动挂载"));
 	}
+    return bAllMounted;
 }
 
 void FCloudUpdateService::FinishUpdate(bool bSuccess, const FString& InMessage)
