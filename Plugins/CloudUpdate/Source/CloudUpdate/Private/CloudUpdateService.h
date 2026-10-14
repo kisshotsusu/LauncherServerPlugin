@@ -125,6 +125,7 @@ private:
 	FString GetPlatform() const;
 	FString GetLocalRoot() const;
 	FString GetPakDir() const;
+    FString ResolveLocalFilePath(const FString& RelativePath, bool bForWrite = false) const;
 	FString GetManifestUrl() const;
 	FString GetVersionsUrl() const;
 	FString GetVersionUrl(const FString& InVersionId) const;

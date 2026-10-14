@@ -4,7 +4,8 @@
   "project": "CodeBuild",
   "platforms": [
     "Windows",
-    "Linux"
+    "Android",
+    "IOS"
   ],
   "admin_token": "",
   "manifest_exclude_patterns": [
@@ -44,9 +45,12 @@
     "Windows": {
       "hotpatcherOrder": ""
     },
-    "Linux": {
+    "Android": {
+      "hotpatcherOrder": ""
+    },
+    "IOS": {
       "hotpatcherOrder": ""
     }
   },
-  "workspace_dir": "workspace"
+  "workspace_dir": "workspace/codebuild"
 }

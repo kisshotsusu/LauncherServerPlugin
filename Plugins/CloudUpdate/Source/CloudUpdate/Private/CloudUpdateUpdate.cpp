@@ -497,7 +497,7 @@ void FCloudUpdateService::OnPatchConfigFetched(const TSharedPtr<FJsonObject>& In
         for (const auto& Value : *PlatformValues)
         {
             FString Candidate;
-            if (Value.IsValid() && Value->TryGetString(Candidate) && Candidate == Platform) bPlatformFound = true;
+            if (Value.IsValid() && Value->TryGetString(Candidate) && NormalizeCookPlatform(Candidate) == Platform) bPlatformFound = true;
         }
         if (!bPlatformFound) { FinishUpdate(false, TEXT("HotPatcher 补丁不包含运行平台：") + Platform); return; }
 	}

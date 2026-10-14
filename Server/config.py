@@ -273,11 +273,13 @@ def launcher_bg_dir(cfg):
 
 
 def validate_platforms(platforms):
-    if not isinstance(platforms, list) or not platforms or any(not isinstance(p, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", p) for p in platforms):
-        raise ValueError("至少保留一个平台，标识仅支持英文字母、数字、下划线和短横线")
-    if len({p.lower() for p in platforms}) != len(platforms):
+    supported = {p.lower(): p for p in ("Windows", "Android", "IOS")}
+    if not isinstance(platforms, list) or not platforms or any(not isinstance(p, str) or p.lower() not in supported for p in platforms):
+        raise ValueError("仅支持 Windows、Android、IOS，至少选择一个平台")
+    result = [supported[p.lower()] for p in platforms]
+    if len(set(result)) != len(result):
         raise ValueError("平台标识不能重复（不区分大小写）")
-    return list(platforms)
+    return result
 
 
 def workspace_platform_paths(cfg, platform):

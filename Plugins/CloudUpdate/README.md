@@ -114,7 +114,7 @@ CloudUpdateScreen 的 NativeConstruct / NativeDestruct 自动绑定和解除自�
 
 **游戏版本**来自打包时的 Project Settings -> Description -> Project Version，或插件设置中的 GameVersionOverride。更改 C++ 并发布新游戏包时应提升该版本；资源更新永远不修改游戏版本。**资源版本**来自 Saved/CloudUpdate/<自动检测通道>/local_version.json，初始值使用 InitialResourceVersionId，留空兼容旧 CurrentVersionId。旧 GetLocalVersion / SetLocalVersion 现在明确表示资源版本；二者都不会改写游戏包版本。资源版本写入带 platform 字段的 JSON，不回写项目的初始配置。
 
-平台配置属性 Platform 已删除。GetUpdatePlatform 蓝图纯函数返回当前自动检测的更新通道。Windows/Linux/Mac/IOS 等使用运行平台标识；安卓使用插件在 APK 中生成的 com.cloudUpdate.CookFlavor 元数据精确识别 Android_ASTC、Android_ETC2、Android_DXT、Android_Multi 和 Android_OpenXR。旧 APK 可使用引擎 CookedFlavors 元数据兼容识别；这是 APK 打包格式，不按手机 GPU 支持列表选择，以免下载与基础包不匹配的数据。项目配置无需写入 Platform，旧配置键也不再参与请求。
+平台配置属性 Platform 已删除。GetUpdatePlatform 自动返回 Windows、Android 或 IOS。安卓 Cook 格式不再参与 API 平台名。直接 HotPatcher 来源仍识别单一 Android_ASTC 等目录，但不会混合多个 Cook 格式。安卓/iOS 的 pak 与 IoStore 文件写入 Saved/Paks，外部文件默认写入 Saved/CloudUpdate/Files；安装包和原生二进制需要完整应用更新。
 
 版本索引、描述和完整性检查请求自动携带相同的 platform 参数；服务器从该平台的版本链计算 gameVersion/resourceVersion，不使用项目级统一服务器版本。客户端已生效/待生效资源记录按通道隔离，明确标记为其它平台的记录不会加载。旧共用 local_version.json 只有明确携带匹配 platform 时才兼容读取；未标记平台的旧文件保留原样，不猜测它属于哪个平台，初次使用新记录时回到本构建的初始资源版本。
 

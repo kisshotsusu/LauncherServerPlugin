@@ -62,7 +62,7 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "自定义请求头（可选）"))
 	TArray<FCloudUpdateHttpHeader> CustomHeaders;
 
-	/** 本地安装根目录覆盖，留空时自动判断（打包版为 FPaths::RootDir） */
+	/** 外部文件根目录覆盖；默认桌面使用安装目录，移动端使用 Saved/CloudUpdate/Files。移动端资源包使用 Saved/Paks。 */
 	UPROPERTY(EditAnywhere, config, Category = "本地", meta = (DisplayName = "本地安装根目录覆盖（可选）"))
 	FString LocalRootOverride;
 

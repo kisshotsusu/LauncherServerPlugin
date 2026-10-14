@@ -31,7 +31,7 @@ void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// StagedForRestart 的补丁在这里通常「交换不成功」。对 IoStore(utoc/ucas) 几乎必然失效。
 	// 该调用作为「尽力而为」的安全网保留；可靠的交换须放在引擎挂载之前（启动器/Launcher 侧、
 	// 自定义 FPlatformFile、或插件模块更早的 StartupModule 中）。详见 FinalizePendingMerges 实现备注。
-	FCloudBinaryMerge::FinalizePendingMerges(FPaths::ProjectContentDir() / TEXT("Paks"), true);
+	FCloudBinaryMerge::FinalizePendingMerges(CloudUpdatePrivate::GetUpdatePakDirectory(), true);
  Service->PromotePendingResourceVersion();
 
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
@@ -209,7 +209,7 @@ bool UCloudUpdateSubsystem::ApplyBinaryPatchToBase(const FString& BaseFilePath, 
 
 TArray<FString> UCloudUpdateSubsystem::FindPatchFiles(const FString& Directory, bool bIncludeSubdirectories) const
 {
-	const FString Dir = Directory.IsEmpty() ? (FPaths::ProjectContentDir() / TEXT("Paks")) : Directory;
+	const FString Dir = Directory.IsEmpty() ? (CloudUpdatePrivate::GetUpdatePakDirectory()) : Directory;
 	return FCloudBinaryMerge::FindPatchFiles(Dir, bIncludeSubdirectories);
 }
 
@@ -221,7 +221,7 @@ void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bInc
 		return;
 	}
 
-	const FString Dir = Directory.IsEmpty() ? (FPaths::ProjectContentDir() / TEXT("Paks")) : Directory;
+	const FString Dir = Directory.IsEmpty() ? (CloudUpdatePrivate::GetUpdatePakDirectory()) : Directory;
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
 	const FString FeatureName = Settings ? Settings->BinaryPatchFeatureName : TEXT("");
 
@@ -300,7 +300,7 @@ void UCloudUpdateSubsystem::AutoMergePatches(const FString& Directory, bool bInc
 
 void UCloudUpdateSubsystem::AutoMergePatchesInPaksDir(bool bIncludeSubdirectories)
 {
-	AutoMergePatches(FPaths::ProjectContentDir() / TEXT("Paks"), bIncludeSubdirectories);
+	AutoMergePatches(CloudUpdatePrivate::GetUpdatePakDirectory(), bIncludeSubdirectories);
 }
 
 EBinaryMergeResult UCloudUpdateSubsystem::ApplyBinaryPatchToBaseEx(const FString& BaseFilePath, const FString& PatchFilePath, FString& OutMergedPath, const FString& FeatureName)

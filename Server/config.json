@@ -4,9 +4,8 @@
   "project": "CodeBuild",
   "platforms": [
     "Windows",
-    "Linux",
     "Android",
-    "Android_ASTC"
+    "IOS"
   ],
   "web_dir": "web",
   "admin_token": "",
@@ -35,8 +34,8 @@
   },
   "https": {
     "enabled": false,
-    "certFile": "E:\\SVN\\LauncherServerPlugin\\Server\\workspace\\data\\ssl\\server.crt",
-    "keyFile": "E:\\SVN\\LauncherServerPlugin\\Server\\workspace\\data\\ssl\\server.key",
+    "certFile": "E:\\SVN\\LauncherServerPlugin\\Server\\workspace\\codebuild\\data\\ssl\\server.crt",
+    "keyFile": "E:\\SVN\\LauncherServerPlugin\\Server\\workspace\\codebuild\\data\\ssl\\server.key",
     "autoGenSelfSigned": true,
     "country": "CN",
     "commonName": "CodeBuild"
@@ -54,17 +53,23 @@
     "Windows": {
       "hotpatcherOrder": "1.0,1.2,1.3,1.4"
     },
-    "Linux": {
+    "Android": {
+      "hotpatcherOrder": ""
+    },
+    "IOS": {
       "hotpatcherOrder": ""
     }
   },
-  "workspace_dir": "workspace",
+  "workspace_dir": "workspace/codebuild",
   "import_sources": {
     "Android": {
       "base": "D:\\UEProject\\NewBiNanSuoBase\\Android_ASTC"
-    },
-    "Android_ASTC": {
-      "base": "D:\\UEProject\\Nanite59\\Android_ASTC"
     }
+  },
+  "source_history": {
+    "Android": [
+      "D:\\UEProject\\NewBiNanSuoBase\\Android_ASTC",
+      "D:\\UEProject\\Nanite59\\Android_ASTC"
+    ]
   }
 }

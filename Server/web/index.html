@@ -1510,7 +1510,7 @@ async function renderProjects() {
 }
 
 function platformChoices(platforms, selected) {
-  return [...new Set(['Windows','Linux','Mac','Android','Android_ASTC','Android_ETC2','Android_DXT','IOS',...platforms])].map(p => `<label class="platform-choice"><input type="checkbox" name="platformChoice" value="${esc(p)}" ${selected.includes(p) ? 'checked' : ''} onchange="updateDefaultPlatforms()">${esc(p)}</label>`).join('');
+  return ['Windows','Android','IOS'].map(p => `<label class="platform-choice"><input type="checkbox" name="platformChoice" value="${esc(p)}" ${selected.includes(p) ? 'checked' : ''} onchange="updateDefaultPlatforms()">${esc(p)}</label>`).join('');
 }
 function updateDefaultPlatforms() {
   const platforms = [...document.querySelectorAll('#platformChoices input:checked')].map(e => e.value);
@@ -1525,17 +1525,11 @@ async function openPlatformManager(key) {
   state.editPlatformsProject = key;
   $('modalTitle').textContent = project.display + ' · 平台设置';
   const platforms = project.platforms || ['Windows'];
-  $('modalBody').innerHTML = `<p class="setup-tip">选择这个项目支持的平台，并指定未传平台时使用的默认平台。每个平台分别配置基础包与补丁来源。</p><div id="platformChoices">${platformChoices(platforms,platforms)}</div><div class="field-row"><input id="customPlatform" placeholder="自定义标识，如 LinuxArm64"><button class="ghost" onclick="addCustomPlatform()">添加平台</button></div><label for="platformDefault" style="display:block;margin-top:16px">默认平台</label><select id="platformDefault" style="margin-top:6px"></select><div class="btn-row" style="margin-top:20px"><button class="green" id="saveProjectPlatforms" onclick="saveProjectPlatforms()">保存平台设置</button><button class="ghost" onclick="closeModal()">取消</button></div>`;
+  $('modalBody').innerHTML = `<p class="setup-tip">选择这个项目支持的平台，并指定未传平台时使用的默认平台。每个平台分别配置基础包与补丁来源。</p><div id="platformChoices">${platformChoices(platforms,platforms)}</div><label for="platformDefault" style="display:block;margin-top:16px">默认平台</label><select id="platformDefault" style="margin-top:6px"></select><div class="btn-row" style="margin-top:20px"><button class="green" id="saveProjectPlatforms" onclick="saveProjectPlatforms()">保存平台设置</button><button class="ghost" onclick="closeModal()">取消</button></div>`;
   updateDefaultPlatforms();$('platformDefault').value = project.defaultPlatform || platforms[0];
   $('modalMask').classList.add('show');
 }
-function addCustomPlatform() {
-  const p = $('customPlatform').value.trim();
-  if (!/^[A-Za-z0-9_-]+$/.test(p)) {toast('标识仅支持英文、数字、下划线和短横线','err');return;}
-  if ([...document.querySelectorAll('#platformChoices input')].some(e => e.value.toLowerCase() === p.toLowerCase())) {toast('平台已经存在','err');return;}
-  $('platformChoices').insertAdjacentHTML('beforeend', `<label class="platform-choice"><input type="checkbox" name="platformChoice" value="${esc(p)}" checked onchange="updateDefaultPlatforms()">${esc(p)}</label>`);
-  $('customPlatform').value='';updateDefaultPlatforms();
-}
+
 async function saveProjectPlatforms() {
   const key = state.editPlatformsProject;
   const platforms = [...document.querySelectorAll('#platformChoices input:checked')].map(e => e.value);
@@ -1813,7 +1807,7 @@ setInterval(() => {
       <div class="field">
         <label>模板项目（复制其配置与启动器资源）</label>
         <select id="npCopyFrom"></select>
-      </div><div class="field"><label for="npPlatforms">支持平台（逗号分隔）</label><input id="npPlatforms" value="Windows" placeholder="Windows,Linux,Android">
+      </div><div class="field"><label for="npPlatforms">支持平台（逗号分隔）</label><input id="npPlatforms" value="Windows,Android,IOS" placeholder="Windows,Android,IOS">
         <div class="hint">新建项目将复制该项目的设置，并拥有独立的项目空间（数据目录隔离）。</div>
       </div>
       <div class="btn-row" style="justify-content:flex-end;margin-top:6px">

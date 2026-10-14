@@ -1,16 +1,10 @@
 using UnrealBuildTool;
-using System.IO;
 
 public class CloudUpdate : ModuleRules
 {
 	public CloudUpdate(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-        if (Target.Platform == UnrealTargetPlatform.Android)
-        {
-            PrivateDependencyModuleNames.Add("Launch");
-            AdditionalPropertiesForReceipt.Add("AndroidPlugin", Path.Combine(ModuleDirectory, "CloudUpdateAndroid_UPL.xml"));
-        }
 
 		PublicDependencyModuleNames.AddRange(new string[]
 		{

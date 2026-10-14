@@ -86,7 +86,7 @@ void FCloudUpdateService::RunLocalComparison()
 		}
 		FWorkItem Item;
 		Item.Index = i;
-		Item.FullPath = GetLocalRoot() / Entry.RelativePath;
+		Item.FullPath = ResolveLocalFilePath(Entry.RelativePath);
 		WorkItems.Add(Item);
 	}
 
@@ -258,7 +258,7 @@ void FCloudUpdateService::DownloadNextRepairFile()
 		Url = Url / ServerManifest.BaseVersionId;
 	}
 	Url = Url / FGenericPlatformHttp::UrlEncode(Issue.RelativePath);
-	const FString Target = GetLocalRoot() / Issue.RelativePath;
+	const FString Target = ResolveLocalFilePath(Issue.RelativePath, true);
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
 	const int32 Retries = Settings ? Settings->DownloadRetryCount : 2;
 
@@ -283,7 +283,7 @@ void FCloudUpdateService::OnRepairFileDownloaded(bool bSuccess, const FCloudFile
 		{
 			int64 Size = 0;
 			FString Hash;
-			FString Target = GetLocalRoot() / InIssue.RelativePath;
+			FString Target = ResolveLocalFilePath(InIssue.RelativePath, true);
             if (IFileManager::Get().FileExists(*(Target + TEXT(".pending")))) Target += TEXT(".pending");
 			ComputeFileHash(Target, Size, Hash);
 			if (!Hash.Equals(InIssue.ExpectedHash, ESearchCase::IgnoreCase))

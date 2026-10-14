@@ -10,6 +10,8 @@ namespace CloudUpdatePrivate
 {
  FString ResolveUpdatePlatform(const FString& RuntimePlatform, const FString& AndroidCookFlavor);
  FString GetRuntimeUpdatePlatform();
+ FString NormalizeCookPlatform(const FString& SourcePlatform);
+ FString GetUpdatePakDirectory();
  bool MatchesResponsePlatform(const TSharedPtr<FJsonObject>& Json, const FString& Platform);
 	FString BytesToHex(const uint8* InBytes, int32 InCount);
 	bool ComputeFileHash(const FString& InPath, int64& OutSize, FString& OutHash);

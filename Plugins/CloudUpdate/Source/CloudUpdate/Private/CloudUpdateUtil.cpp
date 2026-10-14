@@ -9,47 +9,34 @@
 #include "CloudUpdateBinaryMerge.h"
 #include "Dom/JsonObject.h"
 #include "HAL/PlatformProperties.h"
-#if PLATFORM_ANDROID && USE_ANDROID_JNI
-#include "Android/AndroidApplication.h"
-#include "Android/AndroidJavaEnv.h"
-#include "Android/AndroidJNI.h"
-#endif
 
 namespace CloudUpdatePrivate
 {
  FString ResolveUpdatePlatform(const FString& RuntimePlatform, const FString& AndroidCookFlavor)
  {
-  if (RuntimePlatform != TEXT("Android")) return RuntimePlatform;
-  FString Flavor = AndroidCookFlavor.TrimStartAndEnd();
-  Flavor.RemoveFromStart(TEXT("_"));
-  Flavor.RemoveFromEnd(TEXT("Client"));
-  Flavor.RemoveFromEnd(TEXT("Server"));
-  if (Flavor.Contains(TEXT(","))) return TEXT("Android_Multi");
-  for (const TCHAR* Known : {TEXT("ASTC"), TEXT("ETC2"), TEXT("DXT"), TEXT("Multi"), TEXT("OpenXR")})
-   if (Flavor.Equals(Known, ESearchCase::IgnoreCase)) return FString(TEXT("Android_")) + Known;
-  return TEXT("Android");
+  for (const TCHAR* Supported : {TEXT("Windows"), TEXT("Android"), TEXT("IOS")})
+   if (RuntimePlatform.Equals(Supported, ESearchCase::IgnoreCase)) return Supported;
+  return TEXT("");
+ }
+
+ FString NormalizeCookPlatform(const FString& SourcePlatform)
+ {
+  for (const TCHAR* Flavor : {TEXT("Android_ASTC"), TEXT("Android_ETC2"), TEXT("Android_DXT"), TEXT("Android_Multi"), TEXT("Android_OpenXR")})
+   if (SourcePlatform.Equals(Flavor, ESearchCase::IgnoreCase)) return TEXT("Android");
+  return ResolveUpdatePlatform(SourcePlatform, TEXT(""));
  }
 
  FString GetRuntimeUpdatePlatform()
  {
-  FString Flavor;
-#if PLATFORM_ANDROID && USE_ANDROID_JNI
-  if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
-  {
-   const auto ReadMetadata = [Env](const FString& Key)
-   {
-    auto Argument = FJavaHelper::ToJavaString(Env, Key);
-    return FJavaHelper::FStringFromLocalRef(Env, static_cast<jstring>(FJavaWrapper::CallObjectMethod(
-     Env, FJavaWrapper::GameActivityThis, FJavaWrapper::AndroidThunkJava_GetMetaDataString, *Argument)));
-   };
-   if (FJavaWrapper::GameActivityThis && FJavaWrapper::AndroidThunkJava_GetMetaDataString)
-   {
-    Flavor = ReadMetadata(TEXT("com.cloudUpdate.CookFlavor"));
-    if (Flavor.IsEmpty()) Flavor = ReadMetadata(TEXT("com.epicgames.unreal.GameActivity.CookedFlavors"));
-   }
-  }
+  return ResolveUpdatePlatform(FPlatformProperties::IniPlatformName(), TEXT(""));
+ }
+ FString GetUpdatePakDirectory()
+ {
+#if PLATFORM_ANDROID || PLATFORM_IOS
+  return FPaths::ProjectSavedDir() / TEXT("Paks");
+#else
+  return FPaths::ProjectContentDir() / TEXT("Paks");
 #endif
-  return ResolveUpdatePlatform(FPlatformProperties::IniPlatformName(), Flavor);
  }
  bool MatchesResponsePlatform(const TSharedPtr<FJsonObject>& Json, const FString& Platform)
  {
@@ -66,8 +53,18 @@ namespace CloudUpdatePrivate
   const TSharedPtr<FJsonObject>* Map = nullptr;
   const TSharedPtr<FJsonObject>* PlatformInfo = nullptr;
   const TArray<TSharedPtr<FJsonValue>>* Infos = nullptr;
-  if (!Json.IsValid() || !Json->TryGetObjectField(TEXT("pakFilesMap"), Map)
-   || !(*Map)->TryGetObjectField(Platform, PlatformInfo)
+  FString SourcePlatform = Platform;
+  if (Json.IsValid() && Json->TryGetObjectField(TEXT("pakFilesMap"), Map))
+  {
+   if (!(*Map)->HasField(Platform))
+   {
+    int32 Matches = 0;
+    for (const auto& Pair : (*Map)->Values)
+     if (NormalizeCookPlatform(FString(Pair.Key)) == Platform) { SourcePlatform = FString(Pair.Key); ++Matches; }
+    if (Matches > 1) { OutError = TEXT("多个安卓 Cook 格式不能合并，请选择单一格式的补丁来源"); return false; }
+   }
+  }
+  if (!Map || !(*Map)->TryGetObjectField(SourcePlatform, PlatformInfo)
    || !(*PlatformInfo)->TryGetArrayField(TEXT("pakFileInfos"), Infos))
   { OutError = TEXT("HotPatcher 文件清单缺少目标平台：") + Platform; return false; }
   TSet<FString> Names;
@@ -85,13 +82,13 @@ namespace CloudUpdatePrivate
    File.bSizeKnown = Info->TryGetNumberField(TEXT("fileSize"), File.FileSize);
    if (!File.bSizeKnown) File.bSizeKnown = Info->TryGetNumberField(TEXT("size"), File.FileSize);
    if (File.FileSize < 0) { OutFiles.Reset(); return false; }
-   File.Url = BaseUrl / Version / Platform / File.FileName;
+   File.Url = BaseUrl / Version / SourcePlatform / File.FileName;
    File.TargetRelativePath = File.FileName;
    File.bBinaryPatch = FCloudBinaryMerge::IsPatchFile(File.FileName);
    const FString BaseName = File.bBinaryPatch ? FCloudBinaryMerge::GetBaseFileName(File.FileName) : File.FileName;
    File.Kind = BaseName.EndsWith(TEXT(".pak")) ? ECloudDownloadKind::ContentPak :
     (BaseName.EndsWith(TEXT(".utoc")) || BaseName.EndsWith(TEXT(".ucas"))) ? ECloudDownloadKind::IoStoreContainer : ECloudDownloadKind::ExternFile;
-   if (File.bBinaryPatch) File.FallbackUrl = BaseUrl / Version / Platform / BaseName;
+   if (File.bBinaryPatch) File.FallbackUrl = BaseUrl / Version / SourcePlatform / BaseName;
    OutFiles.Add(MoveTemp(File));
   }
   // Legacy HotPatcher lists only pak sidecars for IoStore. Add the paired files
@@ -109,7 +106,7 @@ namespace CloudUpdatePrivate
      Names.Add(Name.ToLower());
      FCloudDownloadFile Container;
      Container.FileName = Container.TargetRelativePath = Name;
-     Container.Url = BaseUrl / Version / Platform / Name;
+     Container.Url = BaseUrl / Version / SourcePlatform / Name;
      Container.Kind = ECloudDownloadKind::IoStoreContainer;
      OutFiles.Add(MoveTemp(Container));
     }

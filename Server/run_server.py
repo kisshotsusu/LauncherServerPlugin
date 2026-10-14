@@ -606,7 +606,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
 
     def _api_workspace(self):
         if not self.cfg.get("workspace_dir"):
-            self._send_json({"ok": True, "configured": False, "suggestedRoot": self._resolve_path("workspace")})
+            self._send_json({"ok": True, "configured": False, "suggestedRoot": os.path.join(SERVER_DIR, "workspace", self.project)})
             return
         paths = workspace_paths(self.cfg)
         platforms = []
@@ -628,6 +628,9 @@ class UpdateHandler(BaseHTTPRequestHandler):
         if not isinstance(value, str) or not value.strip():
             self._send_json({"error": "请选择工作空间目录"}, status=400); return
         root = os.path.realpath(self._resolve_path(value.strip()))
+        shared = os.path.realpath(os.path.join(SERVER_DIR, "workspace"))
+        if os.path.normcase(root) == os.path.normcase(shared):
+            self._send_json({"error": "请选择项目独立目录，例如 workspace/" + self.project}, status=400); return
         current = self.cfg.get("workspace_dir")
         def overlaps(left, right):
             left, right = os.path.normcase(os.path.realpath(left)), os.path.normcase(os.path.realpath(right))
@@ -637,6 +640,9 @@ class UpdateHandler(BaseHTTPRequestHandler):
                 return False
         for key in PROJECT_REGISTRY.get("projects", {}):
             if key == self.project: continue
+            entry = PROJECT_REGISTRY["projects"][key]
+            if not os.path.isfile(os.path.join(SERVER_DIR, entry["config"])):
+                continue
             other = load_project_cfg(key)
             if other and other.get("workspace_dir") and overlaps(root, other["workspace_dir"]):
                 self._send_json({"error": "工作空间不能与其它项目的工作空间重叠"}, status=400); return
@@ -1550,19 +1556,20 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "projects": self._projects_detail(),
         })
 
-    def _sync_launcher_config(self, key):
-        """同步客户端启动器配置到本项目：复制默认项目的 launcher 运行时资产到
-        projects/<key>/data/launcher/，并把其中 launcher_config.json 的 serverUrl 追加 /<key> 前缀，
+    def _sync_launcher_config(self, key, template=None):
+        """同步客户端启动器配置到本项目：复制模板项目的 launcher 运行时资产到
+        本项目 workspace/data/launcher/，并把 launcher_config.json 的 serverUrl 追加 /<key> 前缀，
         否则本项目客户端会下载到默认项目的 launcher_config（serverUrl 无前缀）而串到默认项目。"""
-        src = os.path.join(SERVER_DIR, "data", "launcher")
+        source_cfg = load_project_cfg(template or PROJECT_REGISTRY.get("default", "main"))
+        src = os.path.join(source_cfg["data_dir"], "launcher")
         if not os.path.isdir(src):
             return
-        dst = os.path.join(SERVER_DIR, "projects", key, "data", "launcher")
-        if os.path.isdir(dst):
+        dst = os.path.join(load_project_cfg(key)["data_dir"], "launcher")
+        if os.path.isdir(dst) and os.listdir(dst):
             return  # 已存在则保留（可能已手动调整）
         import shutil
         try:
-            shutil.copytree(src, dst)
+            shutil.copytree(src, dst, dirs_exist_ok=True)
         except Exception:
             return
         cfg_path = os.path.join(dst, "launcher_config.json")
@@ -1616,16 +1623,20 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._send_json({"error": str(exc)}, status=400)
             return
         # 构造新项目配置：数据目录互相隔离；host/port 由统一监听端口决定，不在此设置
+        storage = json.loads(json.dumps(src.get("storage", {"backend": "local", "s3": {}})))
+        if storage.get("backend") == "s3":
+            options = storage.setdefault("s3", {})
+            options["prefix"] = (options.get("prefix", "").strip("/") + "/projects/" + key).lstrip("/")
         new_cfg = {
             "project": key,
             "platforms": platforms,
             "default_platform": default_platform,
-            "workspace_dir": "workspace",
+            "workspace_dir": os.path.relpath(os.path.join(SERVER_DIR, "workspace", key), os.path.join(SERVER_DIR, "projects", key)),
             "web_dir": os.path.abspath(os.path.join(SERVER_DIR, "web")),
             "platform_settings": {p: {"hotpatcherOrder": ""} for p in platforms},
             "enabled_versions": {},
             "admin_token": src.get("admin_token", ""),
-            "storage": src.get("storage", {"backend": "local", "s3": {}}),
+            "storage": storage,
             "manifest_hash": src.get("manifest_hash", "md5"),
             "manifest_exclude_patterns": src.get("manifest_exclude_patterns", []),
             "max_upload_mb": src.get("max_upload_mb", 2048),
@@ -1637,8 +1648,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
             json.dump(new_cfg, f, ensure_ascii=False, indent=2)
         PROJECT_REGISTRY.setdefault("projects", {})[key] = {"display": display, "config": f"projects/{key}/config.json"}
         save_registry()
-        load_project_cfg(key)  # 预热
-        self._sync_launcher_config(key)  # 同步客户端启动器配置（serverUrl 加 /<key> 前缀）
+        ensure_dirs(load_project_cfg(key))
+        self._sync_launcher_config(key, copy_from or None)
         self._send_json({"ok": True,
                          "message": f"已创建项目 {display}（{key}），访问地址：/{key}/",
                          "key": key, "prefix": "/" + key})
@@ -1745,10 +1756,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
 
     def _rewrite_launcher_serverurl(self, old_key, new_key, moved):
         """重命名后修正该项目启动器配置里的 serverUrl 末尾前缀段。"""
-        if moved:
-            cfg_path = os.path.join(SERVER_DIR, "projects", new_key, "data", "launcher", "launcher_config.json")
-        else:
-            cfg_path = os.path.join(SERVER_DIR, "data", "launcher", "launcher_config.json")
+        cfg_path = os.path.join(load_project_cfg(new_key)["data_dir"], "launcher", "launcher_config.json")
         if not os.path.isfile(cfg_path):
             return
         try:
@@ -2486,10 +2494,10 @@ def _write_default_config(path):
         "host": "0.0.0.0",
         "port": 8710,
         "project": "MyGame",
-        "platforms": ["Windows"],
+        "platforms": ["Windows", "Android", "IOS"],
         "default_platform": "Windows",
         "platform_settings": {"Windows": {"hotpatcherOrder": ""}},
-        "workspace_dir": "workspace",
+        "workspace_dir": "workspace/main",
         "https": {
             "enabled": False,
             "certFile": "",

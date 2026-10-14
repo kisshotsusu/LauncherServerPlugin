@@ -2,6 +2,7 @@
 #include "CloudUpdateService.h"
 #include "CloudUpdateSettings.h"
 #include "CloudUpdateUtil.h"
+#include "CloudUpdateBinaryMerge.h"
 #include "Misc/AutomationTest.h"
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonSerializer.h"
@@ -156,6 +157,39 @@ struct FCloudUpdateMockPatchFeature : IBinariesDiffPatchFeature
  }
 };
 static FCloudUpdateMockPatchFeature CloudUpdateMockFeature;
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCloudUpdateIoStoreMergeTest, "CloudUpdate.Service.IoStoreMergeRestart",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FCloudUpdateIoStoreMergeTest::RunTest(const FString& Parameters)
+{
+ const FString Root = FPaths::ProjectSavedDir() / TEXT("Automation/IoStoreMerge") / FGuid::NewGuid().ToString();
+ IFileManager::Get().MakeDirectory(*Root, true);
+ FCloudUpdateMockPatchFeature Feature;
+ IModularFeatures::Get().RegisterModularFeature(BINARIES_DIFF_PATCH_FEATURE_NAME, &Feature);
+ const FString Patch = Root / TEXT("update.patch");
+ FFileHelper::SaveStringToFile(TEXT("replacement"), *Patch, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+ for (const FString& Extension : {FString(TEXT("utoc")), FString(TEXT("ucas")), FString(TEXT("pak"))})
+ {
+  const FString Base = Root / (TEXT("container.") + Extension);
+  FFileHelper::SaveStringToFile(TEXT("original"), *Base, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+  FString Merged, Content;
+  const auto Result = FCloudBinaryMerge::ApplyPatchToFileEx(Base, Patch, Merged, Feature.GetFeatureName());
+  const bool IoStore = Extension != TEXT("pak");
+  TestTrue(TEXT("IoStore always defers, ordinary unlocked pak replaces immediately"),
+   Result == (IoStore ? EBinaryMergeResult::StagedForRestart : EBinaryMergeResult::Success));
+  FFileHelper::LoadFileToString(Content, *Base);
+  TestEqual(TEXT("Active IoStore remains unchanged"), Content, IoStore ? FString(TEXT("original")) : FString(TEXT("replacement")));
+  if (IoStore) {
+   FFileHelper::LoadFileToString(Content, *(Base + TEXT(".pending")));
+   TestEqual(TEXT("Pending container contains merged data"), Content, FString(TEXT("replacement")));
+  }
+ }
+ TestEqual(TEXT("Two IoStore containers exchanged before mount"), FCloudBinaryMerge::FinalizePendingMerges(Root), 2);
+ IModularFeatures::Get().UnregisterModularFeature(BINARIES_DIFF_PATCH_FEATURE_NAME, &Feature);
+ IFileManager::Get().DeleteDirectory(*Root, false, true);
+ return true;
+}
+
 
 class FCloudUpdateHTTPTestCommand : public IAutomationLatentCommand
 {

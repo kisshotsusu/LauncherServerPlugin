@@ -111,7 +111,9 @@ EBinaryMergeResult FCloudBinaryMerge::ApplyPatchToFileEx(const FString& InBaseFi
 	}
 
 	// 原子替换：先写临时文件，再 Move 覆盖基础文件，避免写一半损坏基础文件
-	if (IFileManager::Get().Move(*InBaseFilePath, *TmpPath, /*ReplaceExisting=*/true, /*EvenIfReadOnly=*/false, /*Attributes=*/false))
+	const FString Extension = FPaths::GetExtension(InBaseFilePath).ToLower();
+    const bool bIoStore = Extension == TEXT("utoc") || Extension == TEXT("ucas");
+    if (!bIoStore && IFileManager::Get().Move(*InBaseFilePath, *TmpPath, /*ReplaceExisting=*/true, /*EvenIfReadOnly=*/false, /*Attributes=*/false))
 	{
 		return EBinaryMergeResult::Success;
 	}
@@ -122,7 +124,7 @@ EBinaryMergeResult FCloudBinaryMerge::ApplyPatchToFileEx(const FString& InBaseFi
 	if (IFileManager::Get().Move(*PendingPath, *TmpPath, /*ReplaceExisting=*/true, /*EvenIfReadOnly=*/true, /*Attributes=*/false))
 	{
 		UE_LOG(LogCloudUpdate, Warning,
-			TEXT("二进制补丁合并：基础文件被占用，已暂存为 %s，重启后生效"), *PendingPath);
+			TEXT("二进制补丁合并：已暂存为 %s，重启后生效"), *PendingPath);
 		return EBinaryMergeResult::StagedForRestart;
 	}
 

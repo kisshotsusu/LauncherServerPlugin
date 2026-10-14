@@ -12,7 +12,7 @@ python run_server.py --config config.json serve
 
 ## 配置流程
 
-1. **项目管理 → 配置平台**：选择 Windows、Linux、Mac、Android、IOS 或添加自定义标识，指定默认平台。新建项目时也能直接指定平台。
+1. **项目管理 → 配置平台**：选择 Windows、Android、IOS，指定默认平台。新建项目时也能直接指定平台。
 2. **服务器管理 → 存储管理**：选择项目，只配置该项目的工作空间根目录。此处不管理包来源或内部存储目录。
 3. **项目内部 → 包导入**：选择平台，手动选择基础包产物目录并填写版本号，点击导入基础包。
 4. 手动选择 HotPatcher 输出根目录，或包含 `<版本>_Release.json` 和 `<平台>/` 的单个版本文件夹，点击导入补丁包。来源文件保留，包复制后由工作空间管理。项目界面只展示来源与版本，不展示导入后的内部存储位置。
@@ -24,7 +24,7 @@ python run_server.py --config config.json serve
 ## 工作空间结构
 
 ```text
-workspace/
+workspace/<项目标识>/
   bases/<平台>/<版本>/              基础包文件
   patches/<平台>/<版本>/            补丁描述与 files/ 文件
   imports/<平台>/base/<版本>/       基础包导入入口
@@ -42,17 +42,19 @@ workspace/
 
 只配置 `workspace_dir`，其相对路径以项目 config.json 所在目录为基准。基础包、补丁库、导入目录、启动器和数据路径均由工作空间派生；各项目、各平台互相隔离。`platform_settings` 仅保存每个平台的 `hotpatcherOrder`。网络、令牌和对象存储设置使用原有配置字段。
 
+新项目默认使用 `Server/workspace/<项目标识>`。`Server/workspace` 仅作为容纳各项目的父目录，不能直接设为项目工作空间；项目工作空间不能互相重叠。模板启动器复制到目标项目的工作空间，下载地址使用目标项目的 URL 前缀；新建 S3 项目也使用独立的对象前缀。
+
 ## 平台请求分发
 
 以下三种方式选择相同的平台：
 
 ```text
-GET /codebuild/Linux/api/versions
-GET /codebuild/api/versions?platform=Linux
-GET /codebuild/api/versions   (请求头 X-Platform: Linux)
+GET /codebuild/IOS/api/versions
+GET /codebuild/api/versions?platform=IOS
+GET /codebuild/api/versions   (请求头 X-Platform: IOS)
 ```
 
-也支持 `/codebuild/platforms/Linux/api/versions`。选择器不一致或平台未配置时返回 HTTP 400。未指定时使用项目默认平台。所有 URL 的项目部分由 projects.json 中的项目标识决定。
+也支持 `/codebuild/platforms/IOS/api/versions`。选择器不一致或平台未配置时返回 HTTP 400。未指定时使用项目默认平台。所有 URL 的项目部分由 projects.json 中的项目标识决定。
 
 | 方法 | 项目内路径 | 用途 |
 | --- | --- | --- |
@@ -76,7 +78,7 @@ GET /codebuild/api/versions   (请求头 X-Platform: Linux)
 工作空间导入请求示例：
 
 ```json
-{"category":"base","platform":"Linux","version":"1.0","source":"D:/Builds/Linux"}
+{"category":"base","platform":"IOS","version":"1.0","source":"D:/Builds/Linux"}
 ```
 
 `category` 支持 `base`、`patch`、`launcher`；基础包、补丁包通过 source 选择本地来源目录；补丁导入无需填写 version。来源位置通过 import_sources 按平台和包类型保存。工作空间保存使用服务器管理权限，包导入使用项目管理权限。
@@ -103,7 +105,7 @@ build_venv/Scripts/python.exe -m PyInstaller --noconfirm build_exe.spec
 
 ## v2.5 多平台资源导入
 
-平台通道按精确名称隔离。Windows、Linux、Mac、IOS 和 Android 的各个 Cook flavor 可以独立配置；Android_ASTC 与 Android_ETC2 不互相回退。CloudUpdate 已移除项目配置中的 Platform 属性：桌面与 IOS 使用运行平台标识，安卓从 APK 的 CookFlavor 元数据自动识别 ASTC/ETC2/DXT/Multi/OpenXR。旧 APK 使用引擎的 CookedFlavors 元数据作为兼容来源。服务端通道名称应与 GetUpdatePlatform 返回值一致，不需要按平台改写项目设置。
+更新平台仅支持 Windows、Android、IOS；安卓的 ASTC/ETC2 等 Cook 格式属于资源格式，不再作为更新平台。插件自动使用运行平台。导入时识别单一 Android_ASTC 等产物目录，并发布到 Android；同一版本有多个 Cook 格式时必须选择一个，禁止混合资源。
 
 基础包来源支持包含平台子目录的发布根目录。安卓 APK + Data 发布目录自动使用 Data 子树，避免错误生成 Data/Game/... 的目标路径。仅有 APK 的目录会拒绝导入；普通 UE NoObbs Archive 不含数据时，请选择项目 Saved/StagedBuilds/Android_ASTC 或使用核心打包脚本生成的完整 Data。APK 安装与游戏 C++ 二进制更新仍需要完整应用更新。
 
@@ -114,3 +116,5 @@ build_venv/Scripts/python.exe -m PyInstaller --noconfirm build_exe.spec
 CloudUpdate 对版本索引、描述文件和完整性清单增加平台一致性校验，拒绝明确标记为其它平台的响应；没有平台字段的旧单平台响应保持兼容。完整文件回退下载使用其自己的哈希，不使用差分文件哈希。
 
 v2.5 验证：42 项服务器测试、4 项 UE CloudUpdate 自动化测试通过，插件 Win64 编辑器构建与安卓运行时代码编译通过；打包 EXE 实测 Windows/Android_ASTC 双平台导入、索引、差分/回退 HTTP 下载及 ETC2 隔离。
+
+2026-10-13 平台整理：平台选项限定为 Windows、Android、IOS；CodeBuild 数据迁移到 workspace/codebuild，Android 与 Android_ASTC 的不同版本归入 Android。51 项服务器测试通过；Win64 编辑器构建及 Android arm64 CloudUpdate 模块定向编译通过。UE 平台测试和 4 项服务测试通过，UI.ScreenStates 因蓝图缺少 StatusText 控件失败。尚未进行移动设备打包/运行或 iOS 原生编译验证。

@@ -97,14 +97,31 @@ FString FCloudUpdateService::GetLocalRoot() const
 	}
 	if (!GIsEditor)
 	{
+#if PLATFORM_ANDROID || PLATFORM_IOS
+        return FPaths::ProjectSavedDir() / TEXT("CloudUpdate") / TEXT("Files");
+#else
 		return FPaths::RootDir();
+#endif
 	}
 	return FPaths::ProjectDir();
 }
 
 FString FCloudUpdateService::GetPakDir() const
 {
-	return FPaths::ProjectContentDir() / TEXT("Paks");
+    return GetUpdatePakDirectory();
+}
+
+FString FCloudUpdateService::ResolveLocalFilePath(const FString& RelativePath, bool bForWrite) const
+{
+    FString Writable = GetLocalRoot() / RelativePath;
+#if PLATFORM_ANDROID || PLATFORM_IOS
+    const FString Extension = FPaths::GetExtension(RelativePath).ToLower();
+    if (Extension == TEXT("pak") || Extension == TEXT("utoc") || Extension == TEXT("ucas"))
+        Writable = GetPakDir() / FPaths::GetCleanFilename(RelativePath);
+    if (!bForWrite && !IFileManager::Get().FileExists(*Writable))
+        return FPaths::RootDir() / RelativePath;
+#endif
+    return Writable;
 }
 
 FString FCloudUpdateService::GetManifestUrl() const

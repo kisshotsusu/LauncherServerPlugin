@@ -14,7 +14,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from config import get_base_dir, get_base_packages, load_config
+from config import get_base_dir, get_base_packages, load_config, validate_platforms
 from manifest import hash_file
 from versions import build_versions_index
 
@@ -87,12 +87,28 @@ def copy_file(src, dst):
     shutil.copy2(src, dst)
 
 
+def source_platform_name(source, platform):
+    """Cook formats are source directory names, never update channel names."""
+    platform = validate_platforms([platform])[0]
+    if not os.path.isdir(source):
+        return None
+    names = [n for n in os.listdir(source) if os.path.isdir(os.path.join(source, n))]
+    exact = [n for n in names if n.lower() == platform.lower()]
+    if exact:
+        return exact[0]
+    aliases = [n for n in names if platform == "Android" and n.lower() in
+               ("android_astc", "android_etc2", "android_dxt", "android_multi", "android_openxr")]
+    if len(aliases) > 1:
+        raise ValueError("存在多个安卓 Cook 格式，请选择一个格式目录，不能合并不同格式的资源")
+    return aliases[0] if aliases else None
+
+
 def base_import_source(source, platform):
     """Accept a multi-platform release root or an Android APK + Data release."""
-    platform_dir = os.path.join(source, platform)
-    if os.path.isdir(platform_dir):
-        source = platform_dir
-    if platform.startswith("Android"):
+    selected = source_platform_name(source, platform)
+    if selected:
+        source = os.path.join(source, selected)
+    if platform == "Android":
         data = os.path.join(source, "Data")
         if os.path.isdir(data):
             source = data
@@ -103,11 +119,13 @@ def base_import_source(source, platform):
     return source
 
 
-def import_version(source_dir, dest_versions_dir, version_id, platform, package_root, config=None):
+def import_version(source_dir, dest_versions_dir, version_id, platform, package_root, config=None, source_platform=None):
     """在临时目录完成导入后替换发布目录，重导入不保留已移除的旧补丁。"""
     if not re.fullmatch(r"[A-Za-z0-9_-]+", platform) or not re.fullmatch(r"[A-Za-z0-9_.-]+", version_id) or version_id in (".", ".."):
         raise ValueError("平台或版本标识无效")
-    if not os.path.isdir(os.path.join(source_dir, version_id, platform)):
+    platform = validate_platforms([platform])[0]
+    source_platform = source_platform or source_platform_name(os.path.join(source_dir, version_id), platform)
+    if not source_platform:
         raise ValueError(f"版本 {version_id} 缺少 {platform} 产物目录")
     root = os.path.abspath(os.path.join(dest_versions_dir, platform))
     os.makedirs(root, exist_ok=True)
@@ -115,7 +133,7 @@ def import_version(source_dir, dest_versions_dir, version_id, platform, package_
     stage = tempfile.mkdtemp(prefix=".import-", dir=root)
     backup = os.path.join(root, ".replace-" + uuid.uuid4().hex)
     try:
-        result = _import_version(source_dir, dest_versions_dir, version_id, platform, package_root, stage, config)
+        result = _import_version(source_dir, dest_versions_dir, version_id, platform, package_root, stage, config, source_platform)
         if os.path.exists(target):
             os.replace(target, backup)
         try:
@@ -131,8 +149,9 @@ def import_version(source_dir, dest_versions_dir, version_id, platform, package_
                 shutil.rmtree(temporary)
 
 
-def _import_version(source_dir, dest_versions_dir, version_id, platform, package_root, destination, config=None):
+def _import_version(source_dir, dest_versions_dir, version_id, platform, package_root, destination, config=None, source_platform=None):
     version_src = os.path.join(source_dir, version_id)
+    source_platform = source_platform or source_platform_name(version_src, platform)
     dest = destination
     os.makedirs(dest, exist_ok=True)
 
@@ -140,7 +159,7 @@ def _import_version(source_dir, dest_versions_dir, version_id, platform, package
     for suffix in ("_Release.json", "_PatchConfig.json", "_PakFilesInfo.json",
                    "_PakResults.json", "_ReleaseConfig.json"):
         candidates = [
-            os.path.join(version_src, platform, f"{version_id}{suffix}"),
+            os.path.join(version_src, source_platform, f"{version_id}{suffix}"),
             os.path.join(version_src, f"{version_id}{suffix}"),
             os.path.join(source_dir, f"{version_id}{suffix}"),
         ]
@@ -149,11 +168,11 @@ def _import_version(source_dir, dest_versions_dir, version_id, platform, package
             copy_file(src, os.path.join(dest, os.path.basename(src)))
             copied.append(os.path.basename(src))
 
-    for diff_src in find_diffs(source_dir, version_id, platform):
+    for diff_src in find_diffs(source_dir, version_id, source_platform):
         copy_file(diff_src, os.path.join(dest, os.path.basename(diff_src)))
         copied.append(os.path.basename(diff_src))
 
-    platform_src = os.path.join(version_src, platform)
+    platform_src = os.path.join(version_src, source_platform)
     files_dest = os.path.join(dest, "files")
     if not os.path.isdir(platform_src):
         raise ValueError(f"版本 {version_id} 缺少 {platform} 产物目录：{platform_src}")
@@ -231,7 +250,7 @@ def _import_version(source_dir, dest_versions_dir, version_id, platform, package
     if release and package_root and os.path.isdir(package_root):
         platform_assets = release.get("platformAssets", {})
         for pf, pf_data in platform_assets.items():
-            if pf.lower() != platform.lower():
+            if pf.lower() != source_platform.lower():
                 continue
             for item in (pf_data.get("addExternFileToPak") or []):
                 file_path = (item.get("filePath") or {}).get("filePath", "") if isinstance(item.get("filePath"), dict) else item.get("filePath", "")
@@ -295,6 +314,7 @@ def _import_version(source_dir, dest_versions_dir, version_id, platform, package
 
 def run_import(source_dir, data_dir, project, platform, order="", only="", config=None):
     """执行导入，返回版本索引 dict。供 CLI / exe 直接调用。"""
+    platform = validate_platforms([platform])[0]
     source_dir = os.path.abspath(source_dir or "")
     data_dir = os.path.abspath(data_dir or "")
     if not os.path.isdir(source_dir):
@@ -327,22 +347,37 @@ def run_import(source_dir, data_dir, project, platform, order="", only="", confi
     print("-" * 50)
 
     single_version = os.path.basename(source_dir)
-    if os.path.isfile(os.path.join(source_dir, f"{single_version}_Release.json")):
+    # A selected Cook directory may sit inside one version directory.
+    cook_names = {"Android": ("android", "android_astc", "android_etc2", "android_dxt", "android_multi", "android_openxr"),
+                  "Windows": ("windows",), "IOS": ("ios",)}
+    parent_version = os.path.basename(os.path.dirname(source_dir))
+    if single_version.lower() in cook_names[platform] and any(os.path.isfile(p) for p in (
+            os.path.join(os.path.dirname(source_dir), parent_version + "_Release.json"),
+            os.path.join(source_dir, parent_version + "_Release.json"))):
+        selected_cook = os.path.basename(source_dir)
+        source_dir = os.path.dirname(source_dir)
+        single_version = os.path.basename(source_dir)
+    else:
+        selected_cook = None
+    if os.path.isfile(os.path.join(source_dir, f"{single_version}_Release.json")) or (selected_cook and os.path.isfile(os.path.join(source_dir, selected_cook, f"{single_version}_Release.json"))):
         source_dir = os.path.dirname(source_dir)
         entries = [single_version]
     else:
         entries = sorted(os.listdir(source_dir))
     selected = []
     for entry in entries:
+        source_platform = selected_cook or source_platform_name(os.path.join(source_dir, entry), platform)
+        if not source_platform:
+            continue
         releases = [os.path.join(source_dir, entry, f"{entry}_Release.json"),
-                    os.path.join(source_dir, entry, platform, f"{entry}_Release.json")]
+                    os.path.join(source_dir, entry, source_platform, f"{entry}_Release.json")]
         if not any(os.path.isfile(path) for path in releases):
             continue
         if only:
             allowed = [x.strip() for x in only.split(",") if x.strip()]
             if entry not in allowed:
                 continue
-        if not os.path.isdir(os.path.join(source_dir, entry, platform)):
+        if not os.path.isdir(os.path.join(source_dir, entry, source_platform)):
             print(f"跳过版本 {entry}：没有 {platform} 产物")
             continue
         selected.append(entry)
@@ -351,7 +386,7 @@ def run_import(source_dir, data_dir, project, platform, order="", only="", confi
     versions = []
     for entry in selected:
         print(f"导入版本 {entry} ...")
-        desc, copied = import_version(source_dir, cfg["versions_dir"], entry, platform, package_root, config=cfg)
+        desc, copied = import_version(source_dir, cfg["versions_dir"], entry, platform, package_root, config=cfg, source_platform=selected_cook)
         versions.append(desc)
         print(f"  已复制 {len(copied)} 个文件，更新包 {len(desc['files'])} 个，base={desc['baseVersionId'] or '无'}")
 
