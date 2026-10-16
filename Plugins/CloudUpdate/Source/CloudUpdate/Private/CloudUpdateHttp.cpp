@@ -104,7 +104,10 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
  auto Stream = MakeShared<FCloudDownloadStream, ESPMode::ThreadSafe>(TempPath, Identity, ExpectedSize);
  if (ExpectedHash.IsEmpty() && Stream->Offset > 0 && Stream->Validator.IsEmpty())
  { Stream->Discard(); Stream = MakeShared<FCloudDownloadStream, ESPMode::ThreadSafe>(TempPath, Identity, ExpectedSize); }
- const bool bCached = !ExpectedHash.IsEmpty() && ExpectedSize >= 0 && Stream->Offset == ExpectedSize && IFileManager::Get().FileSize(*TempPath) == ExpectedSize;
+ // ExpectedSize 未知时，用上一次响应里记下的总大小判断"分片已经完整"；
+ // 否则会发出 bytes=<N>- 触发 416，把一份已经下完的分片整个重下。
+ const int64 EffectiveTotal = ExpectedSize >= 0 ? ExpectedSize : Stream->KnownTotal;
+ const bool bCached = !ExpectedHash.IsEmpty() && EffectiveTotal >= 0 && Stream->Offset == EffectiveTotal && IFileManager::Get().FileSize(*TempPath) == EffectiveTotal;
  auto Request = FHttpModule::Get().CreateRequest();
  Request->SetURL(ResolveRemoteUrl(InUrl));
  Request->SetVerb(TEXT("GET"));
@@ -124,7 +127,23 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
   if (!Stream->Validator.IsEmpty()) Request->SetHeader(TEXT("If-Range"), Stream->Validator);
   UE_LOG(LogCloudUpdate, Display, TEXT("断点续传 %s，从 %lld 字节继续"), *InTargetPath, Stream->Offset);
  }
- Request->SetTimeout(Settings ? Settings->HttpTimeoutSeconds : 60);
+ // UE 的 SetTimeout 是"整个请求"的总超时（HttpRequestCommon.cpp 的 TotalTimeoutTimer），不是空闲超时。
+ // 固定 60s 会让大 pak/utoc 在慢网络下必然被掐断（重试也只有 DownloadRetryCount 次），
+ // 表现就是"进度到 100% 却报失败"。所以按"还差多少字节 / 最低速率"估算，
+ // 取 HttpTimeoutSeconds 之上、DownloadTimeoutMaxSeconds 之下。
+ {
+  double Timeout = Settings ? static_cast<double>(Settings->HttpTimeoutSeconds) : 60.0;
+  if (Settings && Settings->DownloadMinBytesPerSecond > 0 && ExpectedSize >= 0)
+  {
+   const int64 Remaining = FMath::Max<int64>(ExpectedSize - Stream->Offset, 0);
+   Timeout = FMath::Max(Timeout, static_cast<double>(Remaining) / static_cast<double>(Settings->DownloadMinBytesPerSecond));
+  }
+  if (Settings && Settings->DownloadTimeoutMaxSeconds > 0)
+  {
+   Timeout = FMath::Min(Timeout, static_cast<double>(Settings->DownloadTimeoutMaxSeconds));
+  }
+  Request->SetTimeout(Timeout);
+ }
  Request->OnStatusCodeReceived().BindLambda([Stream](FHttpRequestPtr, int32 Code) { Stream->Status(Code); });
  Request->OnHeaderReceived().BindLambda([Stream](FHttpRequestPtr, const FString& Name, const FString& Value) { Stream->Header(Name, Value); });
  Request->OnProcessRequestComplete().BindLambda([Stream](FHttpRequestPtr, FHttpResponsePtr, bool Connected) { Stream->Finish(Connected); });
@@ -139,6 +158,14 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
   if (bOk)
   {
    if (InProgress) InProgress(Size, Size);
+   // 安装策略：保持既有语义 —— IoStore 容器（.utoc/.ucas）始终暂存为 .pending，
+   // 普通文件（含 .pak）直接落到目标路径。
+   // 容器之所以不原地覆盖：运行时引擎可能已经挂载了旧容器，原地替换正在被读取的文件
+   // 不安全。而"新 .pak + 旧/缺失容器"这一不对称，由**重启前的成组交换**消除：
+   //   - Android：BNSAndroidStorage.cpp 的 JNI 早期钩子（引擎挂载 Paks 之前）
+   //   - Windows：BNSWindowsStorageBootstrap.inl（main 之前）
+   //   - 兜底：FCloudBinaryMerge::FinalizePendingMerges（成组交换 + 整组回滚 + 崩溃恢复）
+   // 交换发生在引擎挂载之前，所以下次启动时 .pak 与 .utoc/.ucas 一定是配套的。
    const bool bIoStore = InTargetPath.EndsWith(TEXT(".utoc")) || InTargetPath.EndsWith(TEXT(".ucas"));
    bool bPending = bIoStore;
    bool bMoved = IFileManager::Get().Move(*(bPending ? InTargetPath + TEXT(".pending") : InTargetPath), *TempPath, true, true);

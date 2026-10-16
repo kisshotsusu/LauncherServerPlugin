@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // CloudUpdate 更新检查与应用
 // (由 CloudUpdateService.cpp 按职责拆分，逻辑与原文一致)
 // ======================================================================
@@ -579,6 +579,8 @@ void FCloudUpdateService::StartDownloadUpdateFiles()
 		FinishUpdate(false, TEXT("更新描述中没有可下载的文件"));
 		return;
 	}
+	// 注：.pak 与 .utoc/.ucas 的配套一致性不依赖下载顺序 —— 容器始终暂存为 .pending，
+	// 由「引擎挂载 Paks 之前」的成组交换就位（见 CloudUpdateHttp.cpp 的安装策略）。
  if (!bTransferSessionActive)
  {
   FPlannedVersion Version;
@@ -589,6 +591,7 @@ void FCloudUpdateService::StartDownloadUpdateFiles()
 	CurrentFileIndex = 0;
 	CompletedFiles = 0;
 	FailedFiles = 0;
+	FailedFileNames.Reset();
  for (const FCloudDownloadFile& File : PendingFiles)
   if (File.Kind == ECloudDownloadKind::IoStoreContainer) bRestartRequired = true;
 	if (Owner)
@@ -609,7 +612,16 @@ void FCloudUpdateService::DownloadNextUpdateFile()
 	{
 		if (FailedFiles > 0)
 		{
-			FinishUpdate(false, FString::Printf(TEXT("更新失败：成功 %d / 失败 %d"), CompletedFiles, FailedFiles));
+			// 把失败文件名带出来：否则用户只看到"成功 N / 失败 M"，无法判断是哪个文件
+			// （例如服务器上不存在的 IoStore 侧车），而"哪个文件"往往就是排查的全部线索。
+			FString Detail;
+			for (int32 Index = 0; Index < FailedFileNames.Num() && Index < 5; ++Index)
+			{
+				if (Index) Detail += TEXT("、");
+				Detail += FPaths::GetCleanFilename(FailedFileNames[Index]);
+			}
+			if (FailedFileNames.Num() > 5) Detail += FString::Printf(TEXT(" 等 %d 个"), FailedFileNames.Num());
+			FinishUpdate(false, FString::Printf(TEXT("更新失败：成功 %d / 失败 %d（%s）"), CompletedFiles, FailedFiles, *Detail));
 			return;
 		}
 		if (!MountPendingPaks()) { FinishUpdate(false, TEXT("补丁文件已下载，但挂载失败；资源版本未推进")); return; }
@@ -668,6 +680,7 @@ void FCloudUpdateService::OnUpdateFileDownloaded(bool bSuccess, const FCloudDown
 	else
 	{
 		++FailedFiles;
+		FailedFileNames.AddUnique(InFile.FileName);
 		UE_LOG(LogCloudUpdate, Error, TEXT("下载失败：%s (%s)"), *InFile.FileName, *InFile.Url);
 	}
 	++CurrentFileIndex;
@@ -825,6 +838,7 @@ void FCloudUpdateService::OnBinaryPatchApplied(bool bSuccess, const FCloudDownlo
 	else
 	{
 		++FailedFiles;
+		FailedFileNames.AddUnique(InFile.FileName);
 		UE_LOG(LogCloudUpdate, Error, TEXT("二进制补丁合并/回退失败：%s"), *InFile.FileName);
 	}
 
@@ -916,6 +930,7 @@ void FCloudUpdateService::FinishUpdate(bool bSuccess, const FString& InMessage)
 void FCloudUpdateService::RollbackRevokedVersion(const FString& RevokedVersion, const TArray<FCloudDownloadFile>& Files, const FString& TargetVersion)
 {
 	bool bRestart = false;
+	bool bDeleteFailed = false;
 	for (const FCloudDownloadFile& File : Files)
 	{
 		FString Path;
@@ -941,6 +956,7 @@ void FCloudUpdateService::RollbackRevokedVersion(const FString& RevokedVersion, 
 			{
 				// 文件被占用（游戏运行中）：标记需重启后由系统释放
 				bRestart = true;
+				bDeleteFailed = true;
 				UE_LOG(LogCloudUpdate, Warning, TEXT("无法删除被占用的撤销文件（重启后生效）：%s"), *Path);
 			}
 		}
@@ -951,14 +967,25 @@ void FCloudUpdateService::RollbackRevokedVersion(const FString& RevokedVersion, 
 		}
 	}
 
-	SaveLocalVersion(TargetVersion);
-	UE_LOG(LogCloudUpdate, Log, TEXT("已回滚被撤销版本 %s，本地版本回退至 %s（需重启=%d）"),
-		*RevokedVersion, *TargetVersion, bRestart ? 1 : 0);
+	// 有文件删不掉（被占用）时不能把版本记录回退到目标版本：磁盘上仍是"被撤销版本还在"的状态，
+	// 记录与磁盘不一致会让下次启动按错误前提做校验/挂载（甚至切到资源实例后崩）。
+	if (bDeleteFailed)
+	{
+		UE_LOG(LogCloudUpdate, Error, TEXT("回滚未完成：有文件无法删除，本地版本记录保持不变（仍为 %s）"), *RevokedVersion);
+	}
+	else
+	{
+		SaveLocalVersion(TargetVersion);
+		UE_LOG(LogCloudUpdate, Log, TEXT("已回滚被撤销版本 %s，本地版本回退至 %s（需重启=%d）"),
+			*RevokedVersion, *TargetVersion, bRestart ? 1 : 0);
+	}
 
 	if (Owner)
 	{
-		Owner->OnRollbackFinished.Broadcast(true, bRestart, RevokedVersion,
-			FString::Printf(TEXT("已回滚被撤销的版本 %s，回退至 %s%s"),
-				*RevokedVersion, *TargetVersion, bRestart ? TEXT("（需重启生效）") : TEXT("")));
+		Owner->OnRollbackFinished.Broadcast(!bDeleteFailed, bRestart, RevokedVersion,
+			bDeleteFailed
+				? FString::Printf(TEXT("回滚未完成：%s 的部分文件被占用，未能删除（请重启后重试）"), *RevokedVersion)
+				: FString::Printf(TEXT("已回滚被撤销的版本 %s，回退至 %s%s"),
+					*RevokedVersion, *TargetVersion, bRestart ? TEXT("（需重启生效）") : TEXT("")));
 	}
 }

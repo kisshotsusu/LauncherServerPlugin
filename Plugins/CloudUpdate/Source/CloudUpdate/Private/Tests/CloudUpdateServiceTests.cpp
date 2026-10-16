@@ -55,3 +55,4 @@ bool FCloudUpdateServiceRegressionTest::RunTest(const FString& Parameters)
 
 #include "CloudUpdatePlatformTests.inl"
 #include "CloudUpdateUITests.inl"
+#include "CloudUpdateLanFallbackTests.inl"

@@ -12,9 +12,19 @@ UCloudUpdateSettings::UCloudUpdateSettings()
 	bAutoCheckIntegrityOnStart = false;
 	bVerifyDownloadHash = true;
 	HttpTimeoutSeconds = 60;
+	// 超时按"剩余字节 / 最低速率"估算：32 KiB/s、上限 30 分钟。
+	DownloadMinBytesPerSecond = 32768;
+	DownloadTimeoutMaxSeconds = 1800;
+	SafeModeFailureThreshold = 2;
+	SafeModeStableSeconds = 45;
 	DownloadRetryCount = 2;
 	bEnableBinaryMerge = true;
 	BinaryPatchFeatureName = TEXT("");
+	// 局域网回退：默认关闭，不影响既有部署；开启后仅在"服务器地址解析到本机"时生效。
+	bEnableLanFallback = false;
+	LanServerUrl = TEXT("");
+	bLanFallbackInEditor = false;
+	LanFallbackCacheSeconds = 30.0f;
 }
 
 const UCloudUpdateSettings* UCloudUpdateSettings::Get()

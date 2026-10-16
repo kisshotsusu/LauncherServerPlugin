@@ -139,41 +139,126 @@ int32 FCloudBinaryMerge::FinalizePendingMerges(const FString& InDirectory, bool 
 	TArray<FString> Pending;
 	IFileManager::Get().FindFilesRecursive(Pending, *InDirectory, TEXT("*.pending"), /*Files=*/true, /*Dirs=*/false, bIncludeSubdirectories);
 
-	// 备注（重要潜在问题 / 时序硬伤）：
+	// 备注（时序相关）：
 	// 本函数只有在「目标基础文件当前未被占用（未挂载、未打开）」时才能交换成功。
-	// 但项目的 Paks 目录（ProjectContentDir/Paks）下的 pak/utoc 会在引擎启动极早期被
-	// FPakPlatformFile 自动挂载；UEngineSubsystem::Initialize 的调用时机晚于该挂载，
-	// 此时文件已被锁，Move 必然失败，.pending 不会被交换，补丁因而「永不生效」。
-	// 尤其 IoStore 的 utoc/ucas 挂载得更早、几乎必然处于锁定状态，StagedForRestart 机制对其基本无效。
-	// 可靠做法（当前未实现，需后续补充）：在引擎挂载之前完成交换，例如
-	//   - 启动器在拉起游戏进程前先做 .pending 交换；或
-	//   - 用自定义 FPlatformFile wrapper，在其 Mount 前拦截并完成交换；或
-	//   - 插件模块 StartupModule（早于 pak 挂载）中执行交换。
-	// 调用方应检查返回值：若返回 0 但期望 >0，说明有暂存补丁因文件占用未交换，需提示用户重启或换路径。
+	// 项目的 Paks 目录（ProjectContentDir/Paks、移动端 ProjectSavedDir/Paks）下的 pak/utoc
+	// 会在引擎启动极早期被 FPakPlatformFile 自动挂载，而 UEngineSubsystem::Initialize 的
+	// 调用时机晚于该挂载，此时 Windows 上文件已被锁、Move 可能失败。因此：
+	//   - Android：已在 JNI 早期钩子里做「挂载之前」的交换（见 BNSAndroidStorage.cpp）；
+	//   - Windows：monolithic 构建在 main 之前交换（见 BNSWindowsStorageBootstrap.inl）；
+	//   - 本函数保留为兜底，并负责成组交换 + 整组回滚 + 崩溃恢复。
+	// 调用方应检查返回值：若返回 0 但期望 >0，说明有暂存补丁因文件占用未交换。
 
-	int32 Swapped = 0;
+	// 崩溃恢复：若只有 <base>.swapbak 而 <base> 不存在，说明上次交换在"备份完成、改名完成前"
+	// 中断，先把备份恢复回去；两者都在则备份已无用，清掉以免无限堆积。
+	{
+		TArray<FString> StaleBackups;
+		IFileManager::Get().FindFilesRecursive(StaleBackups, *InDirectory, TEXT("*.swapbak"), /*Files=*/true, /*Dirs=*/false, bIncludeSubdirectories);
+		for (const FString& BackupPath : StaleBackups)
+		{
+			FString BasePath = BackupPath;
+			if (!BasePath.RemoveFromEnd(TEXT(".swapbak"))) continue;
+			if (!IFileManager::Get().FileExists(*BasePath))
+			{
+				if (IFileManager::Get().Move(*BasePath, *BackupPath, true, true))
+				{
+					UE_LOG(LogCloudUpdate, Warning, TEXT("恢复上次交换中断的备份：%s"), *BasePath);
+				}
+			}
+			else
+			{
+				IFileManager::Get().Delete(*BackupPath, false, true);
+			}
+		}
+	}
+
+	// 按容器组分组：<base>.utoc 与 <base>.ucas 必须同组交换，否则会留下
+	// "新 .utoc + 旧 .ucas"（或反之），引擎按 .utoc 读容器时数据不一致 → 资源错误/崩溃。
+	// 普通单文件（如修复用的 *.bin）各自成组，行为与旧版一致。
+	TArray<FString> GroupKeys;
+	TMap<FString, TArray<FString>> Groups;
 	for (const FString& PendingPath : Pending)
 	{
-		// PendingPath == "<基础文件>.pending" -> 基础文件为去掉末尾 ".pending"
 		FString BasePath = PendingPath;
-		if (!BasePath.RemoveFromEnd(TEXT(".pending")))
+		if (!BasePath.RemoveFromEnd(TEXT(".pending"))) continue;
+		const FString Extension = FPaths::GetExtension(BasePath).ToLower();
+		const FString Key = (Extension == TEXT("utoc") || Extension == TEXT("ucas"))
+			? BasePath.LeftChop(Extension.Len() + 1)   // 去掉 ".utoc"/".ucas"，同组共用同一 base
+			: BasePath;
+		if (!Groups.Contains(Key)) GroupKeys.Add(Key);
+		Groups.FindOrAdd(Key).Add(BasePath);
+	}
+
+	int32 Swapped = 0;
+	for (const FString& Key : GroupKeys)
+	{
+		const TArray<FString>& Bases = Groups[Key];
+
+		// 容器组必须成套：有 .utoc 就必须有 .ucas（反之亦然）。不完整时拒绝交换、保留
+		// .pending 原样，让上层按"待生效/未完成"处理，绝不制造半套容器。
+		bool bHasUtoc = false, bHasUcas = false;
+		for (const FString& Base : Bases)
 		{
+			const FString Extension = FPaths::GetExtension(Base).ToLower();
+			bHasUtoc |= Extension == TEXT("utoc");
+			bHasUcas |= Extension == TEXT("ucas");
+		}
+		if (bHasUtoc != bHasUcas)
+		{
+			UE_LOG(LogCloudUpdate, Error, TEXT("容器组不完整，拒绝交换以免留下半套容器：%s"), *Key);
 			continue;
 		}
-		// 与 ApplyPatchToFileEx 共用同一把锁，防止交换与合并并发写同一基础文件
-		FScopeLock MergeScope(&GetMergeLock(BasePath));
 
-		// 基础文件一般不存在（已被 .pending 取代前已被删除/移动），直接重命名即可；
-		// 若存在（极端情况），ReplaceExisting 覆盖它。
-		if (IFileManager::Get().Move(*BasePath, *PendingPath, /*ReplaceExisting=*/true, /*EvenIfReadOnly=*/true, /*Attributes=*/false))
+		TArray<FString> SwappedBases;
+		TArray<TPair<FString, FString>> Backups;
+		bool bGroupOk = true;
+		for (const FString& BasePath : Bases)
 		{
-			++Swapped;
-			UE_LOG(LogCloudUpdate, Log, TEXT("已交换暂存补丁：%s -> %s"), *PendingPath, *BasePath);
+			// 与 ApplyPatchToFileEx 共用同一把锁，防止交换与合并并发写同一基础文件
+			FScopeLock MergeScope(&GetMergeLock(BasePath));
+			const FString PendingPath = BasePath + TEXT(".pending");
+			const FString BackupPath = BasePath + TEXT(".swapbak");
+
+			// 先备份现有基础文件，任何一步失败都能整组回滚到"全旧"。
+			if (IFileManager::Get().FileExists(*BasePath))
+			{
+				IFileManager::Get().Delete(*BackupPath, false, true);
+				if (!IFileManager::Get().Move(*BackupPath, *BasePath, true, true))
+				{
+					bGroupOk = false;
+					break;
+				}
+				Backups.Emplace(BasePath, BackupPath);
+			}
+			if (!IFileManager::Get().Move(*BasePath, *PendingPath, true, true))
+			{
+				bGroupOk = false;
+				break;
+			}
+			SwappedBases.Add(BasePath);
 		}
-		else
+
+		if (!bGroupOk)
 		{
-			UE_LOG(LogCloudUpdate, Error, TEXT("暂存补丁交换失败（文件可能仍被占用）：%s"), *PendingPath);
+			// 整组回滚：先把已换上的新内容退回 .pending，再把备份恢复回去。
+			for (int32 Index = SwappedBases.Num() - 1; Index >= 0; --Index)
+			{
+				IFileManager::Get().Move(*(SwappedBases[Index] + TEXT(".pending")), *SwappedBases[Index], true, true);
+			}
+			for (int32 Index = Backups.Num() - 1; Index >= 0; --Index)
+			{
+				IFileManager::Get().Move(*Backups[Index].Key, *Backups[Index].Value, true, true);
+			}
+			UE_LOG(LogCloudUpdate, Error, TEXT("容器组交换失败（文件可能仍被占用），已整组回滚：%s"), *Key);
+			continue;
 		}
+
+		for (const TPair<FString, FString>& Backup : Backups)
+		{
+			IFileManager::Get().Delete(*Backup.Value, false, true);
+		}
+		Swapped += SwappedBases.Num();
+		UE_LOG(LogCloudUpdate, Log, TEXT("已交换暂存补丁组 %s（%d 个文件）"), *Key, SwappedBases.Num());
 	}
 	if (Swapped > 0)
 	{

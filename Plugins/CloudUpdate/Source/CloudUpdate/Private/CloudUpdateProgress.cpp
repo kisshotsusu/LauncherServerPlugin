@@ -1,25 +1,125 @@
 #include "CloudUpdateService.h"
 #include "CloudUpdateSubsystem.h"
 #include "CloudUpdateSettings.h"
+#include "CloudUpdate.h"
 #include "CloudUpdateBinaryMerge.h"
 #include "CloudUpdateUtil.h"
 #include "Dom/JsonObject.h"
 #include "Async/Async.h"
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
+#include "HAL/CriticalSection.h"
+#include "Misc/ScopeLock.h"
+#include "HAL/PlatformTime.h"
 using namespace CloudUpdatePrivate;
 
 FString FCloudUpdateService::ResolveRemoteUrl(const FString& Url) const
 {
- if (Url.StartsWith(TEXT("https://")) || Url.StartsWith(TEXT("http://"))) return Url;
- const FString Base = GetServerUrl();
- if (Url.StartsWith(TEXT("/")))
+ FString Resolved;
+ if (Url.StartsWith(TEXT("https://")) || Url.StartsWith(TEXT("http://")))
  {
-  const int32 Scheme = Base.Find(TEXT("://"));
-  const int32 Path = Scheme == INDEX_NONE ? INDEX_NONE : Base.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, Scheme + 3);
-  return (Path == INDEX_NONE ? Base : Base.Left(Path)) + Url;
+  Resolved = Url;
  }
- return Base / Url;
+ else
+ {
+  const FString Base = GetServerUrl();
+  if (Url.StartsWith(TEXT("/")))
+  {
+   const int32 Scheme = Base.Find(TEXT("://"));
+   const int32 Path = Scheme == INDEX_NONE ? INDEX_NONE : Base.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, Scheme + 3);
+   Resolved = (Path == INDEX_NONE ? Base : Base.Left(Path)) + Url;
+  }
+  else
+  {
+   Resolved = Base / Url;
+  }
+ }
+ // 所有请求（清单/版本/文件下载）都经过这里，且服务器返回的绝对地址也可能指向 127.0.0.1，
+ // 所以局域网回退必须作用在"最终 URL"上，而不是只改 GetServerUrl()。
+ return ApplyLanFallback(Resolved);
+}
+
+FString FCloudUpdateService::ApplyLanFallback(const FString& InUrl) const
+{
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ if (!Settings || !Settings->bEnableLanFallback || Settings->LanServerUrl.IsEmpty() || InUrl.IsEmpty()) return InUrl;
+#if WITH_EDITOR
+ // 编辑器里通常就是本机服务器（127.0.0.1），回退会打断联调，需显式打开。
+ if (!Settings->bLanFallbackInEditor) return InUrl;
+#endif
+
+ const FCloudUrlParts Parts = ParseCloudUrl(InUrl);
+ if (!Parts.bValid) return InUrl;
+
+ const FString CacheKey = FString::Printf(TEXT("%s:%d"), *Parts.Host.ToLower(), Parts.Port);
+ const double Now = FPlatformTime::Seconds();
+
+ FLanFallbackDecision Decision;
+ bool bCached = false;
+ {
+  FScopeLock Lock(&LanFallbackLock);
+  if (const FLanFallbackDecision* Found = LanFallbackCache.Find(CacheKey))
+  {
+   if (Settings->LanFallbackCacheSeconds <= 0.0f || (Now - Found->Time) < Settings->LanFallbackCacheSeconds)
+   {
+    Decision = *Found;
+    bCached = true;
+   }
+  }
+ }
+ if (!bCached)
+ {
+  // DNS + 网卡枚举可能阻塞几十毫秒，因此只在缓存未命中时执行，并按主机缓存结果。
+  TArray<FString> ResolvedIps, LocalIps;
+  ResolveHostIPv4(Parts.Host, ResolvedIps);
+  GetLocalIPv4Addresses(LocalIps);
+  FString FallbackUrl, Reason;
+  const bool bApplied = DecideLanFallback(InUrl, Settings->LanServerUrl, ResolvedIps, LocalIps, FallbackUrl, Reason);
+  const FCloudUrlParts Effective = bApplied ? ParseCloudUrl(FallbackUrl) : FCloudUrlParts();
+  Decision.ReplacementHost = bApplied ? Effective.Host : FString();
+  Decision.ReplacementPort = bApplied ? Effective.Port : 0;
+  Decision.Reason = Reason;
+  Decision.Time = FPlatformTime::Seconds();
+  {
+   FScopeLock Lock(&LanFallbackLock);
+   LanFallbackCache.Add(CacheKey, Decision);
+  }
+  UE_LOG(LogCloudUpdate, Log, TEXT("局域网回退判定 %s -> %s"), *Parts.Host, *Reason);
+ }
+
+ bLanFallbackApplied = !Decision.ReplacementHost.IsEmpty();
+ LanFallbackAppliedReason = Decision.Reason;
+ if (!bLanFallbackApplied) return InUrl;
+
+ FCloudUrlParts Effective = Parts;
+ Effective.Host = Decision.ReplacementHost;
+ Effective.Port = Decision.ReplacementPort;
+ const FString Result = ComposeCloudUrl(Effective);
+ return Result.IsEmpty() ? InUrl : Result;
+}
+
+FString FCloudUpdateService::GetEffectiveServerUrl() const
+{
+ return ApplyLanFallback(GetServerUrl());
+}
+
+bool FCloudUpdateService::IsLanFallbackActive() const
+{
+ // 服务器地址本身可能没有请求过，这里主动跑一次判定，保证 UI 读到的是准确状态。
+ return !ApplyLanFallback(GetServerUrl()).Equals(GetServerUrl(), ESearchCase::CaseSensitive);
+}
+
+FString FCloudUpdateService::GetLanFallbackReason() const
+{
+ return LanFallbackAppliedReason;
+}
+
+void FCloudUpdateService::InvalidateLanFallbackCache()
+{
+ FScopeLock Lock(&LanFallbackLock);
+ LanFallbackCache.Reset();
+ bLanFallbackApplied = false;
+ LanFallbackAppliedReason.Reset();
 }
 
 bool FCloudUpdateService::ReadDescriptorFiles(const TSharedPtr<FJsonObject>& Json, TArray<FCloudDownloadFile>& OutFiles) const

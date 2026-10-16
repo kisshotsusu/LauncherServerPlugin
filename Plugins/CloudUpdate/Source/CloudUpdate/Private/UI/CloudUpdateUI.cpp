@@ -38,6 +38,7 @@ void UCloudUpdateScreen::NativeConstruct()
  if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("UpdateButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::UpdateClicked);
  if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CancelButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::CancelClicked);
  if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CloseButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::CloseClicked);
+ if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("RepairButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::RepairClicked);
  bChecking = bApplying = bCancelRequested = false;
  if (BoundSubsystem)
  {
@@ -45,6 +46,7 @@ void UCloudUpdateScreen::NativeConstruct()
   BoundSubsystem->OnDetailedDownloadProgress.AddUniqueDynamic(this, &UCloudUpdateScreen::DownloadChanged);
   BoundSubsystem->OnMergeProgress.AddUniqueDynamic(this, &UCloudUpdateScreen::MergeChanged);
   BoundSubsystem->OnUpdateFinished.AddUniqueDynamic(this, &UCloudUpdateScreen::UpdateFinished);
+  BoundSubsystem->OnRepairFinished.AddUniqueDynamic(this, &UCloudUpdateScreen::RepairFinished);
   const auto Plan = BoundSubsystem->GetUpdatePlan();
   if (Plan.bValid) PlanReady(true, Plan, FString());
   else SetStatus(BoundSubsystem->GetPendingResourceVersion().IsEmpty() ? LOCTEXT("Ready", "点击检查更新，获取当前平台的版本信息。") : LOCTEXT("Pending", "资源已准备好，请关闭并重新打开应用使其生效。"));
@@ -62,6 +64,7 @@ void UCloudUpdateScreen::UnbindSubsystem()
  BoundSubsystem->OnDetailedDownloadProgress.RemoveDynamic(this, &UCloudUpdateScreen::DownloadChanged);
  BoundSubsystem->OnMergeProgress.RemoveDynamic(this, &UCloudUpdateScreen::MergeChanged);
  BoundSubsystem->OnUpdateFinished.RemoveDynamic(this, &UCloudUpdateScreen::UpdateFinished);
+ BoundSubsystem->OnRepairFinished.RemoveDynamic(this, &UCloudUpdateScreen::RepairFinished);
  BoundSubsystem = nullptr;
 }
 void UCloudUpdateScreen::NativeDestruct()
@@ -155,6 +158,19 @@ void UCloudUpdateScreen::CancelClicked()
  SetStatus(LOCTEXT("Cancelling", "正在取消，请等待当前文件处理结束…")); RefreshButtons();
 }
 void UCloudUpdateScreen::CloseClicked() { if (!BoundSubsystem || !BoundSubsystem->IsBusy()) RemoveFromParent(); }
+void UCloudUpdateScreen::RepairClicked()
+{
+ if (!BoundSubsystem) { SetStatus(LOCTEXT("RepairUnavailable", "更新服务不可用，无法修复。"), true); return; }
+ SetStatus(LOCTEXT("RepairChecking", "正在校验本地文件，发现问题会自动从云端修复…"));
+ BoundSubsystem->RequestRepair();
+}
+void UCloudUpdateScreen::RepairFinished(bool bSuccess, int32 RepairedCount, const FString& Message)
+{
+ if (!bSuccess) SetStatus(FText::Format(LOCTEXT("RepairFailed", "修复失败：{0}"), FText::FromString(Message)), true);
+ else if (RepairedCount > 0) SetStatus(FText::Format(LOCTEXT("Repaired", "已修复 {0} 个文件。"), FText::AsNumber(RepairedCount)));
+ else SetStatus(Message.IsEmpty() ? LOCTEXT("RepairNothing", "本地文件完整，无需修复。") : FText::FromString(Message));
+ RefreshVersions();
+}
 void UCloudUpdateScreen::DownloadChanged(const FCloudDownloadProgressInfo& Progress)
 {
  if (Progress.bActive) bApplying = true;

@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
+#include "Containers/Ticker.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "CloudUpdateTypes.h"
 #include "CloudUpdateSubsystem.generated.h"
@@ -106,6 +107,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void RepairIssues();
 
+	/**
+	 * 一键修复：先做完整性检查，发现问题再自动修复。
+	 * RepairIssues 依赖同一次进程内 CheckIntegrity 的结果（PendingIssues 只存在内存里），
+	 * 所以对外只暴露这一个入口更不容易用错。进度/结果走 OnIntegrityCheckFinished 与 OnRepairFinished。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
+	void RequestRepair();
+
+	/** 是否因"资源实例连续启动失败"进入安全模式（本次进程使用 bootstrap 引导包） */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate|安全模式")
+	bool IsSafeModeActive() const { return bSafeModeActive; }
+
+	/** 清除安全模式标记，下次启动重新尝试资源实例（排查完问题后调用） */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate|安全模式")
+	void ExitSafeMode();
+
 	/** 检查服务端是否有可用更新（根据 HotPatcher 产物索引） */
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void CheckForUpdates();
@@ -151,6 +168,25 @@ public:
 	/** 运行时修改服务器地址并保存到配置 */
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate")
 	void SetServerUrl(const FString& InUrl);
+
+	/**
+	 * 局域网回退后实际生效的服务器地址（配置的地址解析到本机时自动改用「局域网服务器地址」）。
+	 * 未启用回退或无需回退时与 GetServerUrl 相同。
+	 */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate|局域网回退")
+	FString GetEffectiveServerUrl() const;
+
+	/** 当前是否正在使用局域网回退地址 */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate|局域网回退")
+	bool IsLanFallbackActive() const;
+
+	/** 最近一次回退判定的说明（含命中的本机 IP），便于在设备上排查 */
+	UFUNCTION(BlueprintPure, Category = "CloudUpdate|局域网回退")
+	FString GetLanFallbackReason() const;
+
+	/** 切换网络后强制重新判定（清空回退缓存） */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate|局域网回退")
+	void RefreshLanFallback();
 
 	/** 读取访问令牌（与项目设置中的「访问令牌」一致） */
 	UFUNCTION(BlueprintPure, Category = "CloudUpdate")
@@ -252,6 +288,17 @@ public:
 	FOnCloudAutoMergeFinished OnAutoMergeFinished;
 
 private:
+	/** RequestRepair 串起来的内部状态：完整性检查结束后若发现问题就自动修复 */
+	UFUNCTION()
+	void HandleIntegrityCheckFinishedForRepair(bool bSuccess, const TArray<FCloudFileIssue>& Issues, const FString& Message);
+	bool bRepairAfterIntegrityCheck = false;
+	/** 本次进程是否因安全模式回退到 bootstrap 引导包 */
+	bool bSafeModeActive = false;
+	/** 启动稳定窗口的 ticker（稳定后清除"启动尝试"记录） */
+	FTSTicker::FDelegateHandle StartupStabilityHandle;
+	double StartupStabilityDeadline = 0.0;
+	bool TickStartupStability(float DeltaTime);
+
 	TSharedPtr<FCloudUpdateService> Service;
  FCloudMergeProgressInfo MergeProgress;
 	/** 防止同一目录被并发自动合并（仅由游戏线程读写，安全） */

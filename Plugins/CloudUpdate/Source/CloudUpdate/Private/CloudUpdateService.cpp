@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // CloudUpdate 核心：构造 / URL-路径 / 版本记录 / 取消
 // (由 CloudUpdateService.cpp 按职责拆分，逻辑与原文一致)
 // ======================================================================
@@ -25,6 +25,9 @@
 #include "Async/Async.h"
 #include "Misc/App.h"
 #include "HAL/PlatformProperties.h"
+#include "HAL/PlatformTime.h"
+#include "HAL/CriticalSection.h"
+#include "Misc/ScopeLock.h"
 #include "FlibPakHelper.h"
 
 #include "CloudUpdateUtil.h"
@@ -85,6 +88,8 @@ void FCloudUpdateService::SetServerUrl(const FString& InUrl)
 	{
 		Settings->ServerUrl = InUrl;
 		Settings->SaveConfig();
+		// 地址变了，之前按主机缓存的回退判定立刻失效。
+		InvalidateLanFallbackCache();
 	}
 }
 

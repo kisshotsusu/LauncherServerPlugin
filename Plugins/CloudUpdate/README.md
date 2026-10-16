@@ -80,12 +80,12 @@ Plugins/CloudUpdate/
 内容浏览器开启“显示插件内容”，然后进入 CloudUpdate：
 
 - `Maps/L_CloudUpdate`：非 World Partition 的空关卡，没有第三人称角色或场景；World Settings 已指定更新入口 GameMode。
-- `UI/BP_CloudUpdateGameMode`：继承 `CloudUpdateUIGameMode`，其 `UpdateWidgetClass` 已指定 `WBP_CloudUpdate`。
-- `UI/WBP_CloudUpdate`：继承 `CloudUpdateScreen` 的更新面板，包含平台、游戏/资源版本、计划、总下载/当前文件/合并进度及操作按钮。
+- `UI/BP_CloudUpdateGameMode`：继承 `CloudUpdateUIGameMode`，其 `UpdateWidgetClass` 已指定 `WBP_GameStart`。
+- `UI/WBP_GameStart`：继承 `CloudUpdateScreen` 的更新面板，包含平台、游戏/资源版本、计划、总下载/当前文件/合并进度及操作按钮。
 - `Source/CloudUpdate/Public/UI`、`Private/UI`：独立的运行时 UI 入口，无 UnrealEd 依赖。
 - `Private/Tests`：任务生命周期回归测试，仅在开发测试构建中编译。
 
-打开使用该 GameMode 的关卡并运行后，PlayerController 会自动创建 WBP_CloudUpdate、加入视口、显示鼠标并设置 UI 输入模式，退出关卡时移除控件。用户点击“检查更新”后异步查询平台对应的完整更新计划；不会打开页面就自动下载。原项目默认启动地图保持现有配置。
+打开使用该 GameMode 的关卡并运行后，PlayerController 会自动创建 WBP_GameStart、加入视口、显示鼠标并设置 UI 输入模式，退出关卡时移除控件。用户点击“检查更新”后异步查询平台对应的完整更新计划；不会打开页面就自动下载。原项目默认启动地图保持现有配置。
 
 CloudUpdateScreen 的 NativeConstruct / NativeDestruct 自动绑定和解除自身监听；WBP 不需重复绑定。按钮名 CheckButton / UpdateButton / CancelButton 对应 QueryUpdatePlan / ApplyLatestUpdate / AbortCurrentTask。文本名 PlatformText / VersionsText / StatusText / SummaryText / DownloadText / FileProgressText / MergeText 和进度条 DownloadProgress / FileProgress / MergeProgress 可供自定义子控件复用。异步完成后才展示服务器结果，失败时可重试；需要游戏包更新或有待生效资源时禁用资源更新按钮，忙碌期间防止重复请求。未知总大小显示明确提示和循环进度，不伪造百分比；合并只有文件级进度。按钮固定在滚动内容下方，安卓使用 SafeZone。
 
@@ -99,7 +99,7 @@ CloudUpdateScreen 的 NativeConstruct / NativeDestruct 自动绑定和解除自�
 
 完成事件广播前已解除对应任务的忙碌状态，允许在完成事件中直接启动下一项任务。取消更新不会再把未完成的版本写入本地版本记录；文件修复存在失败时返回失败。
 
-打包时把 `/CloudUpdate/Maps/L_CloudUpdate` 加入“要打包的地图列表”，或者将其作为 GameDefaultMap。地图通过 GameMode 直接引用 WBP_CloudUpdate，可随地图一起 Cook。插件内容和项目内容的虚拟路径分别为 /CloudUpdate/ 与 /Game/。
+打包时把 `/CloudUpdate/Maps/L_CloudUpdate` 加入“要打包的地图列表”，或者将其作为 GameDefaultMap。地图通过 GameMode 直接引用 WBP_GameStart，可随地图一起 Cook。插件内容和项目内容的虚拟路径分别为 /CloudUpdate/ 与 /Game/。
 
 ### 目录检查与限制
 
@@ -200,3 +200,153 @@ requiredGameVersion 是明确的游戏包版本依赖；baseVersionId 是资源�
 每 0.1 秒在游戏线程报告实际接收字节，包含已有残片；校验由后台线程执行。清除无效数据或服务器要求重新下载时，进度按真实数据回退。服务端支持单段 Range、ETag、Last-Modified 和 If-Range。
 
 2026-10-16：Android 设备 ResumeHTTP/ResumeStream 自动测试通过，覆盖普通断连、忽略 Range、错误区间、503、文件变化、重建服务、空文件、完整缓存。Windows 模块编译通过；服务端 107 项测试通过，部署 EXE 返回正确 206。IOS 共用实现，未进行 IOS 构建或设备验收。
+
+## 局域网回退（2026-10-17）
+
+**解决什么问题**：内网联调 / 局域网部署时，服务器地址常被配成 `127.0.0.1`、写成本机内网地址，或域名解析到了客户端自己的地址——设备访问"自己"必然失败。开启本功能后，插件会判断"服务器地址解析出的 IP 是否与本机地址相同"，相同则自动改用配置的局域网地址。
+
+### 项目设置（项目设置 -> Cloud Update (云更新) -> 局域网回退）
+
+| 配置项 | 说明 |
+| --- | --- |
+| 启用局域网回退 | 总开关，**默认关闭**。关闭时零开销，不产生 DNS / 网卡枚举 |
+| 局域网服务器地址 | 回退目标，如 `http://192.168.1.10:8710`；可带路径前缀；**不写端口时沿用原 URL 的端口** |
+| 编辑器内也应用 | 默认关闭。编辑器通常与服务器同机，`127.0.0.1` 本来就是对的，回退会打断联调 |
+| 回退判定缓存（秒） | 默认 30。DNS + 网卡枚举只在缓存未命中时执行，避免每个文件都解析一次；0 表示每次请求都重新判定 |
+
+### 行为
+
+- **判定规则**：把服务器 `host` 解析为 IPv4 列表，与本机网卡 IPv4 列表求交集；有交集即认为"服务器就是本机"。
+  纯 IPv4 字面量直接参与比较；IPv6 不参与（回退目标请用 IPv4）。
+- **只替换主机与端口**，`路径`与查询串保持不变：
+  `http://127.0.0.1:8710/files/a.pak?x=1` → `http://192.168.1.10:8710/files/a.pak?x=1`
+- **覆盖所有请求**：清单、版本索引、版本描述、资源包下载、完整性修复。注入点是
+  `FCloudUpdateService::ResolveRemoteUrl()`，因此**服务器自己返回的绝对地址**（例如描述文件 `files[].url` 写成 `127.0.0.1`）同样会被回退。
+- **幂等**：地址已经是局域网地址时不再改写（避免自转发）。
+- 每次判定写一条日志：`局域网回退判定 <原主机> -> <说明>`（`LogCloudUpdate`，按主机缓存命中不重复刷）。
+
+### 蓝图 API
+
+| 节点 | 说明 |
+| --- | --- |
+| `GetEffectiveServerUrl` | 实际生效的服务器地址（未回退时等于 `GetServerUrl`） |
+| `IsLanFallbackActive` | 当前是否在使用局域网地址 |
+| `GetLanFallbackReason` | 最近一次判定说明（含命中的本机 IP），适合打到设备日志 / 调试 UI |
+| `RefreshLanFallback` | 切换网络后强制重新判定（清空缓存） |
+
+### 验证
+
+自动化测试 `CloudUpdate.LanFallback.Decision` 覆盖 URL 分解与回填、IPv4 字面量判定、回退决策（命中 / 不命中 / 端口继承 / 幂等 / 非法配置），全部为**纯函数、不访问网络**，可在编辑器直接跑：
+
+```
+UnrealEditor-Cmd.exe BiNanSuo.uproject -unattended -NullRHI -ExecCmds="Automation RunTests CloudUpdate.LanFallback" -TestExit="Automation Test Queue Empty"
+```
+
+## 容器集（.pak / .utoc / .ucas）一致性修复（2026-10-17）
+
+### 背景：为什么"新 .pak + 旧容器"会直接炸
+
+引擎把 `.pak` 当作 IoStore 的**挂载入口**：
+
+- `FPakPlatformFile::Mount()` 只接受 `.pak`，然后自己用 `ChangeExtension(.pak → .utoc)` 去找容器
+  （`IPlatformFilePak.cpp:6123-6141`）。**直接 Mount 一个 `.utoc` 既不需要也不受支持。**
+- 找不到 `.utoc` 时 `IoStoreSuccess = NotFound`，随后 `Pak.SafeRelease()` —— **整个 `.pak` 都被丢弃不挂载**
+  （`:6186-6203`，`GPak_AllowMissingUToc` 默认 `false`，`:231`）。
+
+这就是"下载完成、重启后资源错误"的机制：旧逻辑里 `.utoc/.ucas` 一律暂存为 `.pending`，而 `.pak`
+直接落到生效目录；下次启动引擎先挂载 Paks 目录，于是出现"新 `.pak` 找不到自己的容器"→ 该包整包
+不被挂载 → 记录却显示资源版本已安装 → 切到资源 GameInstance 后加载资源崩溃。
+
+### 本次改动
+
+1. **`.utoc/.ucas` 的 `.pending` 语义保持不变**（没有改成"新组直接落地"）：
+   IoStore 容器在运行时无法安全地原地替换（可能正被引擎读取），必须等重启——这点刻意保留。
+   一致性改由"**在引擎挂载之前完成成组交换**"来保证（见下）。
+2. **成组交换 + 整组回滚 + 崩溃恢复**：`FCloudBinaryMerge::FinalizePendingMerges` 现在按容器组
+   （`<base>.utoc` + `<base>.ucas`）处理——
+   - 交换前先把现有基础文件备份为 `<base>.swapbak`，任一步失败就把**整组**回滚回"全旧"；
+   - 容器组不完整（只有 `.utoc` 没有 `.ucas`，或反之）时**拒绝交换**，保留 `.pending`，绝不制造半套容器；
+   - 启动时自动恢复上次中断的交换（只有 `.swapbak` 而没有基础文件 → 先恢复；两者都在 → 清理备份）。
+3. **Android 补上"挂载之前"的交换**：`BNSAndroidStorage.cpp` 的 JNI 早期钩子（`nativeConfigureBNSAndroidStorage`，
+   引擎初始化之前）用 POSIX `rename` 递归交换外部存储下的 `*.pending`，并删除 0 字节残片。
+   Windows 侧原本就有 `BNSWindowsStorageBootstrap.inl`（`main` 之前）；`FinalizePendingMerges` 作为兜底。
+4. **启动校验增加"容器集必须成套"**：`ValidateStartupManifest` 里只要资源记录出现 `.utoc` 或 `.ucas`，
+   就要求 `.pak`/`.utoc`/`.ucas` 三者齐全，否则判定资源不可用 → 回退 bootstrap 引导包
+   （升级/修复入口仍然可达），而不是带着残缺容器切到资源 GameInstance 崩溃。
+   `OutPaks` 仍然只收集 `.pak`（容器会随同 basename 的 `.pak` 一起被引擎挂载）；但不再强制要求
+   记录里必须有 `.pak`，"只有版本号、没有任何文件"依然不算安装证据。
+
+### 验证
+
+- 编译：`Build.bat BiNanSuoEditor Win64 Development` → `Result: Succeeded`。
+- 自动化测试（11 项 `CloudUpdate.*`）：
+  `CloudUpdate.Service.IoStoreMergeRestart`（成组交换 + 回归旧断言）、`CloudUpdate.Startup.LocalResourceManifest`
+  （容器集校验）、`CloudUpdate.LanFallback.Decision`、`MockHTTPIntegration`、`ResumeHTTP/ResumeStream` 等
+  全部通过（`CloudUpdate.UI.ScreenStates` 的既有失败已在下一批修复，见下）。
+
+## P1/P2 修复（2026-10-17 第 2 批）
+
+### P1 超时按大小估算
+
+`HttpTimeoutSeconds` 在 UE 里是**整个请求的总超时**（`HttpRequestCommon.cpp` 的 TotalTimeoutTimer），不是空闲超时。
+固定 60s 会让大 pak/utoc 在慢网络下必然被掐断，而重试只有 `DownloadRetryCount` 次 ——
+表现就是"进度到 100% 却报失败"。现在：
+
+```
+超时 = clamp( max(HttpTimeoutSeconds, 剩余字节 / DownloadMinBytesPerSecond), HttpTimeoutSeconds, DownloadTimeoutMaxSeconds )
+```
+
+新增：`DownloadMinBytesPerSecond`（默认 32768，0 = 不估算）、`DownloadTimeoutMaxSeconds`（默认 1800，0 = 不限）。
+
+### P1 失败语义
+
+失败消息不再只有"成功 N / 失败 M"，而是带上失败文件名（最多 5 个）：
+
+`更新失败：成功 118 / 失败 2（pakchunk1-Android_ASTC.ucas、…）`
+
+配合 `OnUpdateFinished` 的 `bRestartRequired`，UI 已区分 **失败**（红色状态）与 **需重启**
+（"资源 X 已准备好，请关闭并重新打开应用使其生效"）。
+说明：**没有**把某些文件降级成"可跳过"——缺 `.ucas` 就等于容器不可用，跳过会装出半套资源。
+
+### P1 一键修复入口
+
+- 新增 `UCloudUpdateSubsystem::RequestRepair()`：先 `CheckIntegrity(FullHash)`，发现问题自动 `RepairIssues()`
+  （后者依赖同一次进程内检查的内存结果，串起来才不会用错）。
+- `WBP_GameStart` 新增 `RepairButton` + `RepairLabel("修复")`，放在 `AttentionActions` 里与 检查更新/关闭 同排；
+  `UCloudUpdateScreen` 按名字自动绑定，点击后状态栏显示校验/修复结果（监听 `OnRepairFinished`）。
+  位置/样式可在设计师里自行调整；删掉该控件也不会报错（绑定是可选的）。
+
+### P1 断点续传健壮性（三处）
+
+1. **验证标记不再被清空**：206 未带 ETag/Last-Modified 时保留 `.download.json` 中原标记，
+   否则下次续传没有 `If-Range`，服务器换了内容也会被追加到旧分片后面。
+2. **`Content-Range: bytes 0-99/*`（总长未知）不再判为非法区间**，避免丢掉好分片并整文件重下。
+3. **总大小未知时也能识别"分片已完整"**：把服务器给过的总大小记进 `.download.json` 的 `total`，
+   下次启动用它判断，而不是发出 `bytes=<N>-` 触发 416。
+
+### P2 安全模式（资源实例连续启动失败 → 回 bootstrap）
+
+`SelectStartupGameInstance` 在切换到资源 GameInstance **之前**记一次"启动尝试"
+（`Saved/CloudUpdate/<平台>/startup_attempt.json`）；`UCloudUpdateSubsystem` 启动后用 core ticker
+在 `SafeModeStableSeconds`（默认 45s）后清除 —— **只有崩在稳定窗口内才累计**。同一版本连续失败达到
+`SafeModeFailureThreshold`（默认 2，即第 3 次启动）时，本次强制使用 bootstrap 引导包，
+保证更新/修复入口一定可见。蓝图：`IsSafeModeActive()` / `ExitSafeMode()`。
+
+### P2 回滚记录一致性
+
+`RollbackRevokedVersion` 之前无论文件是否删掉都 `SaveLocalVersion(TargetVersion)`；现在**有文件删不掉时
+保持原记录并回报失败**（`OnRollbackFinished(bSuccess=false, …)`），避免"记录已回退、磁盘还是被撤销版本"。
+
+### P2 控件资产名更正
+
+`CloudUpdateUITests.inl` 与本文档原先引用 `/CloudUpdate/UI/WBP_CloudUpdate`（**该资产不存在**），
+已改为真实的 `WBP_GameStart`；修正后 `CloudUpdate.UI.ScreenStates` 由失败转为通过。
+
+### 验证（2026-10-17 第 2 批）
+
+- `Build.bat BiNanSuoEditor Win64 Development` → `Result: Succeeded`
+- `Build.bat BiNanSuo Android Development` → `Result: Succeeded`
+- `Automation RunTests CloudUpdate` → **11 / 11 通过、0 失败**；新增断言覆盖：容器集不完整（有 `.utoc` 无 `.ucas`）
+  被拒绝、成套容器被接受、安全模式计数读/写/清与换版本归零。
+- 过程中发现并修正：`ValidateStartupManifest` 中那行 Error 级日志会被自动化框架记为测试失败，
+  已改为 Warning（该条件本就安全回退 bootstrap，不是错误）。

@@ -19,7 +19,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCloudUpdateScreenTest, "CloudUpdate.UI.ScreenS
  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FCloudUpdateScreenTest::RunTest(const FString& Parameters)
 {
- UClass* WidgetClass = LoadClass<UCloudUpdateScreen>(nullptr, TEXT("/CloudUpdate/UI/WBP_CloudUpdate.WBP_CloudUpdate_C"));
+ // 实际继承 CloudUpdateScreen 的面板是 WBP_GameStart（WBP_UpDataGame / WBP_CheckEnd 只是普通 UserWidget）。
+ UClass* WidgetClass = LoadClass<UCloudUpdateScreen>(nullptr, TEXT("/CloudUpdate/UI/WBP_GameStart.WBP_GameStart_C"));
  if (!TestNotNull(TEXT("Shared plugin widget class loads"), WidgetClass)) return false;
  TStrongObjectPtr<UCloudUpdateScreen> Screen(NewObject<UCloudUpdateScreen>(GetTransientPackage(), WidgetClass));
  if (!TestTrue(TEXT("Widget tree initializes"), Screen->Initialize())) return false;

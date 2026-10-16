@@ -21,6 +21,8 @@ public:
  void Discard();
  const int64 Offset;
  FString Validator;
+ /** 上一次响应里服务器给出的总大小（-1 未知）；ExpectedSize 未知时用它识别"分片已完整" */
+ int64 KnownTotal = -1;
  bool bInvalidRange = false;
 private:
  bool OpenResponse();

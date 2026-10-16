@@ -9,6 +9,10 @@
 #include "CloudUpdateBinaryMerge.h"
 #include "Dom/JsonObject.h"
 #include "HAL/PlatformProperties.h"
+// 局域网回退：枚举本机网卡地址、解析服务器主机名
+#include "SocketSubsystem.h"
+#include "AddressInfoTypes.h"
+#include "IPAddress.h"
 
 namespace CloudUpdatePrivate
 {
@@ -236,5 +240,162 @@ namespace CloudUpdatePrivate
   FString Name = InPath.ToLower();
   Name.RemoveFromEnd(TEXT(".patch"));
   return Name.EndsWith(TEXT(".apk")) || Name.EndsWith(TEXT(".ipa")) || Name.EndsWith(TEXT(".exe")) || Name.EndsWith(TEXT(".dll")) || Name.EndsWith(TEXT(".so")) || Name.Contains(TEXT(".so.")) || Name.EndsWith(TEXT(".dylib"));
+ }
+}
+
+namespace CloudUpdatePrivate
+{
+ FCloudUrlParts ParseCloudUrl(const FString& InUrl)
+ {
+  FCloudUrlParts Parts;
+  const int32 SchemeEnd = InUrl.Find(TEXT("://"));
+  if (SchemeEnd == INDEX_NONE) return Parts;
+  Parts.Scheme = InUrl.Left(SchemeEnd);
+  if (Parts.Scheme.IsEmpty()) return Parts;
+  // 只处理 http(s)：局域网回退只作用于 HTTP 请求，其它 scheme 一律视为无效输入。
+  if (!Parts.Scheme.Equals(TEXT("http"), ESearchCase::IgnoreCase)
+   && !Parts.Scheme.Equals(TEXT("https"), ESearchCase::IgnoreCase)) return Parts;
+
+  const FString Rest = InUrl.Mid(SchemeEnd + 3);
+  if (Rest.IsEmpty()) return Parts;
+
+  int32 AuthorityEnd = 0;
+  if (Rest.StartsWith(TEXT("[")))
+  {
+   // 括号形式的 IPv6 主机：跳过 ] 之后再找端口与路径。
+   const int32 Close = Rest.Find(TEXT("]"));
+   if (Close == INDEX_NONE) return Parts;
+   Parts.Host = Rest.Mid(1, Close - 1);
+   const int32 After = Close + 1;
+   const int32 Slash = Rest.Find(TEXT("/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, After);
+   AuthorityEnd = Slash == INDEX_NONE ? Rest.Len() : Slash;
+   const FString PortText = Rest.Mid(After, AuthorityEnd - After);
+   if (PortText.StartsWith(TEXT(":"))) Parts.Port = FCString::Atoi(*PortText.Mid(1));
+  }
+  else
+  {
+   const int32 Slash = Rest.Find(TEXT("/"));
+   AuthorityEnd = Slash == INDEX_NONE ? Rest.Len() : Slash;
+   const FString HostPort = Rest.Left(AuthorityEnd);
+   // 从右往左找 ':'，避免把 IPv6 里的冒号当端口分隔符。
+   const int32 Colon = HostPort.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+   if (Colon == INDEX_NONE)
+   {
+    Parts.Host = HostPort;
+   }
+   else
+   {
+    Parts.Host = HostPort.Left(Colon);
+    Parts.Port = FCString::Atoi(*HostPort.Mid(Colon + 1));
+   }
+  }
+
+  if (Parts.Host.IsEmpty()) return Parts;
+  Parts.Path = Rest.Mid(AuthorityEnd);
+  Parts.bValid = true;
+  return Parts;
+ }
+
+ FString ComposeCloudUrl(const FCloudUrlParts& InParts)
+ {
+  if (!InParts.bValid || InParts.Host.IsEmpty()) return FString();
+  FString Host = InParts.Host;
+  if (Host.Contains(TEXT(":"))) Host = TEXT("[") + Host + TEXT("]");
+  const bool bDefaultPort = InParts.Port <= 0
+   || (InParts.Scheme.Equals(TEXT("http"), ESearchCase::IgnoreCase) && InParts.Port == 80)
+   || (InParts.Scheme.Equals(TEXT("https"), ESearchCase::IgnoreCase) && InParts.Port == 443);
+  return InParts.Scheme + TEXT("://") + Host
+   + (bDefaultPort ? FString() : FString::Printf(TEXT(":%d"), InParts.Port))
+   + InParts.Path;
+ }
+
+ bool IsIPv4Literal(const FString& InText)
+ {
+  TArray<FString> Segments;
+  InText.ParseIntoArray(Segments, TEXT("."), false);
+  if (Segments.Num() != 4) return false;
+  for (const FString& Segment : Segments)
+  {
+   if (Segment.IsEmpty() || Segment.Len() > 3) return false;
+   for (const TCHAR Ch : Segment) if (!FChar::IsDigit(Ch)) return false;
+   const int32 Value = FCString::Atoi(*Segment);
+   if (Value < 0 || Value > 255) return false;
+  }
+  return true;
+ }
+
+ bool DecideLanFallback(const FString& InOriginalUrl, const FString& InLanBaseUrl,
+  const TArray<FString>& InResolvedIps, const TArray<FString>& InLocalIps,
+  FString& OutUrl, FString& OutReason)
+ {
+  OutUrl = InOriginalUrl;
+  OutReason.Reset();
+  if (InOriginalUrl.IsEmpty()) { OutReason = TEXT("URL 为空"); return false; }
+  if (InLanBaseUrl.IsEmpty()) { OutReason = TEXT("未配置局域网服务器地址"); return false; }
+
+  const FCloudUrlParts Original = ParseCloudUrl(InOriginalUrl);
+  const FCloudUrlParts Lan = ParseCloudUrl(InLanBaseUrl);
+  if (!Original.bValid) { OutReason = TEXT("待处理地址不是 http(s) URL，跳过回退"); return false; }
+  if (!Lan.bValid) { OutReason = TEXT("局域网服务器地址不是 http(s) URL，跳过回退"); return false; }
+  if (Lan.Host.Equals(Original.Host, ESearchCase::IgnoreCase) && Lan.Port == Original.Port)
+  { OutReason = TEXT("地址已经是局域网服务器地址"); return false; }
+
+  FString Matched;
+  for (const FString& Ip : InResolvedIps)
+  {
+   if (InLocalIps.Contains(Ip)) { Matched = Ip; break; }
+  }
+  if (Matched.IsEmpty())
+  { OutReason = TEXT("服务器地址不是本机地址，无需回退"); return false; }
+
+  FCloudUrlParts Effective = Original;
+  Effective.Host = Lan.Host;
+  Effective.Port = Lan.Port > 0 ? Lan.Port : Original.Port;
+  OutUrl = ComposeCloudUrl(Effective);
+  OutReason = FString::Printf(TEXT("服务器 IP %s 与本机相同，已回退到 %s"), *Matched, *Lan.Host);
+  return true;
+ }
+
+ void GetLocalIPv4Addresses(TArray<FString>& Out)
+ {
+  Out.Reset();
+  ISocketSubsystem* Sockets = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
+  if (!Sockets) return;
+  TArray<TSharedPtr<FInternetAddr>> Adapters;
+  if (!Sockets->GetLocalAdapterAddresses(Adapters)) return;
+  for (const TSharedPtr<FInternetAddr>& Address : Adapters)
+  {
+   if (!Address.IsValid()) continue;
+   const FString Text = Address->ToString(false);
+   if (IsIPv4Literal(Text) && Text != TEXT("0.0.0.0")) Out.AddUnique(Text);
+  }
+ }
+
+ bool ResolveHostIPv4(const FString& InHost, TArray<FString>& Out)
+ {
+  Out.Reset();
+  if (InHost.IsEmpty()) return false;
+  if (IsIPv4Literal(InHost)) { Out.Add(InHost); return true; }
+  ISocketSubsystem* Sockets = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
+  if (!Sockets) return false;
+  const FAddressInfoResult Info = Sockets->GetAddressInfo(*InHost, nullptr, EAddressInfoFlags::Default, NAME_None);
+  for (const FAddressInfoResultData& Data : Info.Results)
+  {
+   // Data.Address 是 TSharedRef，必然有效，无需判空。
+   const FString Text = Data.Address->ToString(false);
+   if (IsIPv4Literal(Text)) Out.AddUnique(Text);
+  }
+  return Out.Num() > 0;
+ }
+
+ bool IsContainerSetFile(const FString& InPath)
+ {
+  const FString Extension = FPaths::GetExtension(InPath).ToLower();
+  return Extension == TEXT("pak") || Extension == TEXT("utoc") || Extension == TEXT("ucas");
+ }
+
+ FString GetContainerSetPakPath(const FString& InPath)
+ {
+  return FPaths::ChangeExtension(InPath, TEXT(".pak"));
  }
 }

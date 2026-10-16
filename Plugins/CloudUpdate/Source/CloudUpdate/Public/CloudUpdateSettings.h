@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
@@ -48,6 +48,27 @@ public:
 
     UPROPERTY(EditAnywhere, config, Category = "启动实例")
     FString ResourceGameInstanceClass;
+
+	/**
+	 * 局域网回退总开关。开启后，若服务器地址解析出的 IP 与本机地址相同
+	 * （例如配置了 127.0.0.1、或域名解析到了设备自己的地址），
+	 * 所有请求会自动改用下面的「局域网服务器地址」，保证同网段联调/内网部署可用。
+	 * 只改主机与端口，路径与查询串保持不变；解析结果缓存（见 LanFallbackCacheSeconds）。
+	 */
+	UPROPERTY(EditAnywhere, config, Category = "局域网回退", meta = (DisplayName = "启用局域网回退"))
+	bool bEnableLanFallback;
+
+	/** 回退目标局域网地址，例如 http://192.168.1.10:8710（可带路径前缀；缺端口时沿用原 URL 的端口） */
+	UPROPERTY(EditAnywhere, config, Category = "局域网回退", meta = (DisplayName = "局域网服务器地址"))
+	FString LanServerUrl;
+
+	/** 编辑器进程内是否也应用回退。默认关闭，避免打断本机 127.0.0.1 的编辑器联调 */
+	UPROPERTY(EditAnywhere, config, Category = "局域网回退", meta = (DisplayName = "编辑器内也应用"))
+	bool bLanFallbackInEditor;
+
+	/** 回退判定（DNS + 网卡枚举）的缓存时长，单位秒；0 表示每次请求都重新判定 */
+	UPROPERTY(EditAnywhere, config, Category = "局域网回退", meta = (DisplayName = "回退判定缓存（秒）", ClampMin = "0", UIMin = "0", UIMax = "600"))
+	float LanFallbackCacheSeconds;
 
 	/** 管理服务器地址，例如 http://127.0.0.1:8710 */
 	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "服务器地址（如 http://127.0.0.1:8710）"))
@@ -105,9 +126,29 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "下载后校验哈希"))
 	bool bVerifyDownloadHash;
 
-	/** HTTP 超时（秒） */
+	/** HTTP 超时（秒）。UE 的 SetTimeout 是"整个请求"的总超时，这里作为**下限**。 */
 	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "HTTP 超时（秒）", ClampMin = "5"))
 	int32 HttpTimeoutSeconds;
+
+	/**
+	 * 估算下载超时时假定的最低速率（字节/秒）。实际超时 = max(HttpTimeoutSeconds, 剩余字节 / 本值)，
+	 * 再被 DownloadTimeoutMaxSeconds 截断。0 表示不做大小估算（只用 HttpTimeoutSeconds）。
+	 * 固定 60s 总超时会让大 pak/utoc 在慢网络下必然被掐断，是"进度到 100% 却报失败"的常见成因。
+	 */
+	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "下载最低速率（字节/秒）", ClampMin = "0"))
+	int32 DownloadMinBytesPerSecond;
+
+	/** 单次下载超时的上限（秒），0 表示不限制 */
+	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "下载超时上限（秒）", ClampMin = "0"))
+	int32 DownloadTimeoutMaxSeconds;
+
+	/** 安全模式：资源实例连续启动失败到该次数后，强制回退 bootstrap 引导包（保留更新/修复入口） */
+	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "安全模式触发次数", ClampMin = "1", UIMax = "10"))
+	int32 SafeModeFailureThreshold;
+
+	/** 启动后多少秒视为"已稳定"（清除本次资源实例启动的尝试记录）。崩溃发生在稳定之前才会累计次数 */
+	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "启动稳定判定（秒）", ClampMin = "5"))
+	int32 SafeModeStableSeconds;
 
 	/** 单个文件下载失败重试次数 */
 	UPROPERTY(EditAnywhere, config, Category = "行为", meta = (DisplayName = "下载失败重试次数", ClampMin = "0"))

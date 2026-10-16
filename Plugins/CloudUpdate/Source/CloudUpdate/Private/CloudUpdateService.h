@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HAL/CriticalSection.h"
 #include "CloudUpdateTypes.h"
 
 class UCloudUpdateSubsystem;
@@ -44,6 +45,15 @@ public:
 	FString GetServerUrl() const;
 	void SetServerUrl(const FString& InUrl);
 
+	/** 应用局域网回退后实际生效的服务器地址（供 UI / 日志展示）。 */
+	FString GetEffectiveServerUrl() const;
+	/** 本进程内是否真的发生过局域网回退。 */
+	bool IsLanFallbackActive() const;
+	/** 最近一次回退判定的说明（含命中的本机 IP）。 */
+	FString GetLanFallbackReason() const;
+	/** 切换网络/服务器后清空判定缓存，使下次请求重新解析。 */
+	void InvalidateLanFallbackCache();
+
 private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend struct FCloudUpdateServiceTestAccess;
@@ -63,6 +73,8 @@ private:
 	int32 CurrentFileIndex = 0;
 	int32 CompletedFiles = 0;
 	int32 FailedFiles = 0;
+	/** 本次任务失败的文件名，用于把"哪个文件失败"带进给用户的提示里 */
+	TArray<FString> FailedFileNames;
 	bool bIoStoreApplied = false;
 	bool bDirectIoStore = false;
 	bool bRestartRequired = false;
@@ -108,6 +120,23 @@ private:
  void FinishPlan(bool bSuccess, const FString& Message);
  bool ReadDescriptorFiles(const TSharedPtr<FJsonObject>& Json, TArray<FCloudDownloadFile>& OutFiles) const;
  FString ResolveRemoteUrl(const FString& Url) const;
+
+ // ---------- 局域网回退 ----------
+ /** 对单个 URL 应用局域网回退（按主机缓存判定，避免每次请求都做 DNS/网卡枚举）。 */
+ FString ApplyLanFallback(const FString& InUrl) const;
+
+ struct FLanFallbackDecision
+ {
+  /** 回退目标主机；为空表示该主机不需要回退。 */
+  FString ReplacementHost;
+  int32 ReplacementPort = 0;
+  FString Reason;
+  double Time = 0.0;
+ };
+ mutable FCriticalSection LanFallbackLock;
+ mutable TMap<FString, FLanFallbackDecision> LanFallbackCache;
+ mutable bool bLanFallbackApplied = false;
+ mutable FString LanFallbackAppliedReason;
  void InitializeTransferSession(const TArray<FPlannedVersion>& Versions);
  void StartTrackedDownload(const FCloudDownloadFile& File, const FString& Path, TFunction<void(bool)> Callback, bool bFallback = false);
  void UpdateTransferProgress(uint32 Generation, int64 Done, int64 Total);

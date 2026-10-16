@@ -1,4 +1,4 @@
-﻿#include "CloudUpdateSubsystem.h"
+#include "CloudUpdateSubsystem.h"
 #include "CloudUpdate.h"
 #include "CloudUpdateService.h"
 #include "CloudUpdateSettings.h"
@@ -8,6 +8,8 @@
 #include "HttpModule.h"
 #include "Async/Async.h"
 #include "Misc/Paths.h"
+#include "Containers/Ticker.h"
+#include "HAL/PlatformTime.h"
 
 UCloudUpdateSubsystem* UCloudUpdateSubsystem::GetCloudUpdateSubsystem()
 {
@@ -48,10 +50,72 @@ void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 			CheckIntegrity(ECloudCheckMode::FullHash);
 		}
 	}
+
+	// RequestRepair 需要"检查完再看结果决定是否修复"，这里挂上内部监听。
+	OnIntegrityCheckFinished.AddUniqueDynamic(this, &UCloudUpdateSubsystem::HandleIntegrityCheckFinishedForRepair);
+
+	// 安全模式（P2）：SelectStartupGameInstance 在切换资源实例前会记一次"启动尝试"；
+	// 只有崩在稳定窗口内才会保留该记录，连续达到阈值后下次强制回 bootstrap 引导包，
+	// 保证更新/修复入口一定可见（而不是继续崩在资源加载里）。
+	bSafeModeActive = CloudUpdatePrivate::WasSafeModeTriggered();
+	if (bSafeModeActive)
+	{
+		UE_LOG(LogCloudUpdate, Error, TEXT("安全模式：资源实例连续启动失败，本次使用 bootstrap 引导包。处理完后可调用 ExitSafeMode 清除标记。"));
+	}
+	StartupStabilityDeadline = FPlatformTime::Seconds() + (Settings ? FMath::Max(5, Settings->SafeModeStableSeconds) : 45);
+	StartupStabilityHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UCloudUpdateSubsystem::TickStartupStability));
+}
+
+bool UCloudUpdateSubsystem::TickStartupStability(float DeltaTime)
+{
+	if (FPlatformTime::Seconds() < StartupStabilityDeadline) return true;
+	// 撑过稳定窗口 = 本次资源实例启动成功，清除尝试记录。
+	CloudUpdatePrivate::ClearStartupAttempt();
+	StartupStabilityHandle.Reset();
+	return false;
+}
+
+void UCloudUpdateSubsystem::ExitSafeMode()
+{
+	CloudUpdatePrivate::ClearStartupAttempt();
+	bSafeModeActive = false;
+	UE_LOG(LogCloudUpdate, Log, TEXT("安全模式标记已清除，下次启动将重新尝试资源实例。"));
+}
+
+void UCloudUpdateSubsystem::RequestRepair()
+{
+	if (bAutoMergeRunning) { OnRepairFinished.Broadcast(false, 0, TEXT("自动合并正在进行")); return; }
+	if (!Service.IsValid()) { OnRepairFinished.Broadcast(false, 0, TEXT("更新服务不可用")); return; }
+	// RepairIssues 依赖同一次进程内 CheckIntegrity 的结果（PendingIssues 只在内存里），
+	// 所以这里串起来：先查，发现问题再自动修。
+	bRepairAfterIntegrityCheck = true;
+	CheckIntegrity(ECloudCheckMode::FullHash);
+}
+
+void UCloudUpdateSubsystem::HandleIntegrityCheckFinishedForRepair(bool bSuccess, const TArray<FCloudFileIssue>& Issues, const FString& Message)
+{
+	if (!bRepairAfterIntegrityCheck) return;
+	bRepairAfterIntegrityCheck = false;
+	if (!bSuccess)
+	{
+		OnRepairFinished.Broadcast(false, 0, Message.IsEmpty() ? TEXT("完整性检查失败，无法修复") : Message);
+		return;
+	}
+	if (Issues.Num() == 0)
+	{
+		OnRepairFinished.Broadcast(true, 0, TEXT("未发现需要修复的文件"));
+		return;
+	}
+	RepairIssues();
 }
 
 void UCloudUpdateSubsystem::Deinitialize()
 {
+	if (StartupStabilityHandle.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(StartupStabilityHandle);
+		StartupStabilityHandle.Reset();
+	}
 	if (Service.IsValid())
 	{
 		Service->DetachOwner();
@@ -154,6 +218,29 @@ void UCloudUpdateSubsystem::SetServerUrl(const FString& InUrl)
 	if (Service.IsValid())
 	{
 		Service->SetServerUrl(InUrl);
+	}
+}
+
+FString UCloudUpdateSubsystem::GetEffectiveServerUrl() const
+{
+	return Service.IsValid() ? Service->GetEffectiveServerUrl() : FString();
+}
+
+bool UCloudUpdateSubsystem::IsLanFallbackActive() const
+{
+	return Service.IsValid() && Service->IsLanFallbackActive();
+}
+
+FString UCloudUpdateSubsystem::GetLanFallbackReason() const
+{
+	return Service.IsValid() ? Service->GetLanFallbackReason() : FString();
+}
+
+void UCloudUpdateSubsystem::RefreshLanFallback()
+{
+	if (Service.IsValid())
+	{
+		Service->InvalidateLanFallbackCache();
 	}
 }
 

@@ -39,6 +39,9 @@ private:
  UFUNCTION() void UpdateClicked();
  UFUNCTION() void CancelClicked();
  UFUNCTION() void CloseClicked();
+ /** 一键修复：先做完整性检查，发现问题再自动修复（对应设计师里的 RepairButton，可缺省） */
+ UFUNCTION() void RepairClicked();
+ UFUNCTION() void RepairFinished(bool bSuccess, int32 RepairedCount, const FString& Message);
  UFUNCTION() void PlanReady(bool bSuccess, const FCloudUpdatePlan& Plan, const FString& Message);
  UFUNCTION() void DownloadChanged(const FCloudDownloadProgressInfo& Progress);
  UFUNCTION() void MergeChanged(const FCloudMergeProgressInfo& Progress);

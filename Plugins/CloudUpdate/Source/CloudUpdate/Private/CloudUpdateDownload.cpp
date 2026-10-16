@@ -30,7 +30,12 @@ FCloudDownloadStream::FCloudDownloadStream(const FString& InPath, const FString&
  FString Saved; TSharedPtr<FJsonObject> Meta;
  if (FFileHelper::LoadFileToString(Saved, *(Path + TEXT(".json")))
   && FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Saved), Meta) && Meta.IsValid())
+ {
   Meta->TryGetStringField(TEXT("validator"), Validator);
+  int64 StoredTotal = -1;
+  if (Meta->TryGetNumberField(TEXT("total"), StoredTotal) && StoredTotal > 0) KnownTotal = StoredTotal;
+ }
+ if (KnownTotal <= 0) KnownTotal = InSize; // InSize<0 表示仍然未知
 }
 void FCloudDownloadStream::Status(int32 Code)
 {
@@ -55,10 +60,15 @@ bool FCloudDownloadStream::OpenResponse()
   FString Range, TotalText, StartText, EndText;
   if (!ContentRange.StartsWith(TEXT("bytes ")) || !ContentRange.Mid(6).Split(TEXT("/"), &Range, &TotalText)
    || !Range.Split(TEXT("-"), &StartText, &EndText)
-   || !LexTryParseString(Start, *StartText) || !LexTryParseString(End, *EndText) || !LexTryParseString(Total, *TotalText)
-   || Start != Offset || End < Start || Total <= End || (ExpectedSize >= 0 && Total != ExpectedSize)
+   || !LexTryParseString(Start, *StartText) || !LexTryParseString(End, *EndText)
+   || Start != Offset || End < Start
    || (ResponseLength >= 0 && ResponseLength != End - Start + 1))
   { bInvalidRange = true; return false; }
+  // "bytes 0-99/*"（总长未知）是合法响应：不能当成非法区间，否则会丢掉一份好分片并整文件重下。
+  const bool bTotalKnown = LexTryParseString(Total, *TotalText);
+  if (bTotalKnown && (Total <= End || (ExpectedSize >= 0 && Total != ExpectedSize)))
+  { bInvalidRange = true; return false; }
+  if (!bTotalKnown) Total = -1;
   if (!Validator.IsEmpty() && !NewValidator.IsEmpty() && Validator != NewValidator)
   { bInvalidRange = true; return false; }
   ResponseEnd = End + 1;
@@ -73,12 +83,16 @@ bool FCloudDownloadStream::OpenResponse()
  else return false; // Never save an HTML/JSON error body as a resumable fragment.
  if (!Encoding.IsEmpty() && !Encoding.Equals(TEXT("identity"), ESearchCase::IgnoreCase)) return false;
  TotalSize = ExpectedSize >= 0 ? ExpectedSize : Total;
+ if (TotalSize > 0) KnownTotal = TotalSize;
  Writer.Reset(IFileManager::Get().CreateFileWriter(*Path, Start > 0 ? FILEWRITE_Append : 0));
  if (!Writer) return false;
  BytesWritten = Start;
  TSharedRef<FJsonObject> Meta = MakeShared<FJsonObject>();
  Meta->SetStringField(TEXT("identity"), Identity);
- Meta->SetStringField(TEXT("validator"), NewValidator);
+ // 206 未回 ETag/Last-Modified 时不能把已存的验证标记清空，否则下次续传没有 If-Range，
+ // 服务器换了内容也会被追加到旧分片后面。
+ Meta->SetStringField(TEXT("validator"), NewValidator.IsEmpty() ? Validator : NewValidator);
+ if (TotalSize > 0) Meta->SetNumberField(TEXT("total"), TotalSize);
  FString Saved; FJsonSerializer::Serialize(Meta, TJsonWriterFactory<>::Create(&Saved));
  if (!FFileHelper::SaveStringToFile(Saved, *(Path + TEXT(".json")), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM)) return false;
  bOpened = true;

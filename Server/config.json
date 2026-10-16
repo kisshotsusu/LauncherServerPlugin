@@ -28,7 +28,8 @@
     ],
     "Android": [
       "base:1.0",
-      "installer:1.0"
+      "installer:1.0",
+      "base:1.0.1"
     ]
   },
   "api_endpoints": {
