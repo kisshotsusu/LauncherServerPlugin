@@ -49,6 +49,9 @@ def generate_manifest(cfg, platform, base_version=None, force=False):
     if not root or not os.path.isdir(root):
         raise RuntimeError(f"未配置或找不到平台 {platform} 的打包目录")
     version = base_version or get_latest_base_version(cfg, platform) or "base"
+    # Imported lazily because importer also uses hash_file from this module.
+    from importer import validate_resource_tree, is_resource_file
+    validate_resource_tree(root)
 
     cache_path = os.path.join(cfg["manifests_dir"], f"{project}_{platform}_{version}.json")
     latest_path = os.path.join(cfg["manifests_dir"], f"{project}_{platform}.json")
@@ -56,7 +59,7 @@ def generate_manifest(cfg, platform, base_version=None, force=False):
         if candidate and os.path.exists(candidate) and not force:
             with open(candidate, "r", encoding="utf-8") as f:
                 cached = json.load(f)
-            if cached.get("baseVersionId") == version:
+            if cached.get("baseVersionId") == version and cached.get("resourcePolicyVersion") == 2:
                 return cached
             # 缓存属于其他基础包版本，忽略并重新生成
 
@@ -65,6 +68,10 @@ def generate_manifest(cfg, platform, base_version=None, force=False):
         for name in filenames:
             abs_path = os.path.join(dirpath, name)
             rel = os.path.relpath(abs_path, root).replace("\\", "/")
+            if rel == ".cloudupdate.json":
+                continue
+            if not is_resource_file(rel):
+                continue
             if matches_any(rel, cfg["manifest_exclude_patterns"]):
                 continue
             digest, size = hash_file(abs_path, cfg["manifest_hash"])
@@ -85,6 +92,7 @@ def generate_manifest(cfg, platform, base_version=None, force=False):
         "fileCount": len(files),
         "files": files,
     }
+    manifest["resourcePolicyVersion"] = 2
     os.makedirs(cfg["manifests_dir"], exist_ok=True)
     with open(cache_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
@@ -98,6 +106,8 @@ def generate_manifest(cfg, platform, base_version=None, force=False):
 def build_base_descriptor(cfg, platform, base_version):
     """为基础包版本动态生成更新描述（整包文件列表，客户端据此整包替换）。"""
     manifest = generate_manifest(cfg, platform, base_version)
+    from packages import base_metadata
+    metadata = base_metadata(cfg, platform, base_version)
     files = []
     for entry in manifest.get("files", []):
         rel = entry.get("path", "")
@@ -109,7 +119,7 @@ def build_base_descriptor(cfg, platform, base_version):
             "targetRelativePath": rel,
             "hash": entry.get("hash", ""),
             "size": entry.get("size", 0),
-            "kind": "ExternFile",
+            "kind": ("ContentPak" if rel.lower().endswith(".pak") else "IoStore" if rel.lower().endswith((".utoc", ".ucas")) else "ExternFile"),
         })
     return {
         "schemaVersion": 2,
@@ -117,11 +127,13 @@ def build_base_descriptor(cfg, platform, base_version):
         "versionId": base_version,
         "baseVersionId": "",
         "date": manifest.get("generatedAt", ""),
-        "type": "full",
+        "type": "resource",
+        "packageKind": "base",
+        **metadata,
         "changedAssetCount": 0,
         "deletedAssetCount": 0,
         "restartRequired": True,
-        "ioStoreEnabled": False,
+        "ioStoreEnabled": any(f["kind"] == "IoStore" for f in files),
         "files": files,
     }
 

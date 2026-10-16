@@ -24,7 +24,8 @@ struct VersionInfo {
     std::string versionId;
     std::string baseVersionId;
     std::string date;
-    std::string type;   // full / patch
+    std::string type;   // full (program) / resource (base) / patch
+    std::string gameVersion, resourceVersion, requiredGameVersion;
     std::string url;
     int64_t totalSize = 0;
 };
@@ -47,7 +48,7 @@ public:
 
     // 应用一个版本（基础包整包或补丁）
     bool applyVersion(const std::string& versionId, const ProgressFn& progress,
-                      const std::atomic<bool>& cancel, std::string& err);
+                      const std::atomic<bool>& cancel, std::string& err, const VersionInfo* selected = nullptr);
 
     // 完整性修复（按当前基础包版本清单）
     bool repair(const ProgressFn& progress, const std::atomic<bool>& cancel, std::string& err);
@@ -71,6 +72,7 @@ private:
     std::string gameRoot_;
     std::string platform_;
     std::string localVersion_;
+    std::string localGameVersion_;
     std::string baseVersion_;
     HttpClient http_;
 

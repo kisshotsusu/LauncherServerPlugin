@@ -27,7 +27,9 @@ python run_server.py --config config.json serve
 workspace/<项目标识>/
   bases/<平台>/<版本>/              基础包文件
   patches/<平台>/<版本>/            补丁描述与 files/ 文件
+  installers/<平台>/<版本>/          移动端安装包（APK）
   imports/<平台>/base/<版本>/       基础包导入入口
+  imports/<平台>/apk/<版本>/        安装包导入入口
   imports/<平台>/patch/<版本>/      HotPatcher 导入入口
   imports/launcher/<版本>/          启动器导入入口
   launcher/versions/<版本>/         启动器版本源文件
@@ -78,10 +80,10 @@ GET /codebuild/api/versions   (请求头 X-Platform: IOS)
 工作空间导入请求示例：
 
 ```json
-{"category":"base","platform":"IOS","version":"1.0","source":"D:/Builds/Linux"}
+{"category":"base","platform":"IOS","version":"1.0","source":"D:/Builds/IOS"}
 ```
 
-`category` 支持 `base`、`patch`、`launcher`；基础包、补丁包通过 source 选择本地来源目录；补丁导入无需填写 version。来源位置通过 import_sources 按平台和包类型保存。工作空间保存使用服务器管理权限，包导入使用项目管理权限。
+`category` 支持 `base`、`application`、`patch`、`launcher`（兼容 Android 的 `apk` 别名）；基础包、安装包、补丁包通过 source 选择本地来源目录；补丁导入无需填写 version。来源位置通过 import_sources 按平台和包类型保存。工作空间保存使用服务器管理权限，包导入使用项目管理权限。
 
 对象存储支持 OSS、COS、AWS S3 和 MinIO。endpoint、region、bucket 和密钥在「对象存储」中设置；Secret 留空保持已有值。平台补丁对象键为 `versions/<平台>/<版本>/files/<文件>`。
 
@@ -107,7 +109,21 @@ build_venv/Scripts/python.exe -m PyInstaller --noconfirm build_exe.spec
 
 更新平台仅支持 Windows、Android、IOS；安卓的 ASTC/ETC2 等 Cook 格式属于资源格式，不再作为更新平台。插件自动使用运行平台。导入时识别单一 Android_ASTC 等产物目录，并发布到 Android；同一版本有多个 Cook 格式时必须选择一个，禁止混合资源。
 
-基础包来源支持包含平台子目录的发布根目录。安卓 APK + Data 发布目录自动使用 Data 子树，避免错误生成 Data/Game/... 的目标路径。仅有 APK 的目录会拒绝导入；普通 UE NoObbs Archive 不含数据时，请选择项目 Saved/StagedBuilds/Android_ASTC 或使用核心打包脚本生成的完整 Data。APK 安装与游戏 C++ 二进制更新仍需要完整应用更新。
+基础包来源支持包含平台子目录的发布根目录。安卓 APK + Data 发布目录自动使用 Data 子树，避免错误生成 Data/Game/... 的目标路径。
+
+**移动端资源包（base）导入规则**：
+- 优先识别 `Data/` 子树（核心打包脚本输出：APK + Data + version.json）或 StagedBuilds 的 Content/Paks 树。
+- 保留资源容器、引擎配置、shader、图片、视频和其他运行资源；排除安装包、原生二进制、工具和调试产物，不再使用扩展名白名单误删运行资源。
+- 自动过滤发布附带物与调试产物：`DeviceLogs/`、`InsightsCaptures/`、`*_Symbols_*`、`*.rar` / `*.zip`、`*.apk` / `*.obb`、`win-x64/` 工具、安装/采集脚本（`Install_*.bat`、`Capture-*` 等）、日志与截图。
+- 校验资源树：必须存在非空 pak 或成对 IoStore；utoc 与 ucas 必须在同一相对目录配对，支持数据分片；空文件、孤儿索引或数据一律拒绝。
+- 仅有 APK / OBB / RAR / 日志的目录不能作为资源基础包。
+
+**移动端安装包（apk）导入规则**：
+- `category: "apk"` 导入 Android APK，存入 `installers/<平台>/<版本>/`，与资源包隔离。
+- 校验：`.apk` 后缀、ZIP 魔数（PK）、包含 `AndroidManifest.xml`、ZIP 完整性。
+- 基础包导入时若来源含 APK，会自动校验并提取到同版本 installers 目录。
+- 多个 APK 不自动挑选；使用 APK 文件选择器明确选择具体文件。自动提取会先校验并暂存全部文件，资源发布失败时回滚同次暂存的 APK，避免留下半个导入结果。
+- 下载接口：`GET /api/installers`、`GET /api/installer/<版本>`、`GET /files/installers/<平台>/<版本>/<文件>`。
 
 补丁来源支持 HotPatcher 根目录或单版本目录。混合平台根目录中没有当前平台产物的版本会跳过，无可导入产物或空资源目录则报错；平台级 Release/PatchConfig 元数据优先于共享文件。补丁的外部资源按其 baseVersionId 查找该平台的基础版本，禁止使用最新基础版本冒充依赖版本。
 
@@ -118,3 +134,37 @@ CloudUpdate 对版本索引、描述文件和完整性清单增加平台一致�
 v2.5 验证：42 项服务器测试、4 项 UE CloudUpdate 自动化测试通过，插件 Win64 编辑器构建与安卓运行时代码编译通过；打包 EXE 实测 Windows/Android_ASTC 双平台导入、索引、差分/回退 HTTP 下载及 ETC2 隔离。
 
 2026-10-13 平台整理：平台选项限定为 Windows、Android、IOS；CodeBuild 数据迁移到 workspace/codebuild，Android 与 Android_ASTC 的不同版本归入 Android。51 项服务器测试通过；Win64 编辑器构建及 Android arm64 CloudUpdate 模块定向编译通过。UE 平台测试和 4 项服务测试通过，UI.ScreenStates 因蓝图缺少 StatusText 控件失败。尚未进行移动设备打包/运行或 iOS 原生编译验证。
+
+## 2026-10-16 导入规则复核
+
+平台能力由后端统一下发。Windows、Android、IOS 均独立管理程序包、资源基础包和资源补丁。程序包来源分别为 Windows 完整程序目录、Android APK、iOS IPA；资源基础包统一只发布资源。Windows 启动器管理仅对 Windows 可用。
+
+每类来源可先点击“检测来源”。对应只读接口为 `POST /api/workspace/inspect`，请求 `{category:"base"|"patch"|"application", platform, source}`，复用实际导入的识别规则，不复制文件、不保存来源。实际导入仍重新校验。
+
+检测拒绝错平台目录、冲突的 Cook 格式、错误平台元数据、空资源与不完整容器。HotPatcher 根、单版本及平台局部 Release 均可识别；批量导入前先检测所有候选版本。导入来源不得与任何项目的已管理工作空间重叠，当前项目的 imports 子目录除外。
+
+旧移动端基础包会显示结构检查结果；仅有 APK/IPA/OBB/压缩包的旧目录保留原文件，但不再作为有效资源基础包发布。可用同一版本号导入正确资源修复这类不合格旧包，原目录备份到项目 data/trash/invalid-bases；已经有效的版本仍禁止覆盖。旧移动端完整性缓存按资源规则重建，安装包与调试产物不再混入资源清单。
+
+本次复核：83 项服务端测试通过，网页脚本语法检查和三个平台的实际浏览器检查通过。服务端 EXE 已重新构建并部署；未检查或修改蓝图，未进行 UE/移动设备构建或运行验证。
+
+
+## v2.7 程序与资源独立版本
+
+三个平台的工作空间布局一致，项目分别使用 workspace/<项目>/，不共享导入来源或版本目录：
+
+- installers/<平台>/<程序版本>/：Windows 完整程序目录（含有效 EXE）、Android APK 或 iOS IPA。IPA 校验 Payload/*.app/Info.plist、可执行文件与 ZIP 完整性；不进行签名或设备安装验证。
+- bases/<平台>/<资源版本>/：资源基础包，Windows 也按资源规则过滤 EXE、DLL 等程序文件，发布 pak / IoStore、shader、媒体等运行资源。
+- patches/<平台>/<资源版本>/：HotPatcher 资源补丁。
+
+程序包通过 category=application 导入，version 为程序版本，bundledResourceVersion 为内置资源基线；资源包通过 category=base 导入，version 为资源版本，requiredGameVersion 为可选程序依赖。两种版本不要求相同。同号包可共存，管理页可以按程序包/资源包筛选并独立开放、关闭、查看和删除。
+
+客户端 /api/versions 同时返回 gameVersion、resourceVersion、gameVersions、resourceVersions。每条记录带 packageKind（installer/base/patch）及明确的描述 URL，type 为 full（程序）、resource（资源基础包）或 patch（资源补丁）。客户端必须使用索引里的 URL，避免相同版本号取错包；/api/version/<版本>?kind=installer|base|patch 可精确获取。旧的纯版本号开放列表保持兼容，新管理页使用 installer:<版本>、base:<版本>、patch:<版本> 独立保存。
+
+云端文件通过 kind=installer 或 base 分别查看程序文件与资源文件，Windows 程序目录可按子目录浏览。对象存储程序键为 installers/<平台>/<程序版本>/<相对文件>，资源键为 packages/<平台>/<资源版本>/<相对文件>；导入先上传，上传失败不发布本地版本。
+
+DELETE /api/version/<版本>?platform=<平台>&kind=<类型> 仅移除指定包。项目工作空间内的包移入 data/trash/<平台>/<类型>/；外部旧基础包只解除配置，不移动原始来源。同号的其它包不受影响。不合格旧资源和没有文件的旧完整包描述在管理页显示为异常，供修复或删除，不作为有效客户端更新。
+
+UE 插件将程序更新与资源更新分开统计，运行时仅安装兼容资源。Windows 启动器也独立判断程序版本与资源基线，使用带类型的描述 URL，按插件的 schemaVersion=2、installedGameVersion、resourceVersionId 和平台版本记录文件同步状态，避免引擎内更新资源后再次错误提示更新程序。
+
+
+v2.7 验证：101 项服务端测试、5 项 UE 服务自动化测试、Windows 启动器同号程序/资源真实 HTTP 下载回归通过。Win64 插件、Android arm64 模块与 Windows 启动器构建通过；部署 EXE 与实际接口、三平台浏览器入口已核对。未修改蓝图；未进行移动设备运行、iOS 编译/签名验证，现有 APK/IPA 未重打包。

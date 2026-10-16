@@ -81,7 +81,7 @@ class MultiPlatformImportTests(unittest.TestCase):
     def test_android_base_release_uses_data_subtree_and_rejects_apk_only(self):
         folder = self.root / 'release' / 'Android'
         folder.mkdir(parents=True)
-        (folder / 'Game.apk').write_bytes(b'apk')
+        self._write_apk(folder / 'Game.apk')
         with self.assertRaises(ValueError):
             base_import_source(str(self.root / 'release'), 'Android')
         pak = folder / 'Data' / 'Game' / 'Content' / 'Paks' / 'game.pak'
@@ -134,4 +134,124 @@ class MultiPlatformImportTests(unittest.TestCase):
             target.mkdir(parents=True)
             (target / 'game.pak').write_bytes(platform.encode())
         self.assertEqual(base_import_source(str(root), 'Android'), str(root / 'Android_ASTC' / 'Data'))
-        self.assertEqual(base_import_source(str(root), 'IOS'), str(root / 'IOS'))
+        self.assertEqual(base_import_source(str(root), 'IOS'), str(root / 'IOS' / 'Data'))
+
+    # ---- 移动端资源包 / 安装包导入规则 ----
+
+    def _write_apk(self, path, with_manifest=True):
+        import zipfile
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(path, 'w') as zf:
+            if with_manifest:
+                zf.writestr('AndroidManifest.xml', b'manifest')
+            zf.writestr('classes.dex', b'dex')
+
+    def test_resource_filter_rejects_junk_paths(self):
+        from importer import is_junk_resource_path, is_resource_file
+        junk = [
+            'DeviceLogs/20260101/log.txt',
+            'InsightsCaptures/x/a.utrace',
+            'BiNanSuo_Symbols_v1/BiNanSuoarm64/libUnreal.so',
+            'Android_ASTC.rar',
+            'BiNanSuo-arm64.apk',
+            'main.1.com.YourCompany.BiNanSuo.obb',
+            'Install_BiNanSuo-arm64.bat',
+            'win-x64/UnrealAndroidFileTool.exe',
+            'Capture-GameLog.bat',
+        ]
+        for rel in junk:
+            self.assertTrue(is_junk_resource_path(rel), rel)
+            self.assertFalse(is_resource_file(rel), rel)
+        keep = [
+            'Game/Content/Paks/pakchunk0-Android_ASTC.pak',
+            'Game/Content/Paks/global.utoc',
+            'Game/Content/Paks/global.ucas',
+            'Engine/Config/BaseEngine.ini',
+            'UECommandLine.txt',
+        ]
+        for rel in keep:
+            self.assertFalse(is_junk_resource_path(rel), rel)
+            self.assertTrue(is_resource_file(rel), rel)
+
+    def test_android_base_filters_junk_and_keeps_data_only(self):
+        from importer import iter_resource_files
+        release = self.root / 'mobile-release'
+        data_pak = release / 'Data' / 'Game' / 'Content' / 'Paks' / 'game.pak'
+        data_pak.parent.mkdir(parents=True)
+        data_pak.write_bytes(b'pak')
+        (release / 'Data' / 'UECommandLine.txt').write_text('-test')
+        self._write_apk(release / 'BiNanSuo-arm64.apk')
+        (release / 'Android_ASTC.rar').write_bytes(b'rar')
+        (release / 'DeviceLogs').mkdir()
+        (release / 'DeviceLogs' / 'log.txt').write_text('log')
+        (release / 'BiNanSuo_Symbols_v1').mkdir()
+        (release / 'BiNanSuo_Symbols_v1' / 'libUnreal.so').write_bytes(b'so')
+        source = base_import_source(str(release), 'Android')
+        self.assertEqual(source, str(release / 'Data'))
+        kept = sorted(rel for _, rel in iter_resource_files(source))
+        self.assertIn('Game/Content/Paks/game.pak', kept)
+        self.assertIn('UECommandLine.txt', kept)
+        self.assertFalse(any(r.endswith(('.apk', '.rar', '.so', '.txt')) and 'DeviceLogs' in r for r in kept))
+
+    def test_validate_android_apk_accepts_and_rejects(self):
+        from importer import validate_android_apk, find_android_apk
+        good = self.root / 'good.apk'
+        self._write_apk(good)
+        meta = validate_android_apk(str(good))
+        self.assertEqual(meta['fileName'], 'good.apk')
+        self.assertGreater(meta['size'], 0)
+        bad = self.root / 'bad.apk'
+        bad.write_bytes(b'not-an-apk')
+        with self.assertRaises(ValueError):
+            validate_android_apk(str(bad))
+        no_manifest = self.root / 'nomanifest.apk'
+        self._write_apk(no_manifest, with_manifest=False)
+        with self.assertRaises(ValueError):
+            validate_android_apk(str(no_manifest))
+        # find_android_apk 跳过日志目录
+        root = self.root / 'find'
+        (root / 'DeviceLogs').mkdir(parents=True)
+        self._write_apk(root / 'DeviceLogs' / 'hidden.apk')
+        self._write_apk(root / 'Game.apk')
+        found = find_android_apk(str(root))
+        self.assertTrue(found.endswith('Game.apk'))
+
+    def test_validate_resource_tree_requires_pak_or_iostore(self):
+        from importer import validate_resource_tree
+        empty = self.root / 'empty'
+        empty.mkdir()
+        (empty / 'config.ini').write_text('x')
+        with self.assertRaises(ValueError):
+            validate_resource_tree(str(empty))
+        # 空 pak 拒绝
+        bad_pak = self.root / 'badpak'
+        bad_pak.mkdir()
+        (bad_pak / 'a.pak').write_bytes(b'')
+        with self.assertRaises(ValueError):
+            validate_resource_tree(str(bad_pak))
+        # IoStore 缺配对 ucas 拒绝
+        orphan = self.root / 'orphan'
+        orphan.mkdir()
+        (orphan / 'global.utoc').write_bytes(b'idx')
+        with self.assertRaises(ValueError):
+            validate_resource_tree(str(orphan))
+        # 成对 IoStore 通过
+        pair = self.root / 'pair'
+        pair.mkdir()
+        (pair / 'global.utoc').write_bytes(b'idx')
+        (pair / 'global.ucas').write_bytes(b'data')
+        stats = validate_resource_tree(str(pair))
+        self.assertEqual(stats['utocCount'], 1)
+        self.assertEqual(stats['ucasCount'], 1)
+
+    def test_split_mobile_release_prefers_data_and_finds_apk(self):
+        from importer import split_mobile_release
+        release = self.root / 'astc'
+        data = release / 'Data' / 'Game' / 'Content' / 'Paks'
+        data.mkdir(parents=True)
+        (data / 'game.pak').write_bytes(b'pak')
+        self._write_apk(release / 'BiNanSuo-arm64.apk')
+        (release / 'version.json').write_text('{}')
+        resource, apk = split_mobile_release(str(release))
+        self.assertEqual(resource, str(release / 'Data'))
+        self.assertTrue(apk and apk.endswith('BiNanSuo-arm64.apk'))

@@ -214,6 +214,7 @@ void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJs
 		TArray<FString> Candidates;
 		for (const FCloudUpdateVersionInfo& Info : AllVersions)
 		{
+			if (Info.Type == TEXT("full")) continue;
 			Candidates.Add(Info.VersionId);
 		}
 		for (const FString& B : BaseVersions)
@@ -248,16 +249,26 @@ void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJs
     Best->GameVersion.IsEmpty() ? Best->VersionId : Best->GameVersion))) Best = &Info;
   if (Best) Pending.Add(*Best);
  }
+ // Resource bases are independently versioned; an APK with the same ID is not this payload.
+ FString ResourceBaseline = LocalVersion;
+ const FCloudUpdateVersionInfo* ResourceBase = nullptr;
+ for (const FCloudUpdateVersionInfo& Info : AllVersions)
+  if (Info.Type == TEXT("resource") && (!ResourceBase || IsVersionNewer(Info.ResourceVersion, ResourceBase->ResourceVersion))) ResourceBase = &Info;
+ if (ResourceBase && IsVersionNewer(ResourceBase->ResourceVersion, ResourceBaseline))
+ {
+  Pending.Add(*ResourceBase);
+  ResourceBaseline = ResourceBase->ResourceVersion;
+ }
  int32 LocalIndex = INDEX_NONE;
  for (int32 i = 0; i < UpdateChain.Num(); ++i)
   for (const FCloudUpdateVersionInfo& Info : AllVersions)
-   if (Info.VersionId == UpdateChain[i] && Info.ResourceVersion.Equals(LocalVersion, ESearchCase::IgnoreCase)) LocalIndex = i;
+   if (Info.Type == TEXT("patch") && Info.VersionId == UpdateChain[i] && Info.ResourceVersion.Equals(LocalVersion, ESearchCase::IgnoreCase)) LocalIndex = i;
  for (int32 i = LocalIndex + 1; i < UpdateChain.Num(); ++i)
  {
   for (const FCloudUpdateVersionInfo& Info : AllVersions)
   {
-   if (Info.Type == TEXT("full") || Info.VersionId != UpdateChain[i]) continue;
-   if (LocalIndex == INDEX_NONE && !IsVersionNewer(Info.ResourceVersion, LocalVersion)) continue;
+   if (Info.Type != TEXT("patch") || Info.VersionId != UpdateChain[i]) continue;
+   if ((LocalIndex == INDEX_NONE || ResourceBaseline != LocalVersion) && !IsVersionNewer(Info.ResourceVersion, ResourceBaseline)) continue;
    Pending.Add(Info);
    break;
   }
@@ -401,7 +412,7 @@ void FCloudUpdateService::ApplyUpdate(const FString& InVersionId)
  PendingResourceVersion = InVersionId;
 	bIoStoreApplied = false;
  bRestartRequired = false;
- const FPlannedVersion* Cached = PlannedVersions.FindByPredicate([&InVersionId](const FPlannedVersion& Version) { return Version.Info.VersionId == InVersionId; });
+ const FPlannedVersion* Cached = PlannedVersions.FindByPredicate([&InVersionId](const FPlannedVersion& Version) { return Version.Info.VersionId == InVersionId && Version.Info.Type != TEXT("full"); });
  if (Cached)
  {
   if (Cached->Info.Type == TEXT("full")) { FinishUpdate(false, TEXT("游戏整包必须由启动器在退出游戏后更新")); return; }

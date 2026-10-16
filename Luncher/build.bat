@@ -32,7 +32,7 @@ if errorlevel 1 (
 echo Compiling resources (Launcher.rc) ...
 rc /nologo Launcher.rc
 if errorlevel 1 (
-    echo [ERROR] Resource compile (Launcher.rc) failed.
+    echo [ERROR] Resource compile failed: Launcher.rc
     pause
     exit /b 1
 )

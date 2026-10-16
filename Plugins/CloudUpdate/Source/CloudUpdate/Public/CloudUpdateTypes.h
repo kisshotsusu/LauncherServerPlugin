@@ -174,7 +174,7 @@ struct CLOUDUPDATE_API FCloudUpdateVersionInfo
  UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
  FString Date;
 
-	/** patch / full */
+	/** patch (resource delta), resource (resource base), full (application package) */
 	UPROPERTY(BlueprintReadOnly, Category = "CloudUpdate")
 	FString Type;
 

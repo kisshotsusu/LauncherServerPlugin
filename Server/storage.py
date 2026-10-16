@@ -72,6 +72,8 @@ class StorageBackend:
         name = _clean_rel(name)
         if category == "packages":
             return f"packages/{platform}/{version}/{rel}"
+        if category == "installers":
+            return f"installers/{platform}/{version}/{rel}"
         if category == "versions":
             return f"versions/{platform}/{version}/{rel}"
         if category == "launcher":
@@ -130,6 +132,8 @@ class LocalStorage(StorageBackend):
         if category == "packages":
             base = get_base_dir(self.cfg, platform, version)
             return self._safe(base, rel) if base else None
+        if category == "installers":
+            return self._safe(os.path.join(self.cfg.get("workspace_dir") or "", "installers", platform, version), rel)
         if category == "versions":
             return self._safe(os.path.join(self.cfg["versions_dir"], platform, version), rel)
         if category == "launcher":

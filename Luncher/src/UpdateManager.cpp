@@ -181,44 +181,55 @@ std::string UpdateManager::gameExePath() const {
 bool UpdateManager::loadLocalVersion() {
     // 优先读取 UE 插件写入的版本文件，其次启动器自身状态
     const std::string paths[] = {
+        joinPath(gameRoot_, "CodeBuild\\Saved\\CloudUpdate\\" + platform_ + "\\local_version.json"),
         joinPath(gameRoot_, "CodeBuild\\Saved\\CloudUpdate\\local_version.json"),
         joinPath(gameRoot_, "launcher_state.json"),
     };
+    localVersion_.clear();
+    localGameVersion_.clear();
     for (const auto& p : paths) {
         std::ifstream in(p, std::ios::binary);
         if (!in) continue;
-        std::stringstream ss;
-        ss << in.rdbuf();
-        std::string err;
-        Json root = Json::parse(ss.str(), &err);
+        std::stringstream ss; ss << in.rdbuf();
+        Json root = Json::parse(ss.str());
         if (root.type != Json::Type::Object) continue;
-        std::string v = root.getString("versionId");
+        const std::string recordPlatform = root.getString("platform");
+        if (!recordPlatform.empty() && recordPlatform != platform_) continue;
+        std::string v = root.getString("resourceVersionId");
+        if (v.empty()) v = root.getString("versionId");
         if (v.empty()) v = root.getString("version");
-        if (!v.empty()) {
-            localVersion_ = v;
-            return true;
-        }
+        if (localVersion_.empty()) localVersion_ = v;
+        std::string game = root.getString("installedGameVersion");
+        if (game.empty()) game = root.getString("gameVersionId");
+        if (game.empty() && root.getNumber("schemaVersion") < 2) game = v;
+        if (localGameVersion_.empty()) localGameVersion_ = game;
     }
-    return false;
+    return !localVersion_.empty() || !localGameVersion_.empty();
 }
 
 void UpdateManager::saveLocalVersion(const std::string& version) {
-    Json root = Json::object();
-    root.obj["versionId"] = Json::string(version);
-    root.obj["updatedAt"] = Json::string("now");
-    const std::string statePath = joinPath(gameRoot_, "launcher_state.json");
-    {
-        std::ofstream out(statePath, std::ios::binary);
-        out << root.dump(2);
-    }
-    // 同步 UE 插件读取的版本文件，保持两边版本号一致
-    const std::string pluginDir = joinPath(joinPath(gameRoot_, "CodeBuild\\Saved"), "CloudUpdate");
-    createDirectories(pluginDir);
+    const std::string pluginDir = joinPath(joinPath(gameRoot_, "CodeBuild\\Saved\\CloudUpdate"), platform_);
     const std::string pluginPath = joinPath(pluginDir, "local_version.json");
-    {
-        std::ofstream out(pluginPath, std::ios::binary);
-        out << root.dump(2);
+    Json root = Json::object();
+    std::ifstream existing(pluginPath, std::ios::binary);
+    if (existing) {
+        std::stringstream ss; ss << existing.rdbuf();
+        Json old = Json::parse(ss.str());
+        if (old.type == Json::Type::Object) root = old;
     }
+    existing.close();
+    root.obj["schemaVersion"] = Json::number(2);
+    root.obj["platform"] = Json::string(platform_);
+    root.obj["versionId"] = Json::string(version);
+    root.obj["resourceVersionId"] = Json::string(version);
+    root.obj["installedGameVersion"] = Json::string(localGameVersion_);
+    root.obj["updatedAt"] = Json::string("now");
+    createDirectories(gameRoot_);
+    std::ofstream state(joinPath(gameRoot_, "launcher_state.json"), std::ios::binary);
+    state << root.dump(2);
+    createDirectories(pluginDir);
+    std::ofstream plugin(pluginPath, std::ios::binary);
+    plugin << root.dump(2);
     localVersion_ = version;
 }
 
@@ -280,7 +291,7 @@ int UpdateManager::finalizePendingMerges(int* outTotal) const {
 }
 
 std::string UpdateManager::versionsUrl() const {
-    return httpUrlJoin(cfg_.serverUrl, "api/versions");
+    return httpUrlJoin(cfg_.serverUrl, "api/versions?platform=" + urlEncode(platform_));
 }
 
 std::string UpdateManager::versionUrl(const std::string& id) const {
@@ -309,87 +320,48 @@ bool UpdateManager::checkUpdates(UpdateCheckResult& out, std::string& err) {
         info.date = v.getString("date");
         info.type = v.getString("type");
         info.url = v.getString("url");
+        info.gameVersion = v.getString("gameVersion");
+        info.resourceVersion = v.getString("resourceVersion");
+        if (info.resourceVersion.empty()) info.resourceVersion = info.versionId;
+        if (info.gameVersion.empty() && info.type == "full") info.gameVersion = info.versionId;
+        info.requiredGameVersion = v.getString("requiredGameVersion");
         info.totalSize = static_cast<int64_t>(v.getNumber("totalSizeBytes"));
         if (!info.versionId.empty()) all.push_back(info);
     }
 
-    // 基础包版本列表
-    std::vector<std::string> baseVersions;
-    const Json& bvObj = root.get("baseVersions");
-    if (bvObj.type == Json::Type::Object) {
-        const Json& plat = bvObj.get(platform_);
-        if (plat.type == Json::Type::Array) {
-            for (const Json& v : plat.array()) {
-                std::string id = v.asString();
-                if (!id.empty()) baseVersions.push_back(id);
-            }
-        }
-    }
-
-    std::vector<std::string> chain;
-    for (const Json& v : root.get("updateChain").array()) {
-        std::string id = v.asString();
-        if (!id.empty()) chain.push_back(id);
-    }
-
-    // 回滚检测：本地版本被服务器撤销（隐藏/删除）时删除本地更新文件并回退
+    loadLocalVersion();
+    out.pending.clear();
     std::string rollbackNote = rollbackIfRevoked(root);
-
-    out.latestVersion = root.getString("current");
-    const std::string local = localVersion();
-
-    // 第一步：基础包更新（整包优先）
-    for (const std::string& baseId : baseVersions) {
-        if (!versionNewer(baseId, local)) continue;
-        bool found = false;
-        for (const VersionInfo& info : all) {
-            if (info.versionId == baseId && info.type == "full") {
+    out.latestVersion = root.getString("resourceVersion");
+    if (out.latestVersion.empty()) out.latestVersion = root.getString("current");
+    std::string resourceBaseline = localVersion();
+    std::string gameBaseline = localGameVersion_;
+    const VersionInfo* program = nullptr;
+    for (const auto& info : all)
+        if (info.type == "full" && (!program || versionNewer(info.gameVersion, program->gameVersion))) program = &info;
+    if (program && versionNewer(program->gameVersion, gameBaseline)) {
+        out.pending.push_back(*program);
+        gameBaseline = program->gameVersion;
+        resourceBaseline = program->resourceVersion;
+    }
+    auto compatible = [&](const VersionInfo& info) {
+        return info.requiredGameVersion.empty() || info.requiredGameVersion == gameBaseline;
+    };
+    const VersionInfo* base = nullptr;
+    for (const auto& info : all)
+        if (info.type == "resource" && compatible(info) && (!base || versionNewer(info.resourceVersion, base->resourceVersion))) base = &info;
+    if (base && versionNewer(base->resourceVersion, resourceBaseline)) {
+        out.pending.push_back(*base);
+        resourceBaseline = base->resourceVersion;
+    }
+    for (const Json& entry : root.get("updateChain").array()) {
+        for (const auto& info : all) {
+            if (info.type != "patch" || info.versionId != entry.asString()) continue;
+            if (compatible(info) && versionNewer(info.resourceVersion, resourceBaseline)) {
                 out.pending.push_back(info);
-                found = true;
-                break;
+                resourceBaseline = info.resourceVersion;
             }
-        }
-        if (!found) {
-            VersionInfo info;
-            info.versionId = baseId;
-            info.type = "full";
-            info.url = "api/version/" + urlEncode(baseId) + "?platform=" + urlEncode(platform_);
-            out.pending.push_back(info);
-        }
-    }
-
-    // 多个基础包整包时只保留最新一个（全新安装直接下最新整包）
-    std::string maxPendingBase;
-    for (const auto& v : out.pending) {
-        if (v.type == "full" && (maxPendingBase.empty() || versionNewer(v.versionId, maxPendingBase))) {
-            maxPendingBase = v.versionId;
-        }
-    }
-    if (!maxPendingBase.empty()) {
-        out.pending.erase(
-            std::remove_if(out.pending.begin(), out.pending.end(),
-                           [&](const VersionInfo& v) {
-                               return v.type == "full" && v.versionId != maxPendingBase;
-                           }),
-            out.pending.end());
-    }
-
-    // 第二步：补丁更新
-    int localIndex = -1;
-    for (size_t i = 0; i < chain.size(); ++i) {
-        if (chain[i] == local) { localIndex = static_cast<int>(i); break; }
-    }
-    for (size_t i = static_cast<size_t>(localIndex + 1); i < chain.size(); ++i) {
-        const std::string& vid = chain[i];
-        // 不比本地版本新则跳过（本地是整包版本且不在链中时，避免误列旧补丁）
-        if (!versionNewer(vid, local)) continue;
-        // 待更新的基础包整包已包含该补丁 → 跳过
-        if (!maxPendingBase.empty() && !versionNewer(vid, maxPendingBase)) continue;
-        for (const VersionInfo& info : all) {
-            if (info.versionId == vid) {
-                out.pending.push_back(info);
-                break;
-            }
+            break;
         }
     }
 
@@ -398,9 +370,9 @@ bool UpdateManager::checkUpdates(UpdateCheckResult& out, std::string& err) {
         int baseCount = 0;
         for (const auto& v : out.pending) if (v.type == "full") ++baseCount;
         if (baseCount > 0 && baseCount < static_cast<int>(out.pending.size()))
-            out.message = "发现新基础包与补丁更新（请先更新基础包）";
-        else if (baseCount > 0) out.message = "发现新基础包";
-        else out.message = "发现新补丁";
+            out.message = "发现程序包与资源更新";
+        else if (baseCount > 0) out.message = "发现程序更新";
+        else out.message = "发现资源更新";
     } else {
         out.message = "已是最新版本";
     }
@@ -441,7 +413,7 @@ std::string UpdateManager::rollbackIfRevoked(const Json& root) {
     std::vector<std::string> candidates;
     for (const Json& v : root.get("versions").array()) {
         const std::string id = v.getString("versionId");
-        if (!id.empty()) candidates.push_back(id);
+        if (!id.empty() && v.getString("type") != "full") candidates.push_back(id);
     }
     std::vector<std::string> baseVersions;
     const Json& bvObj = root.get("baseVersions");
@@ -510,7 +482,10 @@ bool UpdateManager::downloadFile(const UpdateFileItem& item, const ProgressFn& p
     // 服务端返回的 url 可能是相对路径，需要拼接服务器地址
     std::string downloadUrl = item.url;
     if (downloadUrl.rfind("http", 0) != 0) {
-        downloadUrl = httpUrlJoin(cfg_.serverUrl, downloadUrl);
+        if (!downloadUrl.empty() && downloadUrl.front() == '/') {
+            const size_t slash = cfg_.serverUrl.find('/', cfg_.serverUrl.find("://") + 3);
+            downloadUrl = cfg_.serverUrl.substr(0, slash) + downloadUrl;
+        } else downloadUrl = httpUrlJoin(cfg_.serverUrl, downloadUrl);
     }
     bool ok = http_.download(downloadUrl, tmp, cfg_.speedLimitKBps, 120,
                              [&](int64_t done, int64_t total) {
@@ -545,8 +520,18 @@ bool UpdateManager::downloadFile(const UpdateFileItem& item, const ProgressFn& p
 }
 
 bool UpdateManager::applyVersion(const std::string& versionId, const ProgressFn& progress,
-                                 const std::atomic<bool>& cancel, std::string& err) {
-    HttpResult resp = http_.get(versionUrl(versionId));
+                                 const std::atomic<bool>& cancel, std::string& err, const VersionInfo* selected) {
+    std::string descriptorUrl = versionUrl(versionId);
+    if (selected && !selected->url.empty()) {
+        descriptorUrl = selected->url;
+        if (descriptorUrl.rfind("http://",0) != 0 && descriptorUrl.rfind("https://",0) != 0) {
+            if (descriptorUrl.front() == '/') {
+                const size_t slash = cfg_.serverUrl.find('/', cfg_.serverUrl.find("://") + 3);
+                descriptorUrl = cfg_.serverUrl.substr(0,slash) + descriptorUrl;
+            } else descriptorUrl = httpUrlJoin(cfg_.serverUrl,descriptorUrl);
+        }
+    }
+    HttpResult resp = http_.get(descriptorUrl);
     if (!resp.ok()) {
         err = "获取更新描述失败: " + (resp.error.empty() ? std::to_string(resp.status) : resp.error);
         return false;
@@ -558,6 +543,14 @@ bool UpdateManager::applyVersion(const std::string& versionId, const ProgressFn&
         return false;
     }
 
+    const std::string selectedType = root.getString("type");
+    if (selected && (selectedType != selected->type || root.getString("versionId") != versionId)) {
+        err = "版本索引与包描述不一致"; return false;
+    }
+    const std::string requiredGame = root.getString("requiredGameVersion");
+    if (selectedType != "full" && !requiredGame.empty() && requiredGame != localGameVersion_) {
+        err = "资源包需要先更新对应程序版本"; return false;
+    }
     std::vector<UpdateFileItem> items;
     for (const Json& f : root.get("files").array()) {
         UpdateFileItem item;
@@ -617,7 +610,13 @@ bool UpdateManager::applyVersion(const std::string& versionId, const ProgressFn&
     // 更新完成后立即尝试交换暂存补丁（游戏未运行时文件未被锁定，可直接替换）
     finalizePendingMerges();
 
-    setLocalVersion(versionId);
+    std::string resource = root.getString("resourceVersion");
+    if (resource.empty()) resource = versionId;
+    if (updateType == "full") {
+        localGameVersion_ = root.getString("gameVersion");
+        if (localGameVersion_.empty()) localGameVersion_ = versionId;
+    }
+    setLocalVersion(resource);
     if (restartRequired && progress) progress("更新完成（需要重启游戏生效）", totalCount, totalCount, "");
     return true;
 }

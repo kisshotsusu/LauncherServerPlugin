@@ -140,15 +140,18 @@ namespace CloudUpdatePrivate
 		const int64 FileSize = Handle->Size();
 		OutSize = FileSize;
 		FMD5 Md5;
-		uint8 Buffer[1024 * 1024];
+		// Android's game thread has a limited pthread stack. A megabyte-sized
+		// local array can overwrite an adjacent thread before hitting a guard page.
+		TArray<uint8> Buffer;
+		Buffer.SetNumUninitialized(64 * 1024);
 		for (int64 Offset = 0; Offset < FileSize; )
 		{
-			const int64 ToRead = FMath::Min<int64>(sizeof(Buffer), FileSize - Offset);
-			if (!Handle->ReadAt(Buffer, ToRead, Offset))
+			const int64 ToRead = FMath::Min<int64>(Buffer.Num(), FileSize - Offset);
+			if (!Handle->ReadAt(Buffer.GetData(), ToRead, Offset))
 			{
 				return false;
 			}
-			Md5.Update(Buffer, static_cast<int32>(ToRead));
+			Md5.Update(Buffer.GetData(), static_cast<int32>(ToRead));
 			Offset += ToRead;
 		}
 		uint8 Digest[16];
@@ -232,6 +235,6 @@ namespace CloudUpdatePrivate
  {
   FString Name = InPath.ToLower();
   Name.RemoveFromEnd(TEXT(".patch"));
-  return Name.EndsWith(TEXT(".exe")) || Name.EndsWith(TEXT(".dll")) || Name.EndsWith(TEXT(".so")) || Name.Contains(TEXT(".so.")) || Name.EndsWith(TEXT(".dylib"));
+  return Name.EndsWith(TEXT(".apk")) || Name.EndsWith(TEXT(".ipa")) || Name.EndsWith(TEXT(".exe")) || Name.EndsWith(TEXT(".dll")) || Name.EndsWith(TEXT(".so")) || Name.Contains(TEXT(".so.")) || Name.EndsWith(TEXT(".dylib"));
  }
 }

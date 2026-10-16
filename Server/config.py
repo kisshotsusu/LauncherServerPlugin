@@ -98,6 +98,7 @@ def load_config(config_path=None):
     cfg.setdefault("platforms", ["Windows"])
     cfg["platforms"] = validate_platforms(cfg["platforms"])
     cfg.setdefault("default_platform", cfg["platforms"][0])
+    cfg["default_platform"] = next((p for p in cfg["platforms"] if p.lower() == str(cfg["default_platform"]).lower()), cfg["platforms"][0])
     if cfg["default_platform"] not in cfg["platforms"]:
         cfg["default_platform"] = cfg["platforms"][0]
     cfg.setdefault("platform_settings", {})
@@ -174,7 +175,9 @@ def ensure_dirs(cfg):
     os.makedirs(cfg["versions_dir"], exist_ok=True)
     os.makedirs(cfg["manifests_dir"], exist_ok=True)
     if cfg.get("workspace_dir"):
-        for path in workspace_paths(cfg).values():
+        for key, path in workspace_paths(cfg).items():
+            if key not in ("root", "data") and "Windows" not in cfg["platforms"]:
+                continue
             if isinstance(path, str): os.makedirs(path, exist_ok=True)
         for platform in cfg["platforms"]:
             for path in workspace_platform_paths(cfg, platform).values(): os.makedirs(path, exist_ok=True)
@@ -283,9 +286,22 @@ def validate_platforms(platforms):
 
 
 def workspace_platform_paths(cfg, platform):
+    platform = validate_platforms([platform])[0]
     root = cfg["workspace_dir"]
-    return {"bases": os.path.join(root, "bases", platform), "patches": os.path.join(root, "patches", platform),
-            "baseImport": os.path.join(root, "imports", platform, "base"), "patchImport": os.path.join(root, "imports", platform, "patch")}
+    paths = {"bases": os.path.join(root, "bases", platform), "patches": os.path.join(root, "patches", platform),
+             "baseImport": os.path.join(root, "imports", platform, "base"), "patchImport": os.path.join(root, "imports", platform, "patch")}
+    paths.update(installers=os.path.join(root, "installers", platform),
+                 applicationImport=os.path.join(root, "imports", platform, "apk" if platform == "Android" else "application"))
+    if platform_capabilities(platform)["apkInstaller"]:
+        paths.update(installers=os.path.join(root, "installers", platform), apkImport=os.path.join(root, "imports", platform, "apk"))
+    return paths
+
+
+def platform_capabilities(platform):
+    platform = validate_platforms([platform])[0]
+    return {"baseKind": "resources", "applicationPackage": True,
+            "applicationFormat": {"Windows": "directory", "Android": "apk", "IOS": "ipa"}[platform],
+            "apkInstaller": platform == "Android", "windowsLauncher": platform == "Windows"}
 
 
 def workspace_paths(cfg):

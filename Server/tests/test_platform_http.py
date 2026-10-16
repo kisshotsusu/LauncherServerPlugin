@@ -26,6 +26,7 @@ class PlatformHTTPTests(unittest.TestCase):
                 base = root/'base'/platform
                 base.mkdir(parents=True)
                 (base/'game.txt').write_bytes((key+platform).encode())
+                (base/'zz_base.pak').write_bytes(b'pak')
                 bases[platform] = {'1.0':str(base)}
                 src=root/'source'/'1.1'/platform
                 src.mkdir(parents=True)
@@ -139,7 +140,7 @@ class PlatformHTTPTests(unittest.TestCase):
             self.assertTrue((workspace/'imports'/platform/'base').is_dir())
             self.assertTrue((workspace/'patches'/platform).is_dir())
         source=workspace/'imports'/'IOS'/'base'/'2.0';source.mkdir()
-        (source/'game.txt').write_bytes(b'ios-base')
+        (source/'game.txt').write_bytes(b'ios-base');(source/'zz_base.pak').write_bytes(b'pak')
         self.request('/a/api/workspace/import',{'category':'base','platform':'IOS','version':'2.0'})
         desc=self.request('/a/IOS/api/version/2.0')
         self.assertEqual(self.request(desc['files'][0]['url'],raw=True),b'ios-base')
@@ -174,7 +175,7 @@ class PlatformHTTPTests(unittest.TestCase):
         inbox=workspace/'imports'/'IOS'/'base'
         for version in ['2.0','empty','bad version']:
             (inbox/version).mkdir()
-        (inbox/'2.0'/'game.txt').write_bytes(b'base')
+        (inbox/'2.0'/'game.txt').write_bytes(b'base');(inbox/'2.0'/'zz_base.pak').write_bytes(b'pak')
         (inbox/'bad version'/'game.txt').write_bytes(b'base')
         view=self.request('/a/api/workspace')
         self.assertEqual(view['platforms'][1]['pendingBases'],['2.0'])
@@ -245,6 +246,8 @@ class PlatformHTTPTests(unittest.TestCase):
         pak = release / 'Data' / 'Game' / 'Content' / 'Paks' / 'base.pak'
         pak.parent.mkdir(parents=True)
         pak.write_bytes(b'android-base')
+        import zipfile
+        with zipfile.ZipFile(release / 'Game.apk', 'w') as zf: zf.writestr('AndroidManifest.xml', b'm')
         self.request('/a/api/workspace/import', {'category': 'base', 'platform': 'Android', 'version': '1.0', 'source': str(release)})
         base = self.request('/a/Android/api/version/1.0')
         self.assertEqual(base['files'][0]['targetRelativePath'], 'Game/Content/Paks/base.pak')
@@ -261,6 +264,53 @@ class PlatformHTTPTests(unittest.TestCase):
         self.assertEqual(self.request('/a/Android/api/versions')['updateChain'], ['1.1'])
         self.assertEqual(self.request('/a/Windows/api/versions')['versions'], [])
         self.error('/a/Android_ASTC/api/version/1.1', 400)
+
+    def test_android_apk_install_package_import_and_download(self):
+        import zipfile
+        self.request('/a/api/projects/platforms', {'key': 'a', 'platforms': ['Windows', 'Android']})
+        self.request('/a/api/workspace', {'root': str(self.root / 'workspace' / 'a')})
+        apk_dir = self.root / 'apk-src'
+        apk_dir.mkdir()
+        apk_path = apk_dir / 'Game-arm64.apk'
+        with zipfile.ZipFile(apk_path, 'w') as zf:
+            zf.writestr('AndroidManifest.xml', b'm')
+            zf.writestr('classes.dex', b'd')
+        # 非法 APK 拒绝
+        bad = self.root / 'bad.apk'
+        bad.write_bytes(b'nope')
+        self.error('/a/api/workspace/import', 400, body={'category': 'apk', 'platform': 'Android', 'version': '1.0', 'source': str(bad)})
+        # 合法 APK 导入
+        self.request('/a/api/workspace/import', {'category': 'apk', 'platform': 'Android', 'version': '1.0', 'source': str(apk_dir)})
+        listing = self.request('/a/Android/api/installers')
+        self.assertEqual(len(listing['installers']), 1)
+        entry = listing['installers'][0]
+        self.assertEqual(entry['versionId'], '1.0')
+        self.assertTrue(entry['fileName'].endswith('.apk'))
+        body = self.request(entry['url'], raw=True)
+        self.assertEqual(body[:2], b'PK')
+        # 详情接口
+        detail = self.request('/a/Android/api/installer/1.0')
+        self.assertEqual(detail['installer']['versionId'], '1.0')
+        # 基础包带 APK 时自动提取安装包
+        release = self.root / 'mobile-release'
+        pak = release / 'Data' / 'Game' / 'Content' / 'Paks' / 'game.pak'
+        pak.parent.mkdir(parents=True)
+        pak.write_bytes(b'pak-data')
+        with zipfile.ZipFile(release / 'BiNanSuo-arm64.apk', 'w') as zf:
+            zf.writestr('AndroidManifest.xml', b'm')
+        (release / 'DeviceLogs').mkdir()
+        (release / 'DeviceLogs' / 'x.log').write_text('junk')
+        self.request('/a/api/workspace/import', {'category': 'base', 'platform': 'Android', 'version': '2.0', 'source': str(release)})
+        # 资源包不含垃圾
+        files = self.request('/a/Android/api/files?baseVersion=2.0')
+        paths = [f.get('path', f.get('name', '')) for f in files.get('entries', files.get('files', []))]
+        joined = json.dumps(files)
+        self.assertNotIn('DeviceLogs', joined)
+        self.assertNotIn('.apk', joined.lower().replace('installer', ''))
+        # 自动提取的安装包
+        listing = self.request('/a/Android/api/installers')
+        ids = [i['versionId'] for i in listing['installers']]
+        self.assertIn('2.0', ids)
 
     def test_delta_import_serves_selected_platform_patch_and_fallback(self):
         source = self.root / 'delta-source'
@@ -280,7 +330,7 @@ class PlatformHTTPTests(unittest.TestCase):
         workspace=self.root/'workspace'/'a'
         self.request('/a/api/workspace',{'root':str(workspace)})
         source=self.root/'external-base';source.mkdir()
-        (source/'game.txt').write_bytes(b'original')
+        (source/'game.txt').write_bytes(b'original');(source/'zz_base.pak').write_bytes(b'pak')
         self.request('/a/api/workspace/import',{'category':'base','platform':'IOS','version':'3.0','source':str(source)})
         (source/'game.txt').write_bytes(b'changed')
         desc=self.request('/a/IOS/api/version/3.0')
@@ -325,7 +375,7 @@ class PlatformHTTPTests(unittest.TestCase):
         self.error('/a/api/workspace',401,body={'root':str(workspace)},headers={'Authorization':'Bearer project-secret'})
         self.request('/a/api/workspace',{'root':str(workspace)},headers={'Authorization':'Bearer server-secret'})
         self.request('/a/api/dirs/list?path='+str(self.root),headers={'Authorization':'Bearer server-secret'})
-        source=self.root/'external';source.mkdir();(source/'game.txt').write_text('base')
+        source=self.root/'external';source.mkdir();(source/'game.txt').write_text('base');(source/'zz_base.pak').write_bytes(b'pak')
         self.request('/a/api/workspace/import',{'category':'base','platform':'IOS','version':'4.0','source':str(source)},headers={'Authorization':'Bearer project-secret'})
         self.assertTrue((workspace/'bases'/'IOS'/'4.0'/'game.txt').exists())
 

@@ -194,7 +194,7 @@ bool FCloudUpdateIoStoreMergeTest::RunTest(const FString& Parameters)
 class FCloudUpdateHTTPTestCommand : public IAutomationLatentCommand
 {
 public:
- explicit FCloudUpdateHTTPTestCommand(FAutomationTestBase* InTest) : Test(InTest)
+ explicit FCloudUpdateHTTPTestCommand(FAutomationTestBase* InTest, bool InTyped = false) : Test(InTest), bTyped(InTyped)
  {
   Settings = GetMutableDefault<UCloudUpdateSettings>();
   OldServer = Settings->ServerUrl; OldGame = Settings->GameVersionOverride; OldRoot = Settings->LocalRootOverride; OldFeature = Settings->BinaryPatchFeatureName; OldMerge = Settings->bEnableBinaryMerge; OldVerify = Settings->bVerifyDownloadHash;
@@ -247,6 +247,7 @@ public:
    if (!ServerProcess.IsValid()) { Test->AddError(TEXT("Unable to launch bundled Python HTTP fixture")); return true; }
    if (!FFileHelper::LoadFileToString(Port, *PortFile)) return false;
    Settings->ServerUrl = TEXT("http://127.0.0.1:") + Port.TrimStartAndEnd();
+   if (bTyped) Settings->ServerUrl += TEXT("/typed");
    Service->QueryUpdatePlan(); Stage = 0; return false;
   }
   if (Stage == 0)
@@ -255,6 +256,14 @@ public:
    const auto Plan = Service->GetUpdatePlan();
    Test->TestTrue(TEXT("HTTP plan resolved"), Plan.bValid);
    if (!Plan.bValid) return true;
+   if (bTyped)
+   {
+    Test->TestEqual(TEXT("Independent game channel"), Plan.ServerGameVersion, FString(TEXT("2.0")));
+    Test->TestEqual(TEXT("Independent resource channel"), Plan.ServerResourceVersion, FString(TEXT("10.0")));
+    Test->TestEqual(TEXT("Resource base count excludes same-ID application"), Plan.RequiredFileCount, 1);
+    Test->TestEqual(TEXT("Same-ID application has separate download count"), Plan.GamePackageFileCount, 2);
+    Stage = 1; Service->ApplyLatestUpdate(); return false;
+   }
    Test->TestEqual(TEXT("Server game version"), Plan.ServerGameVersion, FString(TEXT("2.0")));
    Test->TestEqual(TEXT("Server resource version"), Plan.ServerResourceVersion, FString(TEXT("1.3")));
    Test->TestEqual(TEXT("Four compatible resource files across two versions"), Plan.RequiredFileCount, 4);
@@ -266,6 +275,13 @@ public:
   const auto Progress = Service->GetDownloadProgress();
   bSawIntermediate |= Progress.DownloadedBytes > 0 && Progress.BytePercent > 0.0f && Progress.BytePercent < 100.0f;
   if (Service->IsBusy()) return false;
+  if (bTyped)
+  {
+   Test->TestEqual(TEXT("Resource base applied using its typed descriptor URL"), Service->GetLocalVersion(), FString(TEXT("10.0")));
+   Test->TestEqual(TEXT("Application version is never changed by resource base"), Service->GetLocalGameVersion(), FString(TEXT("1.0")));
+   Test->TestFalse(TEXT("Same-ID application was never installed as a resource"), IFileManager::Get().FileExists(*(Root / TEXT("game.exe"))));
+   return true;
+  }
   Test->TestTrue(TEXT("Byte progress visible before completion"), bSawIntermediate);
   Test->TestEqual(TEXT("Game build unchanged by resource update"), Service->GetLocalGameVersion(), FString(TEXT("1.0")));
   Test->TestEqual(TEXT("Local resource version advanced independently"), Service->GetLocalVersion(), FString(TEXT("1.2")));
@@ -290,6 +306,7 @@ public:
  }
 private:
  FAutomationTestBase* Test;
+ bool bTyped = false;
  UCloudUpdateSettings* Settings;
  TSharedPtr<FCloudUpdateService> Service;
  FString OldServer, OldGame, OldRoot, OldFeature, Root, PortFile;
@@ -303,6 +320,12 @@ bool FCloudUpdateHTTPTest::RunTest(const FString& Parameters)
 {
  AddExpectedMessage(TEXT("PatchDiffToFile 返回 false"), ELogVerbosity::Warning, EAutomationExpectedMessageFlags::Contains, 1);
  ADD_LATENT_AUTOMATION_COMMAND(FCloudUpdateHTTPTestCommand(this));
+ return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCloudUpdateTypedChannelsHTTPTest, "CloudUpdate.Service.TypedPackageChannels", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FCloudUpdateTypedChannelsHTTPTest::RunTest(const FString& Parameters)
+{
+ ADD_LATENT_AUTOMATION_COMMAND(FCloudUpdateHTTPTestCommand(this, true));
  return true;
 }
 #endif

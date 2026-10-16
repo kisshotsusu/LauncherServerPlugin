@@ -1,5 +1,5 @@
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import urlparse,parse_qs
 from pathlib import Path
 import json,time,sys
 payloads={'first.bin':b'A'*16384,'second.bin':b'B'*32768,'base.bin.patch':b'C'*32,'fallback.bin.patch':b'FAIL1234','fallback.bin':b'D'*128}
@@ -10,13 +10,22 @@ descs={
  '1.2':{'versionId':'1.2','resourceVersion':'1.2','requiredGameVersion':'1.0','type':'patch','files':[entry('second.bin'),entry('fallback.bin.patch',binaryPatch=True,fallbackUrl='/files/fallback.bin',fallbackSize=128)]},
  '1.3':{'versionId':'1.3','resourceVersion':'1.3','requiredGameVersion':'2.0','type':'patch','files':[entry('first.bin')]}}
 index={'current':'2.0','gameVersion':'2.0','resourceVersion':'1.3','updateChain':['1.1','1.2','1.3'],'baseVersions':{'Windows':['2.0']},'versions':[{'versionId':k,'resourceVersion':v.get('resourceVersion',k),'type':v['type'],'requiredGameVersion':v.get('requiredGameVersion','')} for k,v in descs.items()]}
+for item in index['versions']:
+ item['url']='/api/version/'+item['versionId']+'?kind='+('installer' if item['type']=='full' else 'patch')
+typed_descs={'installer':dict(descs['2.0'],gameVersion='2.0',resourceVersion='2.0'),
+ 'base':{'versionId':'2.0','resourceVersion':'10.0','requiredGameVersion':'1.0','type':'resource','files':[entry('first.bin')]}}
+typed_index={'gameVersion':'2.0','resourceVersion':'10.0','current':'2.0','updateChain':[],'baseVersions':{'Windows':['2.0']},
+ 'versions':[dict(d,files=[],url='/typed/api/version/2.0?kind='+kind) for kind,d in typed_descs.items()]}
 class Handler(BaseHTTPRequestHandler):
  def log_message(self,*args):pass
  def do_GET(self):
-  path=urlparse(self.path).path
-  if path=='/api/versions': body=json.dumps(index).encode();kind='application/json'
+  parsed=urlparse(self.path);path=parsed.path;query=parse_qs(parsed.query)
+  typed=path.startswith('/typed/')
+  if typed:path=path[len('/typed'):]
+  if path=='/api/versions': body=json.dumps(typed_index if typed else index).encode();kind='application/json'
   elif path.startswith('/api/version/'):
-   desc=descs.get(path.rsplit('/',1)[-1])
+   desc=typed_descs.get(query.get('kind',[''])[0]) if typed else descs.get(path.rsplit('/',1)[-1])
+   if not typed and desc and query.get('kind') != [('installer' if desc['type']=='full' else 'patch')]:desc=None
    if not desc:self.send_error(404);return
    body=json.dumps(desc).encode();kind='application/json'
   elif path.startswith('/files/') and path[7:] in payloads:body=payloads[path[7:]];kind='application/octet-stream'

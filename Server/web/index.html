@@ -200,7 +200,7 @@
       <input type="password" id="tokenInput" placeholder="留空则不需要" style="width:180px" onchange="saveToken()">
     </div>
 
-    <div class="context-bar"><div><span class="muted">当前项目</span> <strong id="contextProject">—</strong></div><span class="scope-tag">平台配置</span><div class="platform-tabs" id="platformTabs"></div><button class="ghost" onclick="openPlatformManager(window.__PROJECT__)">＋ 配置平台</button><span class="spacer"></span><span class="muted">控制台 v2.5</span></div>
+    <div class="context-bar"><div><span class="muted">当前项目</span> <strong id="contextProject">—</strong></div><span class="scope-tag">平台配置</span><div class="platform-tabs" id="platformTabs"></div><button class="ghost" onclick="openPlatformManager(window.__PROJECT__)">＋ 配置平台</button><span class="spacer"></span><span class="muted">控制台 v2.7</span></div>
     <div class="breadcrumb" id="breadcrumb"></div>
 
     <div id="tab-overview" class="tab-panel">
@@ -215,7 +215,7 @@
         <div class="btn-row" style="margin-top:8px">
           <button class="ghost" onclick="loadAll()">刷新状态</button>
           <button class="ghost" onclick="reindex()">重建版本索引</button>
-          <button class="ghost" onclick="switchTab('packages')" id="btnImport">导入基础包 / 补丁包</button>
+          <button class="ghost" onclick="switchTab('packages')" id="btnImport">导入程序包 / 资源包</button>
           <button class="ghost" onclick="regenerateAllManifests()">重新生成全部完整性清单</button>
           <button class="red" onclick="restartServer()">重启服务器</button>
         </div>
@@ -227,7 +227,7 @@
       <div class="card">
         <div class="toolbar">
           <label>平台</label>
-          <select id="managePlatform" onchange="switchPlatform(this.value)"></select>
+          <select id="managePlatform" onchange="switchPlatform(this.value)"></select><select id="manageKind" aria-label="版本类型" onchange="renderVersions()"><option value="all">全部类型</option><option value="installer">程序包</option><option value="resources">资源包</option></select>
           <button class="ghost" onclick="setAllVersions(true)">全部开放</button>
           <button class="ghost" onclick="setAllVersions(false)">全部关闭</button>
           <span class="muted" id="enabledHint"></span>
@@ -257,8 +257,9 @@
     </div>
     <div id="tab-packages" class="tab-panel hidden">
       <div class="card"><h3>包导入 · <span id="packagePlatform"></span></h3><p class="setup-tip">选择服务器上的产物目录，导入后由项目自动管理。来源文件保留，不需要手动整理工作空间。</p><div class="setup-steps"><span>① 选择平台</span><span>② 选择来源目录</span><span>③ 导入并管理版本</span></div><div id="packageImportHint" class="muted"></div></div>
-      <div class="card" style="margin-top:16px"><h3>基础包</h3><label for="baseSource">基础包来源目录</label><div class="field-row"><input id="baseSource" oninput="capturePackageDraft()" placeholder="选择完整游戏打包目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button></div><label for="baseImportVersion" style="display:block;margin-top:12px">基础包版本号</label><div class="field-row"><input id="baseImportVersion" oninput="capturePackageDraft()" placeholder="例如 1.0"><button class="green" id="baseImportButton" onclick="importProjectPackage('base')">导入基础包</button></div><p id="importedBases" class="muted"></p></div>
-      <div class="card" style="margin-top:16px"><h3>补丁包</h3><label for="patchSource">补丁包来源目录</label><div class="field-row"><input id="patchSource" oninput="capturePackageDraft()" placeholder="选择 HotPatcher 输出目录或单个版本目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button></div><p class="setup-tip">输出目录包含 版本/版本_Release.json 和 版本/平台/；也可以直接选择该版本文件夹。</p><button class="green" id="patchImportButton" onclick="importProjectPackage('patch')">导入补丁包</button><p id="importedPatches" class="muted"></p></div>
+      <div class="card" style="margin-top:16px"><h3 id="basePackageTitle">基础包</h3><p id="basePackageHint" class="setup-tip"></p><label for="baseSource">资源基础包来源目录</label><div class="field-row"><input id="baseSource" oninput="capturePackageDraft()" placeholder="选择完整游戏打包目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button></div><label for="baseImportVersion" style="display:block;margin-top:12px">资源基础版本号</label><div class="field-row"><input id="baseImportVersion" oninput="capturePackageDraft()" placeholder="例如 1.0"><button class="green" id="baseImportButton" onclick="importProjectPackage('base')">导入基础包</button></div><div class="btn-row" style="margin-top:10px"><button class="ghost" id="baseInspectButton" onclick="inspectProjectPackage('base')">检测来源</button></div><p id="baseInspection" class="setup-tip"></p><div id="baseGameRequirement"><label for="baseRequiredGameVersion">依赖游戏版本（可选）</label><input id="baseRequiredGameVersion" oninput="capturePackageDraft()" placeholder="例如游戏版本 1.0，与资源基础版本分别填写"></div><p id="importedBases" class="muted"></p></div>
+      <div id="apkImportCard" class="card hidden" style="margin-top:16px"><h3 id="applicationTitle">程序包</h3><label for="apkSource" id="applicationSourceLabel">程序包来源</label><div class="field-row"><input id="apkSource" oninput="capturePackageDraft()" placeholder="选择 APK 文件或包含 APK 的目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button></div><label for="apkImportVersion" style="display:block;margin-top:12px">程序版本号</label><div class="field-row"><input id="apkImportVersion" oninput="capturePackageDraft()" placeholder="例如 1.0"><button class="green" id="apkImportButton" onclick="importProjectPackage('apk')">导入程序包</button></div><p class="setup-tip" id="applicationHint"></p><div class="btn-row" style="margin-top:10px"><button class="ghost" id="apkInspectButton" onclick="inspectProjectPackage('apk')">检测程序包</button></div><p id="apkInspection" class="setup-tip"></p><label for="apkBundledResourceVersion">程序包内置资源版本（留空使用程序版本号）</label><input id="apkBundledResourceVersion" oninput="capturePackageDraft()" placeholder="例如资源版本 1.0.01"><p id="importedApks" class="muted"></p></div>
+      <div class="card" style="margin-top:16px"><h3>补丁包</h3><label for="patchSource">补丁包来源目录</label><div class="field-row"><input id="patchSource" oninput="capturePackageDraft()" placeholder="选择 HotPatcher 输出目录或单个版本目录"><button class="ghost" onclick="openFolderPicker(this)">选择目录</button></div><p class="setup-tip">输出目录包含 版本/版本_Release.json 和 版本/平台/；也可以直接选择该版本文件夹。</p><button class="green" id="patchImportButton" onclick="importProjectPackage('patch')">导入补丁包</button><button class="ghost" id="patchInspectButton" onclick="inspectProjectPackage('patch')">检测来源</button><p id="patchInspection" class="setup-tip"></p><p id="importedPatches" class="muted"></p></div>
       <div class="btn-row" style="margin-top:16px"><button class="ghost" onclick="switchTab('versions')">管理已导入版本</button></div>
     </div>
 
@@ -349,9 +350,9 @@
         <div class="toolbar">
           <label>平台</label>
           <select id="filePlatform" onchange="switchPlatform(this.value)"></select>
-          <label>基础包版本</label>
+          <label>包类型</label><select id="filePackageKind" onchange="state.filePackageKind=this.value;state.baseVersion='';state.filePath='';refreshBaseVersionSelect();loadFiles()"><option value="base">基础包资源</option><option value="installer">程序包</option></select><label>版本</label>
           <select id="fileBaseVersion" onchange="state.baseVersion=this.value;state.filePath='';loadFiles()"></select>
-          <button class="green" onclick="openUploadPackage()">上传到当前目录</button>
+          <button class="green" id="uploadCurrentPackage" onclick="openUploadPackage()">上传到当前目录</button>
           <span class="muted">上传的文件会进入打包目录，成为客户端修复/下载的数据源</span>
         </div>
         <div class="breadcrumb" id="fileBreadcrumb"></div>
@@ -641,7 +642,7 @@ function headers(json) {
 function apiUrl(url, prefix = window.__PREFIX__ || '') {
   if (/^https?:/.test(url)) return url;
   const u = new URL(prefix + url, location.origin);
-  if (/^\/api\/(versions(?:\/|$)|version\/|manifest|files$|upload$|enabled_versions$|import\/hotpatcher$|platform\/config$|status$)/.test(url.split('?')[0]) && !u.searchParams.has('platform') && state.selectedPlatform) u.searchParams.set('platform', state.selectedPlatform);
+  if (/^\/api\/(versions(?:\/|$)|version\/|manifest|files$|upload$|enabled_versions$|launcher\/|import\/hotpatcher$|platform\/config$|status$)/.test(url.split('?')[0]) && !u.searchParams.has('platform') && state.selectedPlatform) u.searchParams.set('platform', state.selectedPlatform);
   return u.pathname + u.search;
 }
 async function api(url, opts = {}) {
@@ -729,6 +730,7 @@ function renderBreadcrumb(name) {
     : '<span class="crumb">' + esc(s) + '</span><span class="sep">›</span>').join('');
 }
 function switchTab(name) {
+  if (name === 'launcher' && !currentCapabilities().windowsLauncher) name = 'packages';
   history.replaceState(null, '', location.pathname + location.search + '#' + name);
   document.querySelectorAll('.nav-item[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
@@ -787,36 +789,88 @@ async function renderWorkspace() {
 function renderProjectPackages() {
   const data = state.workspace || {};
   const platform = state.selectedPlatform;
+  const caps = currentCapabilities();
   const current = (data.platforms || []).find(p=>p.platform===platform) || {};
   $('packagePlatform').textContent = platform || '';
+  $('apkImportCard').classList.toggle('hidden', !caps.applicationPackage);
+  $('basePackageTitle').textContent = platform + ' 资源基础包';
+  $('basePackageHint').textContent = platform === 'Windows' ? '选择 Windows 完整打包目录或资源目录；导入其中的 pak / IoStore、着色器和媒体等资源，供引擎内更新。程序文件请单独导入程序包。' : platform === 'IOS' ? '选择 iOS StagedBuilds、Data 或包含 cookeddata 的 .app 目录。IPA 程序包请单独导入。' : '选择 Android 发布目录或 Data / StagedBuilds 资源目录。APK、OBB 和压缩包不能代替资源。';
+  $('baseSource').placeholder = '包含 pak / IoStore 的资源目录';
+  const applicationName = platform === 'Windows' ? 'Windows 完整程序目录' : platform === 'IOS' ? 'iOS 程序包（IPA）' : 'Android 程序包（APK）';
+  $('applicationTitle').textContent = applicationName;
+  $('applicationSourceLabel').textContent = platform === 'Windows' ? '完整程序来源目录' : platform === 'IOS' ? 'IPA 文件或目录' : 'APK 文件或目录';
+  $('apkSource').placeholder = platform === 'Windows' ? '包含 EXE、DLL 的完整游戏目录' : platform === 'IOS' ? '具体 IPA 文件或包含单个 IPA 的目录' : '具体 APK 文件或包含单个 APK 的目录';
+  $('applicationHint').textContent = '程序版本与资源版本独立管理。' + (platform === 'Windows' ? '保留程序目录中的 EXE、DLL 及内置内容；引擎内仅更新资源包。' : '目录中有多个程序包时，请选择具体文件。' + (platform === 'Android' ? '资源发布目录带有单个有效 APK 时，会一并保存为程序包。' : ''));
+  document.querySelectorAll('[data-tab="launcher"]').forEach(e => e.classList.toggle('hidden', !caps.windowsLauncher));
+  if (!caps.windowsLauncher && location.hash === '#launcher') switchTab('packages');
   $('packageImportHint').textContent = data.configured ? '导入成功后可在版本管理中控制开放下载。' : '请先在服务器管理的存储管理中设置项目工作空间。';
   const drafts = ((state.packageDrafts || {})[platform] || {});
   const sources = current.sources || {};
   $('baseSource').value = drafts.baseSource ?? sources.base ?? '';
+  $('baseRequiredGameVersion').value = drafts.baseRequiredGameVersion || '';
+  $('apkBundledResourceVersion').value = drafts.apkBundledResourceVersion || '';
+  $('baseGameRequirement').classList.toggle('hidden', caps.baseKind !== 'resources');
   $('patchSource').value = drafts.patchSource ?? sources.patch ?? '';
   $('baseImportVersion').value = drafts.baseImportVersion || '';
+  if ($('apkSource')) $('apkSource').value = drafts.apkSource ?? sources.application ?? sources.apk ?? '';
+  if ($('apkImportVersion')) $('apkImportVersion').value = drafts.apkImportVersion || '';
   $('importedBases').textContent = '已导入版本：' + ((current.baseVersions || []).join('、') || '暂无');
+  const invalidBases = Object.entries(current.baseValidation || {}).filter(([,result]) => !result.valid);
+  if (invalidBases.length) $('importedBases').textContent += '。其中 ' + invalidBases.map(([version]) => version).join('、') + ' 未通过资源检查，暂不发布。可用同版本号导入正确资源修复，旧文件会备份。';
+  $('importedBases').title = invalidBases.map(([version,result]) => version + '：' + result.error).join('\n');
+  if ($('importedApks')) $('importedApks').textContent = '已导入程序版本：' + ((current.installerVersions || []).join('、') || '暂无');
   $('importedPatches').textContent = '已导入版本：' + ((current.patchVersions || []).join('、') || '暂无');
-  $('baseImportButton').disabled = $('patchImportButton').disabled = !data.configured || !!state.packageImportBusy;
+  const busy = !!state.packageImportBusy || !!state.packageInspectBusy;
+  $('baseImportButton').disabled = $('patchImportButton').disabled = !data.configured || busy;
+  $('apkImportButton').disabled = !data.configured || busy || !caps.applicationPackage;
+  $('baseInspectButton').disabled = $('apkInspectButton').disabled = $('patchInspectButton').disabled = busy;
+  for (const category of ['base','apk','patch']) {
+    const result = (state.packageInspections || {})[platform + ':' + category];
+    $(category + 'Inspection').textContent = result && result.source === $(category === 'base' ? 'baseSource' : category === 'apk' ? 'apkSource' : 'patchSource').value.trim() ? result.message : '';
+  }
+}
+function currentCapabilities() {
+  return ((state.config || {}).platformCapabilities || {})[state.selectedPlatform] || {};
+}
+async function inspectProjectPackage(category) {
+  if (state.packageInspectBusy || state.packageImportBusy) return;
+  if (category === 'apk' && !currentCapabilities().applicationPackage) return;
+  const platform = state.selectedPlatform;
+  const source = $(category === 'base' ? 'baseSource' : category === 'apk' ? 'apkSource' : 'patchSource').value.trim();
+  if (!source) {toast('请选择来源','err');return;}
+  state.packageInspectBusy = true; renderProjectPackages();
+  try {
+    const response = await api('/api/workspace/inspect', {method:'POST',headers:headers(true),body:JSON.stringify({category:category==='apk'?'application':category,platform,source})});
+    const result = response.inspection;
+    const stats = result.resourceStats;
+    const message = category === 'patch' ? '检测通过，版本：' + result.versions.join('、') : category === 'apk' ? '检测通过：' + result.fileName : '检测通过：' + platform + (stats ? `，pak ${stats.pakCount}，IoStore 索引 ${stats.utocCount}、数据 ${stats.ucasCount}` : ' 完整游戏目录') + (result.apk ? '；同时识别到 APK：' + result.apk : '');
+    state.packageInspections ||= {}; state.packageInspections[platform + ':' + category] = {source,message};
+  } catch(e) {
+    state.packageInspections ||= {}; state.packageInspections[platform + ':' + category] = {source,message:'检测失败：' + e.message};
+    toast(e.message,'err');
+  } finally { state.packageInspectBusy = false; renderProjectPackages(); }
 }
 function capturePackageDraft() {
   state.packageDrafts ||= {};
-  if (state.selectedPlatform) state.packageDrafts[state.selectedPlatform] = Object.fromEntries(['baseSource','patchSource','baseImportVersion'].map(id=>[id,$(id).value]));
+  if (state.selectedPlatform) state.packageDrafts[state.selectedPlatform] = Object.fromEntries(['baseSource','patchSource','baseImportVersion','apkSource','apkImportVersion','baseRequiredGameVersion','apkBundledResourceVersion'].map(id=>[id,$(id)?$(id).value:'']));
 }
 async function saveWorkspace() {
   const button=$('saveWorkspaceButton');button.disabled=true;
   try {const r=await api('/api/workspace',{projectPrefix:workspacePrefix(),method:'POST',headers:headers(true),body:JSON.stringify({root:$('workspaceRoot').value.trim()})});delete state.sharedDrafts.workspaceRoot;toast(r.message,'ok');await loadAll();switchTab('dirs');}catch(e){toast(e.message,'err');}finally{button.disabled=false;}
 }
 async function importProjectPackage(category) {
-  if (state.packageImportBusy) return;
-  const source = $(category==='base'?'baseSource':'patchSource').value.trim();
-  const version = $('baseImportVersion').value.trim();
-  if (!source || (category==='base' && !version)) {toast('请选择来源目录' + (category==='base'?'并填写基础包版本号':''),'err');return;}
+  if (state.packageImportBusy || state.packageInspectBusy) return;
+  if (category === 'apk' && !currentCapabilities().applicationPackage) return;
+  const sourceId = category==='base'?'baseSource':(category==='apk'?'apkSource':'patchSource');
+  const source = $(sourceId).value.trim();
+  const version = (category==='base' ? $('baseImportVersion').value.trim() : (category==='apk' ? $('apkImportVersion').value.trim() : ''));
+  if (!source || ((category==='base'||category==='apk') && !version)) {toast('请选择来源目录' + ((category==='base'||category==='apk')?'并填写版本号':''),'err');return;}
   const platform = state.selectedPlatform;
   capturePackageDraft();state.packageImportBusy=true;renderProjectPackages();
   try {
-    const r=await api('/api/workspace/import',{method:'POST',headers:headers(true),body:JSON.stringify({category,platform,source,version})});
+    const r=await api('/api/workspace/import',{method:'POST',headers:headers(true),body:JSON.stringify({category:category==='apk'?'application':category,platform,source,version,requiredGameVersion:$('baseRequiredGameVersion').value.trim(),bundledResourceVersion:$('apkBundledResourceVersion').value.trim()})});
     if (category==='base') state.packageDrafts[platform].baseImportVersion='';
+    if (category==='apk') state.packageDrafts[platform].apkImportVersion='';
     toast(r.message,'ok');await loadAll();switchTab('packages');
   }catch(e){toast(e.message,'err');}finally{state.packageImportBusy=false;renderProjectPackages();}
 }
@@ -831,7 +885,8 @@ async function loadAll() {
     const [status, index, pc] = await Promise.all([api('/api/status'), api('/api/versions?all=1'), api('/api/platform/config')]);
     if (generation !== state.loadGeneration) return;
     state.status = status;
-    state.versions = index.versions || [];
+    state.versions = [...(index.versions || []), ...(index.invalidVersions || [])];
+    state.versionChannels = {gameVersion:index.gameVersion,resourceVersion:index.resourceVersion};
     state.config = config.config || {};
     state.config.platformConfig = pc.config;
     state.managePlatform = state.platform = state.selectedPlatform;
@@ -853,11 +908,11 @@ async function loadAll() {
     $('sideStorage').textContent = '存储：' + (state.config.storageBackend === 's3' ? 'OSS / S3' : '本地磁盘');
     $('stProject').textContent = status.project || '-';
     $('stPlatforms').textContent = (status.platforms || []).join(', ');
-    $('stCurrent').textContent = index.current || '-';
+    $('stCurrent').textContent = '游戏 ' + (index.gameVersion || '—') + ' / 资源 ' + (index.resourceVersion || '—');
     $('stPlatforms').textContent = '当前平台：' + state.selectedPlatform;
     $('stChain').textContent = (index.updateChain || []).join(' → ') || '无更新链';
     $('stCount').textContent = state.versions.length;
-    $('stHotpatcher').textContent = ((state.config.platformConfig || {}).sourceExists ? state.selectedPlatform + ' 补丁来源已就绪' : '请配置 ' + state.selectedPlatform + ' 补丁来源');
+    $('stHotpatcher').textContent = ((state.config.platformConfig || {}).sourceReady ? state.selectedPlatform + ' 补丁来源已就绪' : '请配置并检测 ' + state.selectedPlatform + ' 补丁来源');
     const ms = status.manifests || {};
     const keys = Object.keys(ms).filter(p => p === state.selectedPlatform);
     if (keys.length) {
@@ -872,6 +927,7 @@ async function loadAll() {
     initManagePlatform();
     renderVersions();
     renderControl();
+    if (currentCapabilities().windowsLauncher) {
     try { state.launcherVer = await api('/api/launcher/version'); } catch (e) { state.launcherVer = null; }
     try {
       const lv = await api('/api/launcher/versions');
@@ -879,6 +935,7 @@ async function loadAll() {
       state.launcherPublished = lv.published || '';
     } catch (e) { state.launcherVersions = []; state.launcherPublished = ''; }
     try { state.bg = await api('/api/launcher/background'); } catch (e) { state.bg = null; }
+    } else { state.launcherVer = null; state.launcherVersions = []; state.launcherPublished = ''; state.bg = null; }
     renderLauncherTab();
     initFilePlatform();
     renderManifestTab();
@@ -898,34 +955,40 @@ async function loadAll() {
   }
 }
 
+function versionKind(v) { return v.packageKind || (v.type === 'full' ? 'base' : 'patch'); }
+function versionKey(v) { return versionKind(v) + ':' + v.versionId; }
+function versionEnabled(v, list) { return v.valid !== false && (list.includes(versionKey(v)) || list.includes(v.versionId)); }
+function managedVersions() {
+  const kind = $('manageKind').value;
+  return state.versions.filter(v => kind === 'all' || (kind === 'installer' ? versionKind(v) === 'installer' : versionKind(v) !== 'installer'));
+}
 function renderVersions() {
   const body = $('versionsBody');
-  const list = state.versions.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  if (!list.length) { $('enabledHint').textContent = '当前平台暂无版本'; body.innerHTML = '<tr><td colspan="8" class="empty">暂无版本，请先导入 HotPatcher 产物</td></tr>'; return; }
+  const list = managedVersions().slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  if (!list.length) { $('enabledHint').textContent = '当前平台暂无版本'; body.innerHTML = '<tr><td colspan="8" class="empty">暂无版本，请先导入对应的程序包或资源包</td></tr>'; return; }
   const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
   const configured = state.enabledMap[platform] !== undefined;
-  const ids = list.map(v => v.versionId);
-  const effective = configured ? state.enabledMap[platform].filter(id => ids.includes(id)) : ids;
+  const effective = list.filter(v => v.valid !== false && (!configured || versionEnabled(v, state.enabledMap[platform]))).map(versionKey);
   $('enabledHint').textContent = configured
     ? '已开放 ' + effective.length + ' / ' + list.length + ' 个版本'
     : '未设置开放列表，默认全部开放';
   body.innerHTML = list.map(v => `
     <tr>
       <td>
-        <label class="switch" title="${effective.includes(v.versionId) ? '点击关闭开放' : '点击开放下载'}">
-          <input type="checkbox" ${effective.includes(v.versionId) ? 'checked' : ''} onchange="toggleVersion('${esc(v.versionId)}', this.checked)">
+        <label class="switch" title="${effective.includes(versionKey(v)) ? '点击关闭开放' : '点击开放下载'}">
+          <input type="checkbox" ${effective.includes(versionKey(v)) ? 'checked' : ''} ${v.valid === false ? 'disabled' : ''} onchange="toggleVersion('${esc(versionKey(v))}', this.checked)">
           <span class="track"></span>
         </label>
       </td>
-      <td><strong>${esc(v.versionId)}</strong></td>
+      <td><strong>${esc(v.versionId)}</strong><div class="muted">游戏 ${esc(v.gameVersion || v.requiredGameVersion || "—")} · 资源 ${esc(v.resourceVersion || "—")}</div>${v.valid === false ? `<div style="color:var(--danger)">资源检查未通过</div>` : ""}</td>
       <td>${esc(v.baseVersionId) || '-'}</td>
       <td>${esc(v.date) || '-'}</td>
-      <td>${v.type === 'full' ? '<span style="color:var(--accent2)">完整包</span>' : '补丁包'}</td>
+      <td>${versionKind(v) === 'installer' ? '程序包' : versionKind(v) === 'base' ? (v.type === 'full' ? '游戏完整包' : '资源基础包') : '资源补丁'}</td>
       <td>${v.changedAssetCount} / ${v.deletedAssetCount}</td>
       <td>${fmtSize(v.totalSizeBytes)}</td>
       <td class="btn-row">
-        <button class="ghost" onclick="showVersion('${esc(v.versionId)}')">详情</button>
-        <button class="red" onclick="deleteVersion('${esc(v.versionId)}')">删除</button>
+        <button class="ghost" onclick="showVersion('${esc(v.versionId)}','${versionKind(v)}')">详情</button>
+        <button class="red" onclick="deleteVersion('${esc(v.versionId)}','${versionKind(v)}')">删除</button>
       </td>
     </tr>`).join('');
 }
@@ -943,8 +1006,8 @@ function initManagePlatform() {
 async function toggleVersion(id, on) {
   const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
   if (!platform) { toast('无可用平台', 'err'); return; }
-  const all = [...new Set(state.versions.map(v => v.versionId))];
-  let list = state.enabledMap[platform] !== undefined ? state.enabledMap[platform].slice() : all.slice();
+  const all = [...new Set(state.versions.filter(v => v.valid !== false).map(versionKey))];
+  let list = state.enabledMap[platform] !== undefined ? state.versions.filter(v => versionEnabled(v,state.enabledMap[platform])).map(versionKey) : all.slice();
   if (on) {
     if (!list.includes(id)) list.push(id);
   } else {
@@ -956,9 +1019,10 @@ async function toggleVersion(id, on) {
 async function setAllVersions(on) {
   const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
   if (!platform) { toast('无可用平台', 'err'); return; }
-  const all = [...new Set(state.versions.map(v => v.versionId))];
-  if (!confirm(on ? `确定开放 ${platform} 平台全部版本吗？` : `确定关闭 ${platform} 平台全部版本的下载吗？`)) return;
-  await saveEnabledVersions(platform, on ? all.slice() : []);
+  const visible = managedVersions().filter(v => v.valid !== false).map(versionKey);
+  let enabled = state.versions.filter(v => v.valid !== false && (state.enabledMap[platform] === undefined || versionEnabled(v,state.enabledMap[platform]))).map(versionKey);
+  enabled = on ? [...new Set([...enabled,...visible])] : enabled.filter(key => !visible.includes(key));
+  await saveEnabledVersions(platform, enabled);
 }
 
 async function saveEnabledVersions(platform, list) {
@@ -973,9 +1037,9 @@ async function saveEnabledVersions(platform, list) {
   } catch (e) { toast(e.message, 'err'); }
 }
 
-async function showVersion(id) {
+async function showVersion(id, kind = 'patch') {
   try {
-    const desc = await api('/api/version/' + encodeURIComponent(id) + '?platform=' + encodeURIComponent(state.selectedPlatform));
+    const desc = await api('/api/version/' + encodeURIComponent(id) + '?platform=' + encodeURIComponent(state.selectedPlatform) + '&kind=' + encodeURIComponent(kind));
     $('modalTitle').textContent = '版本 ' + id + ' 更新描述';
     const files = (desc.files || []).map(f => `
       <div class="file-row">
@@ -984,16 +1048,16 @@ async function showVersion(id) {
         <span class="muted">${f.hash ? f.hash.slice(0, 12) : ''}</span>
       </div>`).join('');
     $('modalBody').innerHTML = `
-      <div class="muted" style="margin-bottom:8px">base=${esc(desc.baseVersionId || '-')} · 时间=${esc(desc.date || '-')} · 类型=${esc(desc.type)} · 变更=${desc.changedAssetCount} · 删除=${desc.deletedAssetCount} · 需重启=${desc.restartRequired ? '是' : '否'}</div>
+      <div class="muted" style="margin-bottom:8px">程序=${esc(desc.gameVersion || desc.requiredGameVersion || "—")} · 资源=${esc(desc.resourceVersion || "—")} · base=${esc(desc.baseVersionId || '-')} · 时间=${esc(desc.date || '-')} · 类型=${esc(desc.type)} · 变更=${desc.changedAssetCount} · 删除=${desc.deletedAssetCount} · 需重启=${desc.restartRequired ? '是' : '否'}</div>
       ${files || '<div class="empty">无下载文件</div>'}`;
     $('modalMask').classList.add('show');
   } catch (e) { toast(e.message, 'err'); }
 }
 
-async function deleteVersion(id) {
-  if (!confirm('确定删除当前平台的补丁版本 ' + id + ' 吗？将移入 data/trash 回收站。')) return;
+async function deleteVersion(id, kind = 'patch') {
+  if (!confirm('确定移除当前平台的' + ({base:'基础包',installer:'程序包',patch:'资源补丁'}[kind] || '版本') + ' ' + id + ' 吗？文件将保留在回收站，其他同号包不受影响。')) return;
   try {
-    const r = await api('/api/version/' + encodeURIComponent(id), { method: 'DELETE', headers: headers() });
+    const r = await api('/api/version/' + encodeURIComponent(id) + '?kind=' + kind, { method: 'DELETE', headers: headers() });
     toast(r.message, 'ok');
     await loadAll();
   } catch (e) { toast(e.message, 'err'); }
@@ -1353,14 +1417,20 @@ function initFilePlatform() {
     state.platform = platforms.includes(state.platform) ? state.platform : platforms[0];
     sel.value = state.platform;
     refreshBaseVersionSelect();
-    if (state.baseVersion && ((state.config.platformConfig || {}).packageStatus || {})[state.baseVersion]) loadFiles();
-    else $('filesBody').innerHTML = '<tr><td colspan="5" class="empty">当前平台没有可用的基础包目录，请前往目录位置配置。</td></tr>';
+    if (state.baseVersion) loadFiles();
+    else $('filesBody').innerHTML = '<tr><td colspan="5" class="empty">当前包类型暂无可浏览版本，请在包导入中导入对应资源或安装包。</td></tr>';
   }
 }
 
 function refreshBaseVersionSelect() {
   const cfg = state.config || {};
-  const versions = Object.keys((cfg.basePackages && cfg.basePackages[state.platform]) || {});
+  const apkVersions = (cfg.installerVersions || {})[state.platform] || [];
+  const kinds = ['base','installer'];
+  if (!kinds.includes(state.filePackageKind)) state.filePackageKind = 'base';
+  $('filePackageKind').innerHTML = kinds.map(k => `<option value="${k}">${k === 'base' ? '基础包资源' : '程序包'}</option>`).join('');
+  $('filePackageKind').value = state.filePackageKind;
+  $('uploadCurrentPackage').disabled = state.filePackageKind === 'installer';
+  const versions = state.filePackageKind === 'installer' ? apkVersions.slice() : ((cfg.validBaseVersions || {})[state.platform] || Object.keys((cfg.basePackages && cfg.basePackages[state.platform]) || {})).slice();
   versions.sort();
   const sel = $('fileBaseVersion');
   sel.innerHTML = versions.map(v => `<option>${esc(v)}</option>`).join('');
@@ -1374,11 +1444,20 @@ function refreshBaseVersionSelect() {
 }
 
 async function loadFiles(dir) {
+  const generation = state.filesGeneration = (state.filesGeneration || 0) + 1;
   const requestedPlatform = state.platform;
+  const requestedKind = state.filePackageKind;
+  const requestedVersion = state.baseVersion;
   if (dir !== undefined) state.filePath = dir;
+  if (!state.baseVersion) {
+    renderFileBreadcrumb('', '');
+    $('filesBody').innerHTML = '<tr><td colspan="5" class="empty">当前平台的这类包暂无版本，请先导入。</td></tr>';
+    return;
+  }
+  $('filesBody').innerHTML = '<tr><td colspan="5" class="empty">加载中...</td></tr>';
   try {
-    const data = await api('/api/files?platform=' + encodeURIComponent(state.platform) + '&baseVersion=' + encodeURIComponent(state.baseVersion || '') + '&path=' + encodeURIComponent(state.filePath));
-    if (requestedPlatform !== state.platform) return;
+    const data = await api('/api/files?platform=' + encodeURIComponent(state.platform) + '&kind=' + (state.filePackageKind || 'base') + '&baseVersion=' + encodeURIComponent(state.baseVersion || '') + '&path=' + encodeURIComponent(state.filePath));
+    if (generation !== state.filesGeneration || requestedPlatform !== state.platform || requestedKind !== state.filePackageKind || requestedVersion !== state.baseVersion) return;
     renderFileBreadcrumb(data.path, data.parent);
     const body = $('filesBody');
     if (!data.entries.length) { body.innerHTML = '<tr><td colspan="5" class="empty">空目录</td></tr>'; return; }
@@ -1386,17 +1465,17 @@ async function loadFiles(dir) {
       <tr>
         <td><a href="#" onclick="event.preventDefault();loadFiles('${esc(e.path)}')">📁 ${esc(e.name)}</a></td>
         <td class="muted">目录</td><td>-</td><td class="muted">${esc(e.modified)}</td>
-        <td><button class="ghost" onclick="navigator.clipboard.writeText('${esc(window.__PREFIX__ || '')}/files/packages/${esc(state.platform)}/${esc(state.baseVersion)}/${esc(e.path)}');toast('路径已复制','ok')">复制路径</button></td>
+        <td><button class="ghost" onclick="navigator.clipboard.writeText('${esc(window.__PREFIX__ || '')}/files/${state.filePackageKind === 'installer' ? 'installers' : 'packages'}/${esc(state.platform)}/${esc(state.baseVersion)}/${esc(e.path)}');toast('路径已复制','ok')">复制路径</button></td>
       </tr>` : `
       <tr>
         <td>📄 ${esc(e.name)}</td>
         <td class="muted">文件</td><td>${fmtSize(e.size)}</td><td class="muted">${esc(e.modified)}</td>
         <td class="btn-row">
           <a href="${esc(e.downloadUrl)}" download>下载</a>
-          <button class="ghost" onclick="navigator.clipboard.writeText('${esc(location.origin + e.downloadUrl)}');toast('下载地址已复制','ok')">复制链接</button>
+          <button class="ghost" onclick="navigator.clipboard.writeText('${esc(new URL(e.downloadUrl, location.origin).href)}');toast('下载地址已复制','ok')">复制链接</button>
         </td>
       </tr>`).join('');
-  } catch (e) { toast(e.message, 'err'); }
+  } catch (e) { if (generation === state.filesGeneration) { $('filesBody').innerHTML = '<tr><td colspan="5" class="empty">' + esc(e.message) + '</td></tr>'; toast(e.message, 'err'); } }
 }
 
 function renderFileBreadcrumb(path, parent) {
@@ -1447,7 +1526,7 @@ async function doUpload(target) {
     if (!id) { toast('请填写版本号', 'err'); return; }
     url = '/api/upload?target=version&versionId=' + encodeURIComponent(id) + '&platform=' + encodeURIComponent(state.selectedPlatform) + '&path=files';
   } else {
-    url = '/api/upload?target=package&platform=' + encodeURIComponent(state.platform) + '&baseVersion=' + encodeURIComponent(state.baseVersion || '') + '&path=' + encodeURIComponent(state.filePath);
+    url = '/api/upload?target=package&platform=' + encodeURIComponent(state.platform) + '&kind=' + (state.filePackageKind || 'base') + '&baseVersion=' + encodeURIComponent(state.baseVersion || '') + '&path=' + encodeURIComponent(state.filePath);
   }
   try {
     const xhr = new XMLHttpRequest();
@@ -1633,14 +1712,15 @@ function openFolderPicker(btn) {
   if (!input) { toast('未找到路径输入框', 'err'); return; }
   folderTarget = input;
   folderPath = input.value.trim();
+  if (input.id === 'apkSource' && /\.(apk|ipa)$/i.test(folderPath)) folderPath = folderPath.replace(/[\\/][^\\/]+$/, '');
   folderParent = null;
-  $('modalTitle').textContent = '选择文件夹';
+  $('modalTitle').textContent = input.id === 'apkSource' ? (state.selectedPlatform === 'Windows' ? '选择 Windows 程序目录' : state.selectedPlatform === 'IOS' ? '选择 IPA 或文件夹' : '选择 APK 或文件夹') : '选择文件夹';
   $('modalBody').innerHTML = `
     <div class="dir-current" id="dirCurrent">加载中...</div>
     <div class="dir-actions">
       <button class="ghost" onclick="dirPickerUp()" id="dirUpBtn">上一级</button>
       <button class="green" onclick="dirPickerChoose()">选择当前文件夹</button>
-      <span class="muted">仅显示服务器本地目录</span>
+      <span class="muted">${input.id === 'apkSource' ? (state.selectedPlatform === 'Windows' ? '请选择完整游戏程序目录' : '显示当前平台程序包；多个程序包时请选择具体文件') : '仅显示服务器本地目录'}</span>
     </div>
     <div class="dir-list" id="dirList"><div class="empty">加载中...</div></div>`;
   loadDirPicker(folderPath);
@@ -1649,7 +1729,7 @@ function openFolderPicker(btn) {
 
 async function loadDirPicker(path) {
   try {
-    const data = await api('/api/dirs/list?path=' + encodeURIComponent(path));
+    const data = await api('/api/dirs/list?path=' + encodeURIComponent(path) + (folderTarget && folderTarget.id === 'apkSource' && state.selectedPlatform !== 'Windows' ? '&extensions=' + (state.selectedPlatform === 'IOS' ? '.ipa' : '.apk') : ''));
     folderPath = data.path || '';
     folderParent = data.parent || null;
     $('dirCurrent').textContent = (folderPath || '选择磁盘') + (data.warning ? '  ⚠ ' + data.warning : '');
@@ -1659,7 +1739,7 @@ async function loadDirPicker(path) {
       list.innerHTML = '<div class="empty">此目录下没有子文件夹</div>';
     } else {
       list.innerHTML = data.entries.map(e =>
-        `<button class="dir-item" data-path="${esc(JSON.stringify(e.path))}" onclick="loadDirPicker(JSON.parse(this.dataset.path))">📁 ${esc(e.name)}</button>`).join('');
+        `<button class="dir-item" data-path="${esc(JSON.stringify(e.path))}" onclick="${e.isDir ? 'loadDirPicker' : 'choosePickerFile'}(JSON.parse(this.dataset.path))">${e.isDir ? '📁' : '📦'} ${esc(e.name)}</button>`).join('');
     }
   } catch (e) {
     $('dirList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
@@ -1670,10 +1750,16 @@ function dirPickerUp() {
   if (folderParent) loadDirPicker(folderParent);
 }
 
+function choosePickerFile(path) {
+  if (!folderTarget || folderTarget.id !== 'apkSource') return;
+  folderTarget.value = path;
+  capturePackageDraft(); closeModal();
+}
+
 function dirPickerChoose() {
   if (!folderTarget) { toast('未找到目标输入框', 'err'); return; }
   folderTarget.value = folderPath;
-  if (['baseSource','patchSource'].includes(folderTarget.id)) capturePackageDraft();
+  if (['baseSource','patchSource','apkSource'].includes(folderTarget.id)) capturePackageDraft();
   toast('已选择：' + (folderPath || '(根目录)'), 'ok');
   closeModal();
 }
@@ -1776,7 +1862,7 @@ async function refreshStatus() {
     state.uptimeBase = status.uptimeSeconds || 0; state.uptimeAt = Date.now();
     $('serverBadge').textContent = '在线'; $('serverBadge').className = 'badge online';
     $('serverTime').textContent = $('sideServerTime').textContent = status.serverTime || '';
-    $('stCurrent').textContent = status.currentVersion || '-';
+    $('stCurrent').textContent = '游戏 ' + (status.gameVersion || '—') + ' / 资源 ' + (status.resourceVersion || '—');
     $('stCount').textContent = status.versionCount;
   } catch (e) {
     $('serverBadge').textContent='离线'; $('serverBadge').className='badge offline';

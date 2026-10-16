@@ -85,7 +85,7 @@ void FCloudUpdateService::ResolveNextPlanDescriptor()
  if (PlanDescriptorIndex >= PlanPendingVersions.Num()) { FinishPlan(true, PlanMessage); return; }
  const FCloudUpdateVersionInfo Info = PlanPendingVersions[PlanDescriptorIndex];
  TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
- FetchJson(GetVersionUrl(Info.VersionId), [WeakThis, Info](bool bOk, const TSharedPtr<FJsonObject>& Json)
+ FetchJson(Info.Url.IsEmpty() ? GetVersionUrl(Info.VersionId) : ResolveRemoteUrl(Info.Url), [WeakThis, Info](bool bOk, const TSharedPtr<FJsonObject>& Json)
  {
   const auto Self = WeakThis.Pin();
   if (!Self) return;

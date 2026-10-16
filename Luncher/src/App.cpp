@@ -782,7 +782,7 @@ void App::startApplyAll() {
             auto progress = [this](const std::string& status, int64_t done, int64_t total, const std::string& file) {
                 reportProgress(status, done, total, file, true);
             };
-            bool ok = updater_->applyVersion(info.versionId, progress, cancel_, err);
+            bool ok = updater_->applyVersion(info.versionId, progress, cancel_, err, &info);
             if (!ok) {
                 if (cancel_.load()) {
                     applyOperationResult(false, "操作已取消");

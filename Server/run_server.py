@@ -46,6 +46,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 from config import (
     resolve_server_path,
     validate_platforms,
+    platform_capabilities,
     workspace_paths,
     workspace_platform_paths,
     resolve_base_package_path,
@@ -78,7 +79,12 @@ from versions import (
     save_revoked_store,
 )
 from storage import get_storage
-from importer import run_import, import_version, base_import_source
+from packages import list_installers as catalog_installers, package_kind
+from importer import (
+    run_import, import_version, base_import_source,
+    find_android_apk, validate_android_apk, inspect_application_source, split_mobile_release,
+    iter_resource_files, is_resource_file, validate_resource_tree, inspect_base_source, patch_import_plan,
+)
 import certgen
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -400,6 +406,10 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._api_config()
         elif path == "/api/enabled_versions":
             self._api_enabled_versions()
+        elif path == "/api/installers":
+            self._api_installers()
+        elif path.startswith("/api/installer/"):
+            self._api_installer(path[len("/api/installer/"):])
         elif path == "/api/launcher/version":
             self._api_launcher_version()
         elif path == "/api/launcher/background":
@@ -431,6 +441,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._serve_package_file(path[len("/files/packages/"):])
         elif path.startswith("/files/versions/"):
             self._serve_version_file(path[len("/files/versions/"):])
+        elif path.startswith("/files/installers/"):
+            self._serve_installer_file(path[len("/files/installers/"):])
         elif path.startswith("/files/background/"):
             self._serve_background_file(path[len("/files/background/"):])
         elif path.startswith("/files/launcher/"):
@@ -441,6 +453,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
     # ---------- API ----------
     def _api_status(self, query):
         index = filter_index_by_platform(load_versions_index(self.cfg), getattr(self, "platform", self.cfg.get("default_platform", self.cfg["platforms"][0])))
+        index = add_version_channels(index)
         manifests = {}
         for platform in self.cfg["platforms"]:
             manifests[platform] = []
@@ -456,7 +469,9 @@ class UpdateHandler(BaseHTTPRequestHandler):
         self._send_json({
             "ok": True,
             "server": "CloudUpdateServer",
-            "consoleVersion": "2.5",
+            "consoleVersion": "2.7",
+            "gameVersion": index["gameVersion"],
+            "resourceVersion": index["resourceVersion"],
             "activePlatform": getattr(self, "platform", self.cfg["platforms"][0]),
             "storageBackend": "s3" if storage.is_remote else "local",
             "authRequired": bool(self.cfg.get("admin_token")),
@@ -480,6 +495,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "versionLibraryDir": self.cfg.get("version_library_dir", ""),
             "basePackageDirs": {p: get_base_dir(self.cfg, p) for p in self.cfg["platforms"]},
             "basePackages": self.cfg.get("base_packages", {}),
+            "validBaseVersions": load_versions_index(self.cfg).get("baseVersions", {}),
+            "installerVersions": {p: [i["versionId"] for i in catalog_installers(self.cfg, p)] for p in self.cfg["platforms"]},
             "platformSettings": self.cfg.get("platform_settings", {}),
             "serverTime": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         })
@@ -500,13 +517,17 @@ class UpdateHandler(BaseHTTPRequestHandler):
         self._send_json(index)
 
     def _api_version(self, version_id, query):
-        desc = read_descriptor(self.cfg, version_id, query.get("platform", [self.cfg["platforms"][0]])[0])
+        try:
+            desc = read_descriptor(self.cfg, version_id, query.get("platform", [self.cfg["platforms"][0]])[0], query.get("kind", [None])[0])
+        except (ValueError, RuntimeError) as exc:
+            self._send_json({"error": str(exc)}, status=400); return
         if not desc:
             self._send_json({"ok": False, "error": f"版本 {version_id} 不存在"}, status=404)
             return
         desc["platform"] = query["platform"][0]
         for file in desc.get("files", []):
-            file["url"] = self._public_url(file.get("url", ""))
+            for field in ("url", "fallbackUrl"):
+                if file.get(field): file[field] = self._public_url(file[field])
         self._send_json(desc)
 
     def _api_manifest(self, query):
@@ -516,7 +537,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
         try:
             manifest = generate_manifest(self.cfg, platform, base_version=base_version, force=force)
         except Exception as exc:
-            self._send_json({"ok": False, "error": str(exc)}, status=500)
+            self._send_json({"ok": False, "error": str(exc)}, status=400)
             return
         self._send_json(manifest)
 
@@ -525,6 +546,41 @@ class UpdateHandler(BaseHTTPRequestHandler):
         platform = query.get("platform", [self.cfg["platforms"][0]])[0]
         base_version = query.get("baseVersion", [""])[0] or None
         rel_dir = query.get("path", [""])[0]
+        kind = query.get("kind", ["base"])[0]
+        if kind == "installer":
+            items = self._list_installers(platform)
+            if base_version:
+                items = [item for item in items if item["versionId"] == base_version]
+            if not items:
+                self._send_json({"error": "当前平台没有这个安装包版本"}, status=404); return
+            if not base_version:
+                item = max(items, key=lambda item: version_key(item["versionId"]))
+                base_version = item["versionId"]
+            else:
+                item = items[0]
+            normalized = rel_dir.replace("\\", "/").strip("/")
+            if normalized and any(p in (".", "..") for p in normalized.split("/")):
+                self._send_json({"error": "目录不存在或路径非法"}, status=404); return
+            prefix = normalized + "/" if normalized else ""
+            entries, seen = [], set()
+            for entry in item["files"]:
+                rel = entry["targetRelativePath"]
+                if not rel.startswith(prefix): continue
+                tail = rel[len(prefix):]
+                name = tail.split("/")[0]
+                if name in seen: continue
+                seen.add(name)
+                directory = "/" in tail
+                entries.append({"name":name,"type":"dir" if directory else "file","size":0 if directory else entry["size"],
+                                "modified":item["date"],"path":prefix + name,
+                                "downloadUrl":"" if directory else self._public_url(entry["url"]),
+                                "gameVersion":item["gameVersion"],"resourceVersion":item["resourceVersion"]})
+            if normalized and not entries:
+                self._send_json({"error":"程序包目录不存在"}, status=404); return
+            self._send_json({"ok": True, "platform": platform, "kind": "installer", "baseVersion": base_version,
+                             "path": normalized, "parent": normalized.rsplit("/",1)[0] if "/" in normalized else "", "entries": entries}); return
+        if kind != "base":
+            self._send_json({"error": "云端文件类型必须是 base 或 installer"}, status=400); return
         raw_platform = (self.cfg.get("base_packages", {}) or {}).get(platform) or {}
         if base_version:
             # 显式指定了版本号：必须已在配置中，否则视为无效版本返回 404，
@@ -573,6 +629,12 @@ class UpdateHandler(BaseHTTPRequestHandler):
         for name in sorted(os.listdir(abs_dir)):
             item_path = os.path.join(abs_dir, name)
             rel = os.path.relpath(item_path, root).replace("\\", "/")
+            if rel == ".cloudupdate.json":
+                continue
+            if not is_resource_file(rel):
+                continue
+            if matches_any(rel, self.cfg["manifest_exclude_patterns"]):
+                continue
             if os.path.isdir(item_path):
                 entries.append({"name": name, "type": "dir", "size": 0,
                                 "modified": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(item_path))),
@@ -614,9 +676,23 @@ class UpdateHandler(BaseHTTPRequestHandler):
         for platform in self.cfg["platforms"]:
             item = {"platform": platform, **workspace_platform_paths(self.cfg, platform)}
             item["baseVersions"] = list(self.cfg["base_packages"].get(platform, {}))
-            item["sources"] = (self.cfg.get("import_sources") or {}).get(platform, {})
-            item["patchVersions"] = [v["versionId"] for v in filter_index_by_platform(index, platform).get("versions", []) if v["type"] != "full"]
+            item["baseValidation"] = {}
+            if platform in self.cfg["platforms"]:
+                for version, folder in self.cfg["base_packages"].get(platform, {}).items():
+                    try:
+                        validate_resource_tree(folder)
+                        item["baseValidation"][version] = {"valid": True}
+                    except (ValueError, OSError) as exc:
+                        item["baseValidation"][version] = {"valid": False, "error": str(exc)}
+            item["capabilities"] = platform_capabilities(platform)
+            if item["capabilities"]["applicationPackage"]:
+                item["installerVersions"] = [i["versionId"] for i in self._list_installers(platform)]
+            item["sources"] = {k: v for k, v in ((self.cfg.get("import_sources") or {}).get(platform) or {}).items() if k in (("base", "patch", "application", "apk") if platform == "Android" else ("base", "patch", "application"))}
+            item["patchVersions"] = [v["versionId"] for v in filter_index_by_platform(index, platform).get("versions", []) if package_kind(v) == "patch"]
             item["pendingBases"] = self._pending_workspace_versions(item["baseImport"], item["baseVersions"])
+            if item["capabilities"]["apkInstaller"]:
+                item["pendingApks"] = self._pending_workspace_versions(item["apkImport"], item["installerVersions"])
+            item["pendingApplications"] = self._pending_workspace_versions(item["applicationImport"], item["installerVersions"])
             platforms.append(item)
         pending = self._pending_workspace_versions(paths["launcherImport"], self.cfg["launcher_versions"], "Launcher.exe")
         self._send_json({"ok": True, "configured": True, "paths": paths, "platforms": platforms, "pendingLaunchers": pending})
@@ -677,6 +753,60 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "工作空间保存失败：" + str(exc)}, status=400); return
         self._send_json({"ok": True, "message": "项目工作空间已保存并创建所有目录"})
 
+    def _check_import_source(self, source):
+        selected = os.path.normcase(os.path.realpath(source))
+        def overlaps(left, right):
+            try:
+                return os.path.commonpath([left, right]) in (left, right)
+            except ValueError:
+                return False
+        for key, entry in PROJECT_REGISTRY.get("projects", {}).items():
+            if not os.path.isfile(os.path.join(SERVER_DIR, entry["config"])):
+                continue
+            cfg = self.cfg if key == self.project else load_project_cfg(key)
+            root = cfg.get("workspace_dir")
+            if not root:
+                continue
+            managed = os.path.normcase(os.path.realpath(root))
+            imports = os.path.join(managed, "imports")
+            if overlaps(selected, managed):
+                if key == self.project and selected.startswith(imports + os.sep):
+                    continue
+                raise ValueError("请选择外部产物目录或当前项目的 imports 子目录，不能使用项目已管理的数据作为导入来源")
+
+    def _admin_workspace_inspect(self):
+        data = self._json_body()
+        if data is None: return
+        platform = self._body_platform(data)
+        if not platform: return
+        try:
+            source = data.get("source")
+            if not isinstance(source, str) or not source.strip():
+                raise ValueError("请选择来源")
+            source = self._resolve_path(source.strip())
+            self._check_import_source(source)
+            category = data.get("category")
+            if category == "base":
+                result = inspect_base_source(source, platform)
+                if result["apk"]:
+                    result["apk"] = os.path.basename(result["apk"])
+            elif category == "application":
+                result = inspect_application_source(source, platform)
+            elif category == "apk":
+                if not platform_capabilities(platform)["apkInstaller"]:
+                    raise ValueError("APK 安装包仅适用于 Android")
+                apk = find_android_apk(source)
+                if not apk: raise ValueError("未找到 APK，请选择具体文件或包含 APK 的目录")
+                result = validate_android_apk(apk)
+            elif category == "patch":
+                root, versions, _cook = patch_import_plan(source, platform)
+                result = {"versions": versions}
+            else:
+                raise ValueError("来源检测支持 base、patch 或 application")
+            self._send_json({"ok": True, "platform": platform, "inspection": result})
+        except (ValueError, OSError) as exc:
+            self._send_json({"error": str(exc)}, status=400)
+
     def _admin_workspace_import(self):
         data = self._json_body()
         if data is None: return
@@ -687,57 +817,176 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._admin_import_payload(data); return
         platform = self._body_platform(data)
         if not platform: return
+        caps = platform_capabilities(platform)
+        if category == "apk" and not caps["apkInstaller"]:
+            self._send_json({"error": "APK 安装包仅适用于 Android"}, status=400); return
+        if category == "launcher" and not caps["windowsLauncher"]:
+            self._send_json({"error": "Windows 启动器仅适用于 Windows"}, status=400); return
         version = data.get("version", "")
-        if not isinstance(version, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", version) or version in (".", ".."):
+        if not isinstance(version, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", version) or version.startswith("."):
             self._send_json({"error": "请选择有效版本号"}, status=400); return
-        if category == "base":
+        if category in ("base", "apk", "application"):
             paths = workspace_platform_paths(self.cfg, platform)
-            source = os.path.join(paths["baseImport"], version); target = os.path.join(paths["bases"], version)
-            if "source" in data:
-                if not isinstance(data["source"], str) or not data["source"].strip():
-                    self._send_json({"error": "请选择基础包来源目录"}, status=400); return
-                source = self._resolve_path(data["source"].strip())
+            source = os.path.join(paths["baseImport" if category == "base" else "applicationImport"], version)
+            target = os.path.join(paths["bases" if category == "base" else "installers"], version)
         elif category == "launcher":
             paths = workspace_paths(self.cfg)
-            source = os.path.join(paths["launcherImport"], version); target = os.path.join(paths["launcher"], version)
-            if not os.path.isfile(os.path.join(source, "Launcher.exe")):
-                self._send_json({"error": "启动器导入目录中缺少 Launcher.exe"}, status=400); return
+            source = os.path.join(paths["launcherImport"], version)
+            target = os.path.join(paths["launcher"], version)
         else:
-            self._send_json({"error": "导入类型必须是 base、patch 或 launcher"}, status=400); return
-        if not os.path.isdir(source) or not os.listdir(source):
-            self._send_json({"error": "导入目录不存在或为空：" + source}, status=400); return
-        selected_source = source
-        if category == "base":
+            self._send_json({"error": "导入类型必须是 base、application、patch 或 launcher"}, status=400); return
+        try:
+            if "source" in data:
+                if not isinstance(data["source"], str) or not data["source"].strip():
+                    raise ValueError("请选择来源")
+                source = self._resolve_path(data["source"].strip())
+            self._check_import_source(source)
+            repair_backup = None
+            if os.path.exists(target):
+                repairable = False
+                if category == "base" and caps["baseKind"] == "resources" and os.path.isdir(target):
+                    try:
+                        validate_resource_tree(target)
+                    except (ValueError, OSError):
+                        repairable = True
+                if not repairable:
+                    self._send_json({"error": "这个版本已经存在，请使用新的版本号"}, status=409); return
+                repair_backup = os.path.join(self.cfg["data_dir"], "trash", "invalid-bases", platform, version + "-" + str(time.time_ns()))
+            if category in ("apk", "application"):
+                self._import_apk_package(source, target, platform, version, data); return
+            selected_source = source
+            info = inspect_base_source(source, platform) if category == "base" else None
+            if info:
+                source = info["source"]
+            elif not os.path.isfile(os.path.join(source, "Launcher.exe")):
+                raise ValueError("启动器导入目录中缺少 Launcher.exe")
+            self._check_import_source(source)
+            if not os.path.isdir(source) or not os.listdir(source):
+                raise ValueError("来源目录不存在或为空")
+            # Validate all APK input before publishing either resource or installer.
+            apk = info.get("apk") if info else None
+            apk_target = os.path.join(self.cfg["workspace_dir"], "installers", platform, version) if apk else None
+            if apk_target and os.path.exists(apk_target):
+                raise ValueError("同版本安装包已存在，请单独导入不含 APK 的资源目录，或使用新版本号")
+            import tempfile
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            stage = tempfile.mkdtemp(prefix=".import-", dir=os.path.dirname(target))
+            apk_stage = None
+            apk_published = False
             try:
-                source = base_import_source(source, platform)
-            except ValueError as exc:
-                self._send_json({"error": str(exc)}, status=400); return
-        if os.path.exists(target):
-            self._send_json({"error": "这个版本已经存在，请使用新的版本号"}, status=409); return
-        source_real, target_real = os.path.normcase(os.path.realpath(source)), os.path.normcase(os.path.realpath(target))
-        try:
-            overlapping = os.path.commonpath([source_real, target_real]) in (source_real, target_real)
-        except ValueError:
-            overlapping = False
-        if overlapping:
-            self._send_json({"error": "来源目录不能包含导入目标，也不能位于导入目标内"}, status=400); return
-        import tempfile
-        stage = tempfile.mkdtemp(prefix=".import-", dir=os.path.dirname(target))
-        try:
+                if info and caps["baseKind"] == "resources":
+                    for abs_path, rel in iter_resource_files(source):
+                        dst = os.path.join(stage, rel)
+                        os.makedirs(os.path.dirname(dst), exist_ok=True)
+                        shutil.copy2(abs_path, dst)
+                    validate_resource_tree(stage)
+                    metadata = os.path.join(info["selectedSource"], "version.json")
+                    if os.path.isfile(metadata) and not os.path.isfile(os.path.join(stage, "version.json")):
+                        shutil.copy2(metadata, os.path.join(stage, "version.json"))
+                else:
+                    shutil.copytree(source, stage, dirs_exist_ok=True)
+                if category == "base":
+                    metadata = {"resourceVersion": version}
+                    for field in ("requiredGameVersion", "gameVersion"):
+                        value = data.get(field)
+                        if value is not None:
+                            if not isinstance(value, str) or len(value) > 128: raise ValueError("版本字段无效：" + field)
+                            if value.strip(): metadata[field] = value.strip()
+                    with open(os.path.join(stage, ".cloudupdate.json"), "w", encoding="utf-8") as handle:
+                        json.dump(metadata, handle)
+                    self._sync_staged_package(stage, platform, version, "packages")
+                if apk:
+                    os.makedirs(os.path.dirname(apk_target), exist_ok=True)
+                    apk_stage = tempfile.mkdtemp(prefix=".import-apk-", dir=os.path.dirname(apk_target))
+                    self._stage_apk(apk, apk_stage, platform, version, dict(data, gameVersion=data.get("gameVersion") or data.get("requiredGameVersion") or version))
+                    os.replace(apk_stage, apk_target)
+                    apk_published = True
+                try:
+                    if repair_backup:
+                        os.makedirs(os.path.dirname(repair_backup), exist_ok=True)
+                        os.replace(target, repair_backup)
+                    os.replace(stage, target)
+                except OSError:
+                    if apk_published:
+                        os.replace(apk_target, apk_stage)
+                    if repair_backup and os.path.isdir(repair_backup) and not os.path.exists(target):
+                        os.replace(repair_backup, target)
+                    raise
+            finally:
+                for temporary in (stage, apk_stage):
+                    if temporary and os.path.isdir(temporary): shutil.rmtree(temporary)
+            self.cfg = load_config(self.cfg["_config_path"])
+            _PROJECT_CFG_CACHE[self.project] = (self.cfg, os.path.getmtime(self.cfg["_config_path"]))
+            build_versions_index(self.cfg)
+            if category == "base":
+                storage = get_storage(self.cfg)
+                if storage.is_remote: _sync_versions_to_s3(self.cfg, storage)
+                if "source" in data: self._remember_import_source(platform, category, selected_source)
+            self._send_json({"ok": True, "message": "已导入 " + category + " / " + version + ("，已保留不合格旧包的备份" if repair_backup else "") + ("，并导入 APK" if apk else "")})
+        except (ValueError, OSError) as exc:
+            self._send_json({"error": "导入失败：" + str(exc)}, status=400)
+
+    def _sync_staged_package(self, stage, platform, version, category):
+        storage = get_storage(self.cfg)
+        if not storage.is_remote: return
+        if category == "installers":
+            files = [f["targetRelativePath"] for f in (_read_json(os.path.join(stage, "installer.json")) or {}).get("files", [])]
+        else:
+            from manifest import matches_any
+            files = [rel for _, rel in iter_resource_files(stage) if rel != ".cloudupdate.json" and not matches_any(rel, self.cfg["manifest_exclude_patterns"])]
+        for rel in files:
+            if not storage.upload_file(category, src_path=os.path.join(stage, rel), platform=platform, version=version, rel=rel):
+                raise ValueError("对象存储上传失败，未发布该包：" + rel)
+
+    def _stage_apk(self, apk_path, stage, platform, version, data=None):
+        meta = inspect_application_source(apk_path, platform)
+        source = meta["path"]
+        if platform == "Windows":
             shutil.copytree(source, stage, dirs_exist_ok=True)
+        else:
+            shutil.copy2(source, os.path.join(stage, meta["fileName"]))
+        data = data or {}
+        bundled = data.get("bundledResourceVersion", "") or version
+        game = data.get("gameVersion") or version
+        for value in (bundled, game):
+            if not isinstance(value, str) or not value.strip() or len(value) > 128: raise ValueError("程序版本或内置资源版本无效")
+        files = []
+        from manifest import hash_file
+        for folder, dirs, names in os.walk(stage):
+            for name in names:
+                path = os.path.join(folder, name)
+                rel = os.path.relpath(path, stage).replace("\\", "/")
+                if rel == "installer.json": continue
+                digest, size = hash_file(path, self.cfg["manifest_hash"])
+                files.append({"targetRelativePath": rel, "size": size, "hash": digest})
+        files.sort(key=lambda entry: entry["targetRelativePath"])
+        descriptor = {"schemaVersion": 2, "platform": platform, "versionId": version,
+                      "gameVersion": game.strip(), "resourceVersion": bundled.strip(),
+                      "type": "install", "date": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "files": files,
+                      "fileName": meta["fileName"], "size": sum(f["size"] for f in files)}
+        with open(os.path.join(stage, "installer.json"), "w", encoding="utf-8") as handle:
+            json.dump(descriptor, handle, ensure_ascii=False, indent=2)
+        self._sync_staged_package(stage, platform, version, "installers")
+
+    def _import_apk_package(self, source, target, platform, version, data):
+        """Stage a platform-specific program without mixing it into resource bases."""
+        if os.path.exists(target):
+            self._send_json({"error": "该程序包版本已存在，请使用新的版本号"}, status=409); return
+        meta = inspect_application_source(source, platform)
+        import tempfile
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        stage = tempfile.mkdtemp(prefix=".import-application-", dir=os.path.dirname(target))
+        try:
+            self._stage_apk(meta["path"], stage, platform, version, data)
             os.replace(stage, target)
-        except OSError as exc:
-            self._send_json({"error": "包导入失败：" + str(exc)}, status=400); return
         finally:
             if os.path.isdir(stage): shutil.rmtree(stage)
         self.cfg = load_config(self.cfg["_config_path"])
         _PROJECT_CFG_CACHE[self.project] = (self.cfg, os.path.getmtime(self.cfg["_config_path"]))
         build_versions_index(self.cfg)
-        if category == "base":
-            storage = get_storage(self.cfg)
-            if storage.is_remote: _sync_versions_to_s3(self.cfg, storage)
-            if "source" in data: self._remember_import_source(platform, category, selected_source)
-        self._send_json({"ok": True, "message": "已导入 " + category + " / " + version})
+        if "source" in data:
+            self._remember_import_source(platform, "application", source)
+        self._send_json({"ok": True, "message": "已导入程序包 " + version + " / " + meta["fileName"]})
 
     def _remember_import_source(self, platform, category, source):
         sources = dict(self.cfg.get("import_sources") or {})
@@ -754,6 +1003,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
                 source = self._resolve_path(data["source"].strip())
                 if not os.path.isdir(source):
                     raise ValueError("补丁包来源目录不存在")
+                self._check_import_source(source)
                 managed = os.path.normcase(os.path.realpath(self.cfg["versions_dir"]))
                 selected = os.path.normcase(os.path.realpath(source))
                 try:
@@ -775,10 +1025,18 @@ class UpdateHandler(BaseHTTPRequestHandler):
     def _platform_config(self):
         platform = getattr(self, "platform", self.cfg.get("default_platform", self.cfg["platforms"][0]))
         options = self.cfg.get("platform_settings", {}).get(platform, {})
-        source = self._resolve_path(options.get("patchSourceDir", ""))
+        selected = ((self.cfg.get("import_sources") or {}).get(platform) or {}).get("patch")
+        source = self._resolve_path(selected or options.get("patchSourceDir", ""))
+        source_ready, source_error = False, ""
+        try:
+            patch_import_plan(source, platform)
+            source_ready = True
+        except (ValueError, OSError) as exc:
+            source_error = str(exc)
         root = self._resolve_path(options.get("basePackagesRoot", ""))
         packages = self.cfg.get("base_packages", {}).get(platform, {})
         return {"platform": platform, "patchSourceDir": source, "sourceExists": bool(source and os.path.isdir(source)),
+                "sourceReady": source_ready, "sourceError": source_error,
                 "basePackagesRoot": root, "hotpatcherOrder": options.get("hotpatcherOrder", ""),
                 "basePackages": packages, "packageStatus": {v: os.path.isdir(path) for v, path in packages.items()},
                 "apiBase": self.project_prefix + "/" + platform + "/api"}
@@ -793,6 +1051,56 @@ class UpdateHandler(BaseHTTPRequestHandler):
 
     def _api_enabled_versions(self):
         self._send_json({"ok": True, "enabledVersions": self.cfg.get("enabled_versions", {})})
+
+    def _installer_root(self, platform=None):
+        platform = platform or getattr(self, "platform", self.cfg.get("default_platform", self.cfg["platforms"][0]))
+        return os.path.join(self.cfg.get("workspace_dir") or "", "installers", platform)
+
+    def _list_installers(self, platform):
+        return [dict(item, url=self._public_url(item["url"])) for item in catalog_installers(self.cfg, platform)]
+
+    def _api_installers(self):
+        platform = getattr(self, "platform", self.cfg.get("default_platform", self.cfg["platforms"][0]))
+        if platform not in self.cfg["platforms"] or not self.cfg.get("workspace_dir"):
+            self._send_json({"error": "程序包需要已配置工作空间和有效平台"}, status=400); return
+        self._send_json({"ok": True, "platform": platform, "installers": self._list_installers(platform)})
+
+    def _api_installer(self, version_id):
+        platform = getattr(self, "platform", self.cfg.get("default_platform", self.cfg["platforms"][0]))
+        if platform not in self.cfg["platforms"] or not self.cfg.get("workspace_dir"):
+            self._send_json({"error": "程序包需要已配置工作空间和有效平台"}, status=400); return
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", version_id or "") or version_id in (".", ".."):
+            self._send_json({"ok": False, "error": "无效版本号"}, status=400); return
+        folder = os.path.join(self._installer_root(platform), version_id)
+        if not os.path.isdir(folder):
+            self._send_json({"ok": False, "error": "安装包不存在"}, status=404); return
+        items = [i for i in self._list_installers(platform) if i.get("versionId") == version_id]
+        if not items:
+            self._send_json({"ok": False, "error": "程序包文件缺失或元数据无效"}, status=404); return
+        self._send_json({"ok": True, "installer": items[0]})
+
+    def _serve_installer_file(self, rel):
+        """下发安装包：/files/installers/<platform>/<version>/<file>"""
+        parts = [p for p in str(rel).replace("\\", "/").split("/") if p and p != "."]
+        if len(parts) < 3 or any(".." in p for p in parts):
+            self._send_json({"ok": False, "error": "无效安装包路径"}, status=400); return
+        platform, version_id, filename = parts[0], parts[1], "/".join(parts[2:])
+        try:
+            platform = validate_platforms([platform])[0]
+        except ValueError:
+            self._send_json({"ok": False, "error": "无效平台"}, status=400); return
+        if platform not in self.cfg["platforms"] or not self.cfg.get("workspace_dir") or (self.explicit_platform and self.platform != platform):
+            self._send_json({"error": "安装包下载平台不符"}, status=400); return
+        published = next((i for i in self._list_installers(platform) if i["versionId"] == version_id), None)
+        if not published or filename not in {f["targetRelativePath"] for f in published["files"]}:
+            self._send_json({"error": "安装包不存在"}, status=404); return
+        root = os.path.abspath(self._installer_root(platform))
+        target = os.path.abspath(os.path.join(root, version_id, filename))
+        if not target.startswith(root + os.sep) and target != root:
+            self._send_json({"ok": False, "error": "无效安装包路径"}, status=400); return
+        if not os.path.isfile(target):
+            self._send_json({"ok": False, "error": "安装包文件不存在"}, status=404); return
+        self._send_file(target)
 
     def _api_dirs_list(self, query):
         """列出服务器本地目录，供管理页面文件夹选择器使用。"""
@@ -845,6 +1153,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
             try:
                 if os.path.isdir(full):
                     entries.append({"name": name, "path": full, "isDir": True})
+                elif query.get("extensions", [""])[0] in (".apk", ".ipa") and name.lower().endswith(query["extensions"][0]) and os.path.isfile(full):
+                    entries.append({"name": name, "path": full, "isDir": False})
             except OSError:
                 pass
         stripped = p.rstrip("\\/")
@@ -882,12 +1192,15 @@ class UpdateHandler(BaseHTTPRequestHandler):
             "projectPrefix": self.project_prefix,
             "projects": self._projects_list(),
             "platforms": self.cfg.get("platforms"),
+            "platformCapabilities": {p: platform_capabilities(p) for p in self.cfg["platforms"]},
             "defaultPlatform": self.cfg.get("default_platform", self.cfg["platforms"][0]),
             "workspaceDir": self.cfg.get("workspace_dir", ""),
             "dataDir": self.cfg.get("data_dir"),
             "versionLibraryDir": self.cfg.get("version_library_dir", ""),
             "basePackageDirs": {p: get_base_dir(self.cfg, p) for p in self.cfg["platforms"]},
             "basePackages": self.cfg.get("base_packages", {}),
+            "installerVersions": {p: [i["versionId"] for i in catalog_installers(self.cfg, p)] for p in self.cfg["platforms"]},
+            "validBaseVersions": load_versions_index(self.cfg).get("baseVersions", {}),
             "platformSettings": self.cfg.get("platform_settings", {}),
             "manifestExcludePatterns": self.cfg.get("manifest_exclude_patterns", []),
             "manifestHash": self.cfg.get("manifest_hash", "md5"),
@@ -989,6 +1302,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "基础包路径应为 平台/版本/文件"}, status=400)
             return
         platform, version, path = parts
+        if not is_resource_file(path) or path.replace("\\", "/") == ".cloudupdate.json" or matches_any(path, self.cfg["manifest_exclude_patterns"]):
+            self._send_json({"error": "该文件不属于资源包，请通过程序包接口管理程序文件"}, status=400); return
         if getattr(self, "route_platform", None) and platform != self.platform:
             self._send_json({"error": "文件平台与路由不一致"}, status=400)
             return
@@ -1183,6 +1498,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._admin_launcher_bg_clear()
         elif path == "/api/launcher/background":
             self._admin_launcher_bg()
+        elif path == "/api/workspace/inspect":
+            self._admin_workspace_inspect()
         elif path == "/api/workspace/import":
             self._admin_workspace_import()
         elif path == "/api/platform/config":
@@ -1216,7 +1533,7 @@ class UpdateHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": "未授权：需要 Bearer 管理令牌"}, status=401)
             return
         if path.startswith("/api/version/"):
-            self._admin_delete_version(path[len("/api/version/"):], query["platform"][0])
+            self._admin_delete_version(path[len("/api/version/"):], query["platform"][0], query.get("kind", [None])[0])
         elif path.startswith("/api/launcher/versions/"):
             self._admin_delete_launcher_version(path[len("/api/launcher/versions/"):])
         else:
@@ -1262,6 +1579,9 @@ class UpdateHandler(BaseHTTPRequestHandler):
             return False
         self.platform = selected[0] if selected else cfg.get("default_platform", cfg["platforms"][0])
         self.route_platform = route_platform
+        if (rest.startswith("/api/launcher/") or rest.startswith("/files/launcher/") or rest.startswith("/files/background/")) and not platform_capabilities(self.platform)["windowsLauncher"]:
+            self._send_json({"error": "Windows 启动器仅适用于 Windows"}, status=400)
+            return False
         self.explicit_platform = bool(supplied)
         query["platform"] = [self.platform]
         from urllib.parse import urlencode
@@ -1560,6 +1880,8 @@ class UpdateHandler(BaseHTTPRequestHandler):
         """同步客户端启动器配置到本项目：复制模板项目的 launcher 运行时资产到
         本项目 workspace/data/launcher/，并把 launcher_config.json 的 serverUrl 追加 /<key> 前缀，
         否则本项目客户端会下载到默认项目的 launcher_config（serverUrl 无前缀）而串到默认项目。"""
+        if "Windows" not in load_project_cfg(key)["platforms"]:
+            return
         source_cfg = load_project_cfg(template or PROJECT_REGISTRY.get("default", "main"))
         src = os.path.join(source_cfg["data_dir"], "launcher")
         if not os.path.isdir(src):
@@ -1819,12 +2141,20 @@ class UpdateHandler(BaseHTTPRequestHandler):
         client_versions = [v.get("versionId") for v in (filtered.get("versions") or [])]
         self._send_json({"ok": True, "message": f"已开放 {platform}：{ids}", "clientVersions": client_versions})
 
-    def _admin_delete_version(self, version_id, platform):
-        ok, msg = delete_version(self.cfg, version_id, platform)
-        self._send_json({"ok": ok, "message": msg}, status=200 if ok else 500)
+    def _admin_delete_version(self, version_id, platform, kind=None):
+        try:
+            ok, msg = delete_version(self.cfg, version_id, platform, kind)
+            self.cfg = load_config(self.cfg["_config_path"])
+            self._send_json({"ok": ok, "message": msg}, status=200 if ok else (404 if "不存在" in msg else 400))
+        except (ValueError, OSError) as exc:
+            self._send_json({"error": "删除失败：" + str(exc)}, status=400)
 
     def _admin_upload(self, query):
         target = query.get("target", [""])[0]
+        if target == "package" and query.get("kind", ["base"])[0] != "base":
+            self._send_json({"error": "请通过程序包导入管理，不可上传到资源基础包"}, status=400); return
+        if target in ("launcher", "background") and not platform_capabilities(self.platform)["windowsLauncher"]:
+            self._send_json({"error": "Windows 启动器仅适用于 Windows"}, status=400); return
         if target not in ("package", "version", "launcher", "background"):
             self._send_json({"ok": False, "error": "target 仅支持 package/version/launcher/background"}, status=400)
             return
@@ -1850,12 +2180,18 @@ class UpdateHandler(BaseHTTPRequestHandler):
             if kw is None:
                 self._send_json({"ok": False, "error": "参数不完整（缺少 platform/versionId 等）"}, status=400)
                 return
+            if target in ("package", "version"):
+                rel = kw["rel"].replace("\\", "/")
+                resource_rel = rel[:-6] if target == "version" and rel.lower().endswith(".patch") else rel
+                if not is_resource_file(resource_rel) or rel == ".cloudupdate.json":
+                    self._send_json({"error": "资源上传不能包含程序包或原生二进制，请使用程序包导入"}, status=400); return
+            category = {"package":"packages", "version":"versions"}.get(target, target)
             import tempfile
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1])
             try:
                 tmp.write(content)
                 tmp.close()
-                if storage.upload_file(target, src_path=tmp.name, **kw) is False:
+                if storage.upload_file(category, src_path=tmp.name, **kw) is False:
                     self._send_json({"error": "上传路径无效"}, status=400)
                     return
                 saved.append(filename)
@@ -1868,6 +2204,9 @@ class UpdateHandler(BaseHTTPRequestHandler):
         if not saved:
             self._send_json({"ok": False, "error": "没有可保存的文件"}, status=400)
             return
+        if target == "package":
+            generate_manifest(self.cfg, kw["platform"], kw["version"], force=True)
+            build_versions_index(self.cfg)
         self._send_json({"ok": True, "message": f"已上传 {len(saved)} 个文件", "note": ", ".join(saved)})
 
     def _upload_kw(self, target, query, filename):
@@ -2203,31 +2542,51 @@ class UpdateHandler(BaseHTTPRequestHandler):
 
 # ---------- 管理操作（命令行子命令）----------
 
-def delete_version(cfg, version_id, platform=None):
+def delete_version(cfg, version_id, platform=None, kind=None):
     platform = platform or cfg.get("default_platform", cfg["platforms"][0])
-    if platform not in cfg["platforms"] or not re.fullmatch(r"[A-Za-z0-9_.-]+", version_id) or version_id in (".", ".."):
+    if platform not in cfg["platforms"] or not isinstance(version_id, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", version_id) or version_id.startswith("."):
         return False, "平台或版本号无效"
-    version_dir = os.path.join(cfg["versions_dir"], platform, version_id)
-    if not os.path.isdir(version_dir):
-        return False, f"{platform}/{version_id} 补丁不存在，基础包请在目录配置中移除"
-    entry = _revoked_entry_from_descriptor(dict(cfg, _selected_platform=platform), version_id)
+    if kind not in (None, "base", "patch", "installer"):
+        return False, "包类型无效"
+    targets = {"patch": os.path.join(cfg["versions_dir"], platform, version_id)}
+    base = (cfg.get("base_packages", {}).get(platform) or {}).get(version_id)
+    if base: targets["base"] = base
+    if cfg.get("workspace_dir"):
+        targets["installer"] = os.path.join(cfg["workspace_dir"], "installers", platform, version_id)
+    candidates = [k for k, path in targets.items() if os.path.isdir(path) and (kind is None or kind == k)]
+    if not candidates: return False, f"{platform}/{version_id} 版本不存在"
+    if len(candidates) != 1: return False, "同版本号有多个包，请指定 base、installer 或 patch"
+    kind = candidates[0]
+    source = targets[kind]
+    try:
+        entry = _revoked_entry_from_descriptor(dict(cfg, _selected_platform=platform, _selected_kind=kind), version_id) if kind != "installer" else None
+    except (ValueError, RuntimeError):
+        entry = None  # Invalid legacy bases can still be removed from management.
     if entry and entry.get("type") != "full":
         store = load_revoked_store(cfg)
-        store[platform + "/" + version_id] = entry
+        store[platform + "/" + kind + "/" + version_id] = entry
         save_revoked_store(cfg, store)
-    storage = get_storage(cfg)
-    desc = _read_json(os.path.join(version_dir, "descriptor.json")) or {}
-    if storage.is_remote:
-        for file in desc.get("files", []):
-            url = file.get("url", "")
-            if url.startswith("/files/versions/"):
-                storage.delete_object(url[len("/files/"):])
-    trash = os.path.join(cfg["data_dir"], "trash", platform)
-    os.makedirs(trash, exist_ok=True)
-    target = os.path.join(trash, version_id + "_" + str(time.time_ns()))
-    shutil.move(version_dir, target)
+    if kind == "base" and not cfg.get("workspace_dir"):
+        # Old external package sources are unregistered, never moved/deleted.
+        packages = {p: dict(v) for p, v in cfg.get("base_packages", {}).items()}
+        packages.get(platform, {}).pop(version_id, None)
+        cfg = _apply_config_updates({"base_packages": packages}, cfg)
+    else:
+        managed = cfg.get("workspace_dir") or cfg["versions_dir"]
+        source_real, managed_real = os.path.normcase(os.path.realpath(source)), os.path.normcase(os.path.realpath(managed))
+        if os.path.commonpath([source_real, managed_real]) != managed_real or source_real == managed_real:
+            return False, "版本目录不在项目管理范围内"
+        trash = os.path.join(cfg["data_dir"], "trash", platform, kind)
+        os.makedirs(trash, exist_ok=True)
+        shutil.move(source, os.path.join(trash, version_id + "_" + str(time.time_ns())))
+        if cfg.get("_config_path"): cfg = load_config(cfg["_config_path"])
+    # Drop only this package's switch; preserve a same-ID app/resource counterpart.
+    enabled = dict(cfg.get("enabled_versions") or {})
+    if platform in enabled:
+        enabled[platform] = [v for v in enabled[platform] if v != kind + ":" + version_id]
+        if cfg.get("_config_path"): cfg = _apply_config_updates({"enabled_versions": enabled}, cfg)
     build_versions_index(cfg)
-    return True, f"{platform}/{version_id} 已移入回收站"
+    return True, f"{platform}/{version_id}（{kind}）已从管理中移除，原文件已保留"
 
 
 def build_ssl_context(cfg):
@@ -2339,7 +2698,7 @@ def cmd_upload(args, cfg):
         kw = {"name": os.path.basename(src)}
     else:
         print("target 仅支持 package / version / launcher / background"); return
-    storage.upload_file(target, src_path=src, **kw)
+    storage.upload_file({"package":"packages", "version":"versions"}.get(target, target), src_path=src, **kw)
     print(f"已上传 [{target}] -> {storage.url_for(target, **kw)}")
 
 
@@ -2472,7 +2831,7 @@ def cmd_gen_cert(args, cfg):
 
 
 def cmd_version_delete(args, cfg):
-    ok, msg = delete_version(cfg, args.id, args.platform)
+    ok, msg = delete_version(cfg, args.id, args.platform, args.kind)
     print(msg)
     sys.exit(0 if ok else 1)
 
@@ -2541,9 +2900,10 @@ def main():
     p_se.add_argument("--platform", required=True)
     p_se.add_argument("--versions", required=True, help="逗号分隔的版本号")
     sub.add_parser("gen-cert", help="生成自签名证书")
-    p_vd = sub.add_parser("version-delete", help="删除版本（回收站 + 撤销快照 + 远程删对象）")
+    p_vd = sub.add_parser("version-delete", help="按类型移除版本，文件保留在回收目录")
     p_vd.add_argument("--id", required=True, help="版本号")
     p_vd.add_argument("--platform", default=None)
+    p_vd.add_argument("--kind", choices=["base", "patch", "installer"], default=None, help="同号包分别指定资源基础包、资源补丁或程序包")
 
     args = parser.parse_args()
 
