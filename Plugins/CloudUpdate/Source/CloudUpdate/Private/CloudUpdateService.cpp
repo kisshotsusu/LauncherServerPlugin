@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // CloudUpdate 核心：构造 / URL-路径 / 版本记录 / 取消
 // (由 CloudUpdateService.cpp 按职责拆分，逻辑与原文一致)
 // ======================================================================
@@ -205,6 +205,38 @@ void FCloudUpdateService::SaveLocalVersion(const FString& InVersionId)
  Record->SetStringField(TEXT("resourceVersionId"), InVersionId);
  Record->SetStringField(TEXT("installedGameVersion"), GetLocalGameVersion());
  Record->SetStringField(TEXT("appliedAt"), Local.AppliedAt);
+ // Preserve installation evidence across restarts and incremental updates.
+ TMap<FString, TSharedPtr<FJsonValue>> Installed;
+ TSharedPtr<FJsonObject> Previous;
+ if (ReadLocalVersionRecord(Previous))
+ {
+  for (const TCHAR* Key : {TEXT("installedFiles"), TEXT("pendingFiles")})
+  {
+   const TArray<TSharedPtr<FJsonValue>>* Files = nullptr;
+   if (Previous->TryGetArrayField(Key, Files))
+    for (const auto& Value : *Files)
+     if (Value.IsValid() && Value->Type == EJson::Object)
+     {
+      FString Path; Value->AsObject()->TryGetStringField(TEXT("path"), Path);
+      if (!Path.IsEmpty()) Installed.Add(Path, Value);
+     }
+  }
+ }
+ for (const auto& File : PendingFiles)
+ {
+  const FString Path = FPaths::ConvertRelativePathToFull(IsBinaryPatchEntry(File) ? ResolveBaseTargetPath(File) :
+   (File.Kind == ECloudDownloadKind::ExternFile ? GetLocalRoot() / File.TargetRelativePath : GetPakDir() / File.FileName));
+  int64 Size = 0; FString Hash;
+  if (!CloudUpdatePrivate::ComputeFileHash(Path, Size, Hash)) continue;
+  TSharedRef<FJsonObject> Entry = MakeShared<FJsonObject>();
+  Entry->SetStringField(TEXT("path"), Path);
+  Entry->SetStringField(TEXT("hash"), Hash);
+  Entry->SetNumberField(TEXT("size"), Size);
+  Installed.Add(Path, MakeShared<FJsonValueObject>(Entry));
+ }
+ TArray<TSharedPtr<FJsonValue>> Manifest; Installed.GenerateValueArray(Manifest);
+ Record->SetArrayField(TEXT("installedFiles"), Manifest);
+
  FJsonSerializer::Serialize(Record, TJsonWriterFactory<>::Create(&JsonStr));
 	const FString Path = GetVersionRecordPath();
 	if (FFileHelper::SaveStringToFile(JsonStr, *Path))
@@ -280,6 +312,11 @@ void FCloudUpdateService::SavePendingResourceVersion(const FString& Version)
  Json->SetStringField(TEXT("resourceVersionId"), LoadLocalVersion());
  Json->SetStringField(TEXT("installedGameVersion"), GetLocalGameVersion());
  Json->SetStringField(TEXT("pendingResourceVersionId"), Version);
+ TSharedPtr<FJsonObject> Previous;
+ const TArray<TSharedPtr<FJsonValue>>* Installed = nullptr;
+ if (ReadLocalVersionRecord(Previous) && Previous->TryGetArrayField(TEXT("installedFiles"), Installed))
+  Json->SetArrayField(TEXT("installedFiles"), *Installed);
+
  TArray<TSharedPtr<FJsonValue>> Files;
  for (const FCloudDownloadFile& File : PendingFiles)
  {
@@ -287,7 +324,14 @@ void FCloudUpdateService::SavePendingResourceVersion(const FString& Version)
    (File.Kind == ECloudDownloadKind::ExternFile ? GetLocalRoot() / File.TargetRelativePath : GetPakDir() / File.FileName);
   TSharedRef<FJsonObject> Entry = MakeShared<FJsonObject>();
   Entry->SetStringField(TEXT("path"), FPaths::ConvertRelativePathToFull(Path));
-  Entry->SetStringField(TEXT("hash"), IsBinaryPatchEntry(File) ? TEXT("") : File.Hash);
+  int64 Size = 0; FString Hash;
+  const FString StagedPath = IFileManager::Get().FileExists(*(Path + TEXT(".pending"))) ? Path + TEXT(".pending") : Path;
+  if (CloudUpdatePrivate::ComputeFileHash(StagedPath, Size, Hash))
+  {
+   Entry->SetStringField(TEXT("hash"), Hash);
+   Entry->SetNumberField(TEXT("size"), Size);
+  }
+  else Entry->SetStringField(TEXT("hash"), IsBinaryPatchEntry(File) ? TEXT("") : File.Hash);
   Files.Add(MakeShared<FJsonValueObject>(Entry));
  }
  Json->SetArrayField(TEXT("pendingFiles"), Files);

@@ -1,4 +1,4 @@
-#include "CloudUpdateSubsystem.h"
+﻿#include "CloudUpdateSubsystem.h"
 #include "CloudUpdate.h"
 #include "CloudUpdateService.h"
 #include "CloudUpdateSettings.h"
@@ -33,6 +33,8 @@ void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// 自定义 FPlatformFile、或插件模块更早的 StartupModule 中）。详见 FinalizePendingMerges 实现备注。
 	FCloudBinaryMerge::FinalizePendingMerges(CloudUpdatePrivate::GetUpdatePakDirectory(), true);
  Service->PromotePendingResourceVersion();
+ // UEngine::Init initializes engine subsystems before UGameEngine creates its instance.
+ CloudUpdatePrivate::SelectStartupGameInstance();
 
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
 	if (Settings)
@@ -369,4 +371,15 @@ bool UCloudUpdateSubsystem::ApplyBinaryPatchAsync(const FString& BaseFilePath, c
   });
  });
  return true;
+}
+
+
+bool UCloudUpdateSubsystem::RestartToApplyResources()
+{
+#if WITH_EDITOR
+    return false;
+#else
+    if (!Service.IsValid() || Service->IsBusy()) return false;
+    return FPlatformMisc::RestartApplication();
+#endif
 }

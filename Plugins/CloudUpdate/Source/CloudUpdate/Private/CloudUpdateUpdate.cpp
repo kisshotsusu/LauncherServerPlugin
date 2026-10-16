@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // CloudUpdate 更新检查与应用
 // (由 CloudUpdateService.cpp 按职责拆分，逻辑与原文一致)
 // ======================================================================
@@ -614,6 +614,7 @@ void FCloudUpdateService::DownloadNextUpdateFile()
 		}
 		if (!MountPendingPaks()) { FinishUpdate(false, TEXT("补丁文件已下载，但挂载失败；资源版本未推进")); return; }
         const FString ResourceVersion = PendingResourceVersion.IsEmpty() ? PendingVersionId : PendingResourceVersion;
+        bRestartRequired |= UCloudUpdateSettings::Get()->bSelectGameInstanceFromResources;
         if (bRestartRequired) SavePendingResourceVersion(ResourceVersion);
         else SaveLocalVersion(ResourceVersion);
 		const bool bRestart = bRestartRequired;

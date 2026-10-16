@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
@@ -37,6 +37,17 @@ public:
 	virtual FText GetSectionText() const override { return NSLOCTEXT("CloudUpdate", "SettingsSection", "云更新"); }
 	virtual FText GetSectionDescription() const override { return NSLOCTEXT("CloudUpdate", "SettingsDesc", "配置更新服务器、本地路径与更新行为"); }
 #endif
+
+    /** Select once before engine creates its GameInstance. Takes effect after process restart. */
+    UPROPERTY(EditAnywhere, config, Category = "启动实例")
+    bool bSelectGameInstanceFromResources = false;
+
+    /** String paths intentionally avoid making gameplay assets cooker dependencies. */
+    UPROPERTY(EditAnywhere, config, Category = "启动实例")
+    FString BootstrapGameInstanceClass = TEXT("/Script/Engine.GameInstance");
+
+    UPROPERTY(EditAnywhere, config, Category = "启动实例")
+    FString ResourceGameInstanceClass;
 
 	/** 管理服务器地址，例如 http://127.0.0.1:8710 */
 	UPROPERTY(EditAnywhere, config, Category = "服务器", meta = (DisplayName = "服务器地址（如 http://127.0.0.1:8710）"))

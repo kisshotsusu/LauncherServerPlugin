@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Subsystems/EngineSubsystem.h"
@@ -45,6 +45,10 @@ public:
  /** Runtime update channel, detected automatically; Android includes its packaged cook flavor. */
  UFUNCTION(BlueprintPure, Category = "CloudUpdate|Info")
  FString GetUpdatePlatform() const;
+    /** Restart after successful installation; false on editor/unsupported platforms. iOS requires reopening the app. */
+    UFUNCTION(BlueprintCallable, Category = "CloudUpdate|启动实例")
+    bool RestartToApplyResources();
+
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 

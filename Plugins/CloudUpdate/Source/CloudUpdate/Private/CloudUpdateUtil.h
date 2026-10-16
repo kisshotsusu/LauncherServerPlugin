@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 
@@ -8,6 +8,7 @@ struct FCloudDownloadFile;
 // CloudUpdate 内部工具函数（由 CloudUpdateService.cpp 的匿名命名空间 helper 提取）
 namespace CloudUpdatePrivate
 {
+ void SelectStartupGameInstance();
  FString ResolveUpdatePlatform(const FString& RuntimePlatform, const FString& AndroidCookFlavor);
  FString GetRuntimeUpdatePlatform();
  FString NormalizeCookPlatform(const FString& SourcePlatform);
