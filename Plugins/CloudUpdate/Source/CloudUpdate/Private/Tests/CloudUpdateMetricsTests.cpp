@@ -44,6 +44,9 @@ struct FCloudUpdateMetricsTestAccess
  }
  static void DownloadVerified(FCloudUpdateService& Service, const FString& Path, const FString& Hash, int64 Size, TFunction<void(bool)> Callback)
  { Service.DownloadFileTo(Service.GetServerUrl() / TEXT("files/first.bin"), Path, 0, MoveTemp(Callback), nullptr, Hash, Size); }
+ static void DownloadResume(FCloudUpdateService& Service, const FString& Url, const FString& Path, int32 Retries,
+  const FString& Hash, int64 Size, TFunction<void(bool)> Callback, TFunction<void(int64,int64)> Progress)
+ { Service.DownloadFileTo(Url, Path, Retries, MoveTemp(Callback), MoveTemp(Progress), Hash, Size); }
  static bool CheckStagedRepair(FCloudUpdateService& Service, const FString& Root)
  {
   FFileHelper::SaveStringToFile(TEXT("old"), *(Root / TEXT("repair.bin")));
@@ -328,4 +331,5 @@ bool FCloudUpdateTypedChannelsHTTPTest::RunTest(const FString& Parameters)
  ADD_LATENT_AUTOMATION_COMMAND(FCloudUpdateHTTPTestCommand(this, true));
  return true;
 }
+#include "CloudUpdateResumeTests.inl"
 #endif

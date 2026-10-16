@@ -27,6 +27,8 @@
 #include "FlibPakHelper.h"
 
 #include "CloudUpdateUtil.h"
+#include "CloudUpdateDownload.h"
+#include "Containers/Ticker.h"
 using namespace CloudUpdatePrivate;
 
 void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, const TSharedPtr<FJsonObject>&)> InCallback)
@@ -77,120 +79,121 @@ void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, c
  }
 }
 
-void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
-	TFunction<void(bool)> InCallback,
-	TFunction<void(int64, int64)> InProgress, const FString& ExpectedHash, int64 ExpectedSize)
+namespace
 {
-	if (bAbortRequested)
-	{
-		if (InCallback)
-		{
-			InCallback(false);
-		}
-		return;
-	}
-	IFileManager::Get().MakeDirectory(*FPaths::GetPath(InTargetPath), true);
-	const FString TempPath = InTargetPath + TEXT(".download");
-    FArchive* Writer = IFileManager::Get().CreateFileWriter(*TempPath);
-    if (!Writer) { if (InCallback) InCallback(false); return; }
-    TSharedPtr<FArchive> WriterOwner = MakeShareable(Writer);
-    TSharedRef<FArchive> Stream = WriterOwner.ToSharedRef();
-	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
-	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	Request->SetURL(ResolveRemoteUrl(InUrl));
- Request->SetDelegateThreadPolicy(EHttpRequestDelegateThreadPolicy::CompleteOnGameThread);
-	Request->SetVerb(TEXT("GET"));
-    if (!Request->SetResponseBodyReceiveStream(Stream))
-    { Stream->Close(); IFileManager::Get().Delete(*TempPath, false, true); if (InCallback) InCallback(false); return; }
-	if (Settings)
-	{
-		if (!Settings->ServerToken.IsEmpty())
-		{
-			Request->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *Settings->ServerToken));
-		}
-		for (const FCloudUpdateHttpHeader& H : Settings->CustomHeaders)
-		{
-			if (!H.Key.IsEmpty())
-			{
-				Request->SetHeader(H.Key, H.Value);
-			}
-		}
-	}
-	Request->SetTimeout(Settings ? Settings->HttpTimeoutSeconds : 60);
- TSharedRef<int64> HeaderTotal = MakeShared<int64>(-1);
- Request->OnHeaderReceived().BindLambda([HeaderTotal](FHttpRequestPtr Req, const FString& Name, const FString& Value)
+class FCloudResponseArchive : public FArchive
+{
+public:
+ explicit FCloudResponseArchive(TSharedRef<FCloudDownloadStream, ESPMode::ThreadSafe> InState) : State(InState) {}
+ virtual void Serialize(void* Data, int64 Length) override
+ { State->Serialize(Data, Length); if (State->IsError()) SetError(); }
+private:
+ TSharedRef<FCloudDownloadStream, ESPMode::ThreadSafe> State;
+};
+}
+
+void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
+ TFunction<void(bool)> InCallback, TFunction<void(int64, int64)> InProgress, const FString& ExpectedHash, int64 ExpectedSize)
+{
+ if (bAbortRequested) { if (InCallback) InCallback(false); return; }
+ IFileManager::Get().MakeDirectory(*FPaths::GetPath(InTargetPath), true);
+ const FString TempPath = InTargetPath + TEXT(".download");
+ // Hash-based identity also survives signed URL renewal. Without a hash, require If-Range validation.
+ const FString Identity = FString::Printf(TEXT("%s\n%lld"),
+  ExpectedHash.IsEmpty() ? *ResolveRemoteUrl(InUrl) : *ExpectedHash.ToLower(), ExpectedSize);
+ auto Stream = MakeShared<FCloudDownloadStream, ESPMode::ThreadSafe>(TempPath, Identity, ExpectedSize);
+ if (ExpectedHash.IsEmpty() && Stream->Offset > 0 && Stream->Validator.IsEmpty())
+ { Stream->Discard(); Stream = MakeShared<FCloudDownloadStream, ESPMode::ThreadSafe>(TempPath, Identity, ExpectedSize); }
+ const bool bCached = !ExpectedHash.IsEmpty() && ExpectedSize >= 0 && Stream->Offset == ExpectedSize && IFileManager::Get().FileSize(*TempPath) == ExpectedSize;
+ auto Request = FHttpModule::Get().CreateRequest();
+ Request->SetURL(ResolveRemoteUrl(InUrl));
+ Request->SetVerb(TEXT("GET"));
+ // Headers must be validated on the HTTP thread before a single response byte is appended.
+ Request->SetDelegateThreadPolicy(EHttpRequestDelegateThreadPolicy::CompleteOnHttpThread);
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ if (Settings)
  {
-  if (Name.Equals(TEXT("Content-Length"), ESearchCase::IgnoreCase)) *HeaderTotal = FCString::Atoi64(*Value);
- });
-	if (InProgress)
-	{
-		Request->OnRequestProgress64().BindLambda([InProgress, HeaderTotal](FHttpRequestPtr Req, uint64 BytesSent, uint64 BytesReceived)
-		{
-            InProgress(static_cast<int64>(BytesReceived), *HeaderTotal);
-		});
-	}
-	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
- TSharedRef<bool> Completed = MakeShared<bool>(false);
- Request->OnProcessRequestComplete().BindLambda([WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback, InProgress, Completed, Stream, ExpectedHash, ExpectedSize](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
-	{
-        if (*Completed) return;
-        *Completed = true;
-        const bool bStreamOk = Stream->Close() && !Stream->IsError();
-		auto Service = WeakThis.Pin();
-		if (!Service)
-		{
-            IFileManager::Get().Delete(*TempPath, false, true);
-			if (InCallback)
-			{
-				InCallback(false);
-			}
-			return;
-		}
-        if (Service->bAbortRequested)
-        { IFileManager::Get().Delete(*TempPath, false, true); if (InCallback) InCallback(false); return; }
-		bool bHttpOk = bStreamOk && bConnectedSuccessfully && Resp.IsValid() && EHttpResponseCodes::IsOk(Resp->GetResponseCode());
-        const int64 ReceivedSize = IFileManager::Get().FileSize(*TempPath);
-        bHttpOk &= ReceivedSize >= 0 && (ExpectedSize < 0 || ReceivedSize == ExpectedSize);
-        if (bHttpOk && !ExpectedHash.IsEmpty() && (!UCloudUpdateSettings::Get() || UCloudUpdateSettings::Get()->bVerifyDownloadHash))
-        {
-            int64 Size = 0; FString Hash;
-            bHttpOk = ComputeFileHash(TempPath, Size, Hash) && Hash.Equals(ExpectedHash, ESearchCase::IgnoreCase);
-        }
-		if (bHttpOk)
-		{
-            if (InProgress) InProgress(ReceivedSize, ReceivedSize);
-            // IoStore and replacements of mounted files are committed on restart.
-            const bool bIoStore = InTargetPath.EndsWith(TEXT(".utoc")) || InTargetPath.EndsWith(TEXT(".ucas"));
-			if (bIoStore || IFileManager::Get().Move(*InTargetPath, *TempPath, true, true))
-			{
-				if (!bIoStore || IFileManager::Get().Move(*(InTargetPath + TEXT(".pending")), *TempPath, true, true))
-				{
-                    Service->bRestartRequired |= bIoStore;
-					if (InCallback)
-					{
-						InCallback(true);
-					}
-					return;
-				}
-			}
-            else if (IFileManager::Get().Move(*(InTargetPath + TEXT(".pending")), *TempPath, true, true))
-            { Service->bRestartRequired = true; if (InCallback) InCallback(true); return; }
-		}
-		IFileManager::Get().Delete(*TempPath, false, true);
-		if (InRetriesLeft > 0)
-		{
-			UE_LOG(LogCloudUpdate, Warning, TEXT("下载失败 %s，剩余重试 %d 次"), *InUrl, InRetriesLeft);
-			Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft - 1, InCallback, InProgress, ExpectedHash, ExpectedSize);
-		}
-		else if (InCallback)
-		{
-			InCallback(false);
-		}
-	});
- if (!Request->ProcessRequest() && !*Completed)
+  if (!Settings->ServerToken.IsEmpty()) Request->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *Settings->ServerToken));
+  for (const FCloudUpdateHttpHeader& H : Settings->CustomHeaders)
+   if (!H.Key.IsEmpty()) Request->SetHeader(H.Key, H.Value);
+ }
+ Request->SetHeader(TEXT("Accept-Encoding"), TEXT("identity"));
+ if (Stream->Offset > 0)
  {
-  *Completed = true;
-  Stream->Close(); IFileManager::Get().Delete(*TempPath, false, true);
-  if (InCallback) InCallback(false);
+  Request->SetHeader(TEXT("Range"), FString::Printf(TEXT("bytes=%lld-"), Stream->Offset));
+  if (!Stream->Validator.IsEmpty()) Request->SetHeader(TEXT("If-Range"), Stream->Validator);
+  UE_LOG(LogCloudUpdate, Display, TEXT("断点续传 %s，从 %lld 字节继续"), *InTargetPath, Stream->Offset);
+ }
+ Request->SetTimeout(Settings ? Settings->HttpTimeoutSeconds : 60);
+ Request->OnStatusCodeReceived().BindLambda([Stream](FHttpRequestPtr, int32 Code) { Stream->Status(Code); });
+ Request->OnHeaderReceived().BindLambda([Stream](FHttpRequestPtr, const FString& Name, const FString& Value) { Stream->Header(Name, Value); });
+ Request->OnProcessRequestComplete().BindLambda([Stream](FHttpRequestPtr, FHttpResponsePtr, bool Connected) { Stream->Finish(Connected); });
+ const bool bVerifyHash = !Settings || Settings->bVerifyDownloadHash;
+ TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
+ auto Finish = [WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback, InProgress, ExpectedHash, ExpectedSize, Stream](bool bOk, bool bDiscard)
+ {
+  const auto Service = WeakThis.Pin();
+  if (!Service || Service->bAbortRequested) { if (InCallback) InCallback(false); return; }
+  if (bDiscard) { Stream->Discard(); if (InProgress) InProgress(0, ExpectedSize); }
+  const int64 Size = IFileManager::Get().FileSize(*TempPath);
+  if (bOk)
+  {
+   if (InProgress) InProgress(Size, Size);
+   const bool bIoStore = InTargetPath.EndsWith(TEXT(".utoc")) || InTargetPath.EndsWith(TEXT(".ucas"));
+   bool bPending = bIoStore;
+   bool bMoved = IFileManager::Get().Move(*(bPending ? InTargetPath + TEXT(".pending") : InTargetPath), *TempPath, true, true);
+   if (!bMoved && !bPending)
+   { bPending = true; bMoved = IFileManager::Get().Move(*(InTargetPath + TEXT(".pending")), *TempPath, true, true); }
+   if (bMoved)
+   {
+    IFileManager::Get().Delete(*(TempPath + TEXT(".json")), false, true);
+    Service->bRestartRequired |= bPending;
+    if (InCallback) InCallback(true);
+    return;
+   }
+  }
+  if (InRetriesLeft > 0)
+  {
+   UE_LOG(LogCloudUpdate, Warning, TEXT("下载未完成 %s，保留 %lld 字节，剩余重试 %d 次"), *InUrl,
+    FMath::Max<int64>(IFileManager::Get().FileSize(*TempPath), 0), InRetriesLeft);
+   Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft - 1, InCallback, InProgress, ExpectedHash, ExpectedSize);
+  }
+  else if (InCallback) InCallback(false);
+ };
+ // Poll actual stream writes, not platform-specific HTTP progress notifications (which may stall).
+ // Holding the request here also keeps its delegates alive until completion has been observed.
+ FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda(
+  [Stream, Request, WeakThis, InProgress, ExpectedHash, ExpectedSize, bVerifyHash, bCached, TempPath, Finish = MoveTemp(Finish)](float) mutable
+ {
+  int64 Done, Total; bool Finished, Success;
+  Stream->Snapshot(Done, Total, Finished, Success);
+  const auto Service = WeakThis.Pin();
+  if (!Service || Service->bAbortRequested) Request->CancelRequest();
+  else if (InProgress) InProgress(Done, Total);
+  if (!Finished && !bCached) return true;
+  const bool bTransportOk = bCached || Success;
+  const bool bBadRange = Stream->bInvalidRange;
+  // Disk reads and MD5 of large containers must never block game-thread UI/progress updates.
+  Async(EAsyncExecution::ThreadPool, [Stream, ExpectedHash, ExpectedSize, bVerifyHash, bTransportOk, bBadRange,
+   TempPath, Finish = MoveTemp(Finish)]() mutable
+  {
+   bool Ok = bTransportOk;
+   bool Discard = bBadRange;
+   if (Ok)
+   {
+    const int64 Size = IFileManager::Get().FileSize(*TempPath);
+    Ok = Size >= 0 && (ExpectedSize < 0 || Size == ExpectedSize);
+    if (Ok && bVerifyHash && !ExpectedHash.IsEmpty())
+    { int64 HashSize = 0; FString Hash; Ok = ComputeFileHash(TempPath, HashSize, Hash) && Hash.Equals(ExpectedHash, ESearchCase::IgnoreCase); }
+    Discard |= !Ok;
+   }
+   AsyncTask(ENamedThreads::GameThread, [Finish = MoveTemp(Finish), Ok, Discard]() mutable { Finish(Ok, Discard); });
+  });
+  return false;
+ }), 0.1f);
+ if (!bCached)
+ {
+  if (!Request->SetResponseBodyReceiveStream(MakeShared<FCloudResponseArchive>(Stream)) || !Request->ProcessRequest())
+   Stream->Finish(false);
  }
 }

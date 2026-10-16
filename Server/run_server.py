@@ -25,6 +25,7 @@ CloudUpdate 管理服务器（独立程序）。
   python run_server.py --config config.json --host 0.0.0.0 --port 8711 serve
 """
 import argparse
+from email.utils import formatdate
 import contextlib
 import datetime
 import re
@@ -336,22 +337,59 @@ class UpdateHandler(BaseHTTPRequestHandler):
         if not os.path.isfile(abs_path):
             self._send_json({"ok": False, "error": "文件不存在"}, status=404)
             return
-        size = os.path.getsize(abs_path)
-        ctype, _ = mimetypes.guess_type(abs_path)
-        if ctype is None:
-            ctype = "application/octet-stream"
-        self.send_response(200)
-        self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(size))
-        if download_name:
-            self.send_header("Content-Disposition", f'attachment; filename="{download_name}"')
-        self.end_headers()
         with open(abs_path, "rb") as f:
-            while True:
-                chunk = f.read(1024 * 1024)
-                if not chunk:
-                    break
-                self.wfile.write(chunk)
+            stat = os.fstat(f.fileno())
+            size = stat.st_size
+            etag = f'"{stat.st_mtime_ns:x}-{size:x}"'
+            modified = formatdate(stat.st_mtime, usegmt=True)
+            start, end, status = 0, size - 1, 200
+            range_header = self.headers.get("Range", "")
+            if_range = self.headers.get("If-Range")
+            if range_header and (not if_range or if_range in (etag, modified)):
+                match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header.strip())
+                valid = bool(match and any(match.groups()) and size > 0)
+                if valid:
+                    first, last = match.groups()
+                    if first:
+                        start = int(first)
+                        end = min(int(last), size - 1) if last else size - 1
+                    else:
+                        suffix = int(last)
+                        valid = suffix > 0
+                        start = max(0, size - suffix)
+                    valid = valid and start <= end and start < size
+                if not valid:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{size}")
+                    self.send_header("Content-Length", "0")
+                    self.send_header("Accept-Ranges", "bytes")
+                    self.send_header("ETag", etag)
+                    self.end_headers()
+                    return
+                status = 206
+            ctype = mimetypes.guess_type(abs_path)[0] or "application/octet-stream"
+            self.send_response(status)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(max(0, end - start + 1)))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("ETag", etag)
+            self.send_header("Last-Modified", modified)
+            if status == 206:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            if download_name:
+                self.send_header("Content-Disposition", f'attachment; filename="{download_name}"')
+            self.end_headers()
+            f.seek(start)
+            remaining = end - start + 1
+            try:
+                while remaining > 0:
+                    chunk = f.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass  # An interrupted client will resume with Range on its next request.
 
     # ---------- 路由（仅启动器所需的只读 API + 本地文件下发）----------
     def do_GET(self):

@@ -249,7 +249,7 @@ void FCloudUpdateService::UpdateTransferProgress(uint32 Generation, int64 Done, 
  if (!bTransferSessionActive || Generation != TransferGeneration || !Transfers.IsValidIndex(ActiveTransfer)) return;
  FTransfer& Transfer = Transfers[ActiveTransfer];
  if (Total >= 0) { Transfer.Size = Total; Transfer.bSizeKnown = true; }
- Transfer.Bytes = FMath::Max(Transfer.Bytes, FMath::Max<int64>(Done, 0));
+ Transfer.Bytes = FMath::Max<int64>(Done, 0);
  if (Transfer.bSizeKnown) Transfer.Bytes = FMath::Min(Transfer.Bytes, Transfer.Size);
  BroadcastDownloadProgress();
 }
@@ -260,7 +260,7 @@ void FCloudUpdateService::CompleteTransfer(uint32 Generation, bool bSuccess)
  FTransfer& Transfer = Transfers[ActiveTransfer];
  Transfer.bCompleted = bSuccess;
  Transfer.bFailed = !bSuccess;
- if (!bSuccess) Transfer.Bytes = 0;
+ // Failed attempts retain verified resume bytes; a later full-response fallback may reset them.
  BroadcastDownloadProgress();
 }
 
