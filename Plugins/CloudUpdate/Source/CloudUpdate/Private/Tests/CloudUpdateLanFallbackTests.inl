@@ -104,6 +104,51 @@ bool FCloudLanFallbackTest::RunTest(const FString& Parameters)
   TestFalse(TEXT("empty LAN url disables fallback"),
    DecideLanFallback(TEXT("http://127.0.0.1:8710/x"), TEXT(""), { TEXT("127.0.0.1") }, LocalIps, OutUrl, Reason));
  }
+
+ // ---------- "服务器 IP 与本机一样"的放宽判定 ----------
+ {
+  const TArray<FString> Local = { TEXT("127.0.0.1"), TEXT("192.168.1.50"), TEXT("198.18.0.1") };
+  TestTrue(TEXT("loopback is local"), IsLocalOrProxyIPv4(TEXT("127.0.0.1"), Local));
+  TestTrue(TEXT("proxy fake-ip 198.18/15 is local"), IsLocalOrProxyIPv4(TEXT("198.18.0.124"), Local));
+  TestTrue(TEXT("proxy fake-ip 198.19/15 is local"), IsLocalOrProxyIPv4(TEXT("198.19.5.9"), Local));
+  TestTrue(TEXT("same /24 as a local adapter is local"), IsLocalOrProxyIPv4(TEXT("192.168.1.77"), Local));
+  TestTrue(TEXT("link-local is local"), IsLocalOrProxyIPv4(TEXT("169.254.3.4"), Local));
+  TestFalse(TEXT("public address is not local"), IsLocalOrProxyIPv4(TEXT("203.0.113.7"), Local));
+  TestFalse(TEXT("unrelated private subnet is not local"), IsLocalOrProxyIPv4(TEXT("10.1.2.3"), Local));
+
+  FString OutUrl, Reason;
+  TestTrue(TEXT("fake-ip resolved host triggers fallback"),
+   DecideLanFallback(TEXT("http://www.susudesu.top:8710/api/version/1.0.1?platform=Android"),
+    TEXT("http://192.168.1.10:8710"), { TEXT("198.18.0.124") }, Local, OutUrl, Reason));
+  TestTrue(TEXT("fallback keeps path and query"),
+   OutUrl == TEXT("http://192.168.1.10:8710/api/version/1.0.1?platform=Android"));
+  TestTrue(TEXT("fallback reason names the matched ip"), Reason.Contains(TEXT("198.18.0.124")));
+ }
+
+ // ---------- 回环主机：只对与局域网服务器一致的端口回退（保护本机联调/fixture） ----------
+ {
+  TestTrue(TEXT("127.0.0.1 is loopback"), IsLoopbackHost(TEXT("127.0.0.1")));
+  TestTrue(TEXT("localhost is loopback"), IsLoopbackHost(TEXT("localhost")));
+  TestTrue(TEXT("::1 is loopback"), IsLoopbackHost(TEXT("::1")));
+  TestFalse(TEXT("192.168.1.10 is not loopback"), IsLoopbackHost(TEXT("192.168.1.10")));
+  TestFalse(TEXT("domain is not loopback"), IsLoopbackHost(TEXT("www.susudesu.top")));
+  FString OutUrl, Reason;
+  TestFalse(TEXT("loopback on a random port is not rewritten"),
+   DecideLanFallback(TEXT("http://127.0.0.1:63228/resume/drop"), TEXT("http://192.168.1.10:8710"),
+    { TEXT("127.0.0.1") }, { TEXT("127.0.0.1") }, OutUrl, Reason));
+  TestTrue(TEXT("loopback on the LAN server port is rewritten"),
+   DecideLanFallback(TEXT("http://127.0.0.1:8710/api/version/1.4"), TEXT("http://192.168.1.10:8710"),
+    { TEXT("127.0.0.1") }, { TEXT("127.0.0.1") }, OutUrl, Reason)
+   && OutUrl == TEXT("http://192.168.1.10:8710/api/version/1.4"));
+ }
+
+ // ---------- 无哈希时的下载身份：不含主机，换主机仍可续传 ----------
+ {
+  TestEqual(TEXT("identity uses path+query"),
+   GetUrlPathIdentity(TEXT("http://www.susudesu.top:8710/files/a.pak?x=1")), FString(TEXT("/files/a.pak?x=1")));
+  TestEqual(TEXT("identity ignores host and port"),
+   GetUrlPathIdentity(TEXT("http://192.168.1.10:9000/files/a.pak?x=1")), FString(TEXT("/files/a.pak?x=1")));
+ }
  {
   FString OutUrl, Reason;
   TestFalse(TEXT("non-http LAN url is rejected"),

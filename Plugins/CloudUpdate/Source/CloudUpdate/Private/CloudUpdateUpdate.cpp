@@ -209,8 +209,7 @@ void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJs
 
 	if (!RevokedVersion.IsEmpty())
 	{
-		// 计算回退目标：比被撤销版本低的最高可用版本；没有则退到最新基础包
-		FString PreviousVersion;
+		// 回退目标必须是"客户端可能已经安装过的更低版本"。
 		TArray<FString> Candidates;
 		for (const FCloudUpdateVersionInfo& Info : AllVersions)
 		{
@@ -221,20 +220,16 @@ void FCloudUpdateService::ParseVersionsIndex(const TSharedPtr<FJsonObject>& InJs
 		{
 			Candidates.Add(B);
 		}
-		for (const FString& C : Candidates)
-		{
-			if (IsVersionNewer(RevokedVersion, C))
-			{
-				if (PreviousVersion.IsEmpty() || IsVersionNewer(C, PreviousVersion))
-				{
-					PreviousVersion = C;
-				}
-			}
-		}
-		if (PreviousVersion.IsEmpty() && BaseVersions.Num() > 0)
-		{
-			PreviousVersion = BaseVersions.Last();
-		}
+		// 没有更低版本时退到构建初始版本，让下一次检查重新把最新基础包列为待更新。
+		// 绝不能直接把记录写成"最新的基础包版本"：那会删掉文件却声称已是最新，
+		// 之后既不会再下载也不会激活（表现为"服务器有新基础包，但客户端永远更新不了"）。
+		const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+		const FString InitialVersion = Settings
+			? (Settings->InitialResourceVersionId.IsEmpty() ? Settings->CurrentVersionId : Settings->InitialResourceVersionId)
+			: FString();
+		const FString PreviousVersion = ChooseRollbackTargetVersion(RevokedVersion, Candidates, InitialVersion);
+		UE_LOG(LogCloudUpdate, Warning, TEXT("被撤销版本 %s：删除本地文件并回退到 %s（无更低可用版本时回退到初始版本，以便重新下载最新基础包）"),
+			*RevokedVersion, PreviousVersion.IsEmpty() ? TEXT("<初始版本>") : *PreviousVersion);
 		RollbackRevokedVersion(RevokedVersion, RevokedFiles, PreviousVersion);
 		LocalVersion = LoadLocalVersion();
 	}

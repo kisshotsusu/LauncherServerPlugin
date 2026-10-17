@@ -42,6 +42,22 @@ bool FCloudPlatformFilesTest::RunTest(const FString& Parameters)
  TSharedRef<FJsonObject> BadInfo=MakeShared<FJsonObject>(); BadInfo->SetStringField(TEXT("fileName"),TEXT("../bad.pak"));
  Json->GetObjectField(TEXT("pakFilesMap"))->GetObjectField(TEXT("Windows"))->SetArrayField(TEXT("pakFileInfos"),{MakeShared<FJsonValueObject>(BadInfo)});
  TestFalse(TEXT("Unsafe filename rejected before download"),CloudUpdatePrivate::BuildHotPatcherFiles(Json,TEXT("Windows"),TEXT("https://test"),TEXT("1.1"),false,Files,Error));
+
+ // 撤销版本回退目标：只能退到"低于被撤销版本"的版本；没有则退初始版本（让客户端重新下载最新基础包）。
+ {
+  const TArray<FString> NewerBases = { TEXT("1.0.1"), TEXT("1.0.2") };
+  TestEqual(TEXT("No lower version falls back to the build initial version"),
+   CloudUpdatePrivate::ChooseRollbackTargetVersion(TEXT("1.0"), NewerBases, TEXT("0.0.1")), FString(TEXT("0.0.1")));
+  const TArray<FString> Mixed = { TEXT("1.0.1"), TEXT("1.0.2"), TEXT("0.9"), TEXT("1.0") };
+  TestEqual(TEXT("Nothing is rolled back onto the revoked/newer version"),
+   CloudUpdatePrivate::ChooseRollbackTargetVersion(TEXT("1.0"), Mixed, TEXT("0.0.1")), FString(TEXT("0.9")));
+  const TArray<FString> ZeroPadded = { TEXT("1.0.2"), TEXT("1.0.02") };
+  TestEqual(TEXT("Zero-padded version compares equal and is never a rollback target"),
+   CloudUpdatePrivate::ChooseRollbackTargetVersion(TEXT("1.0"), ZeroPadded, TEXT("0.0.1")), FString(TEXT("0.0.1")));
+  TestTrue(TEXT("Zero-padded version is not newer"), !CloudUpdatePrivate::IsVersionNewer(TEXT("1.0.02"), TEXT("1.0.2")));
+  TestTrue(TEXT("Trailing zero version is not newer"), !CloudUpdatePrivate::IsVersionNewer(TEXT("1.0.2.0"), TEXT("1.0.2")));
+  TestTrue(TEXT("A real bump is newer"), CloudUpdatePrivate::IsVersionNewer(TEXT("1.0.3"), TEXT("1.0.2")));
+ }
  return true;
 }
 #endif

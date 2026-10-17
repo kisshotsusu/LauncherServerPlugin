@@ -1,4 +1,5 @@
 #include "CloudUpdateSettings.h"
+#include "UObject/SoftObjectPath.h"
 
 UCloudUpdateSettings::UCloudUpdateSettings()
 {
@@ -8,6 +9,9 @@ UCloudUpdateSettings::UCloudUpdateSettings()
 	ServerToken = TEXT("");
 	LocalRootOverride = TEXT("");
 	CurrentVersionId = TEXT("1.0");
+	// 引导用 GameInstance 默认就是引擎原生 UGameInstance（软类引用，类选择器里可改选蓝图类）。
+	BootstrapGameInstanceClass = TSoftClassPtr<UGameInstance>(FSoftObjectPath(TEXT("/Script/Engine.GameInstance")));
+	ResourceGameInstanceClass = nullptr;
 	bAutoCheckUpdateOnStart = false;
 	bAutoCheckIntegrityOnStart = false;
 	bVerifyDownloadHash = true;

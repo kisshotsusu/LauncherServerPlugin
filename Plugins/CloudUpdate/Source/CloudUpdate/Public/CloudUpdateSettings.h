@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
+#include "Engine/GameInstance.h"
 #include "CloudUpdateSettings.generated.h"
 
 /** 随所有 HTTP 请求附加的自定义请求头（键值对） */
@@ -42,12 +43,21 @@ public:
     UPROPERTY(EditAnywhere, config, Category = "启动实例")
     bool bSelectGameInstanceFromResources = false;
 
-    /** String paths intentionally avoid making gameplay assets cooker dependencies. */
-    UPROPERTY(EditAnywhere, config, Category = "启动实例")
-    FString BootstrapGameInstanceClass = TEXT("/Script/Engine.GameInstance");
+    /**
+     * 引导用 GameInstance 类：资源缺失/未激活/校验失败时使用。
+     * 在项目设置里直接从类选择器选择 UGameInstance 子类，不再手工输入路径。
+     * 用 TSoftClassPtr（软引用）而不是硬引用：绝不能因为这里引用游戏资源而把 /Game 内容打进 bootstrap 包。
+     */
+    UPROPERTY(EditAnywhere, config, Category = "启动实例", meta = (DisplayName = "引导用 GameInstance 类"))
+    TSoftClassPtr<UGameInstance> BootstrapGameInstanceClass;
 
-    UPROPERTY(EditAnywhere, config, Category = "启动实例")
-    FString ResourceGameInstanceClass;
+    /**
+     * 资源校验通过后真正使用的 GameInstance 类（例如 /Game/BiNanSuo/BNS_GI）。
+     * 编辑器里直接在类选择器中选择蓝图类；运行时解析为 UClass 后写入 GameMapsSettings.GameInstanceClass。
+     * 必须是软引用：该类通常位于下载的基础包里，硬引用会破坏 bootstrap 分包。
+     */
+    UPROPERTY(EditAnywhere, config, Category = "启动实例", meta = (DisplayName = "资源激活后 GameInstance 类"))
+    TSoftClassPtr<UGameInstance> ResourceGameInstanceClass;
 
 	/**
 	 * 局域网回退总开关。开启后，若服务器地址解析出的 IP 与本机地址相同

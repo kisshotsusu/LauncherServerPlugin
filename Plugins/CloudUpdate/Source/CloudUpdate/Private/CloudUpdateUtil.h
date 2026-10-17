@@ -9,6 +9,8 @@ struct FCloudDownloadFile;
 namespace CloudUpdatePrivate
 {
  void SelectStartupGameInstance();
+ /** 本次进程启动 GameInstance 的决策摘要（bootstrap/resource + 原因），供日志/蓝图诊断。 */
+ FString GetStartupGameInstanceDecision();
  FString ResolveUpdatePlatform(const FString& RuntimePlatform, const FString& AndroidCookFlavor);
  FString GetRuntimeUpdatePlatform();
  FString NormalizeCookPlatform(const FString& SourcePlatform);
@@ -21,6 +23,12 @@ namespace CloudUpdatePrivate
  bool IsGameBinaryPath(const FString& InPath);
 	TArray<FString> SplitVersionParts(const FString& InVersion);
 	bool IsVersionNewer(const FString& InA, const FString& InB);
+	/**
+	 * 撤销版本的回滚目标：严格低于被撤销版本的最高候选版本。
+	 * 没有更低版本时返回构建初始版本（而不是把它写成最新的基础包版本）——
+	 * 否则会出现"记录已是最新、但对应文件已被删除"，之后既不会再下载也不会激活。
+	 */
+	FString ChooseRollbackTargetVersion(const FString& InRevokedVersion, const TArray<FString>& InCandidates, const FString& InInitialVersion);
  bool BuildHotPatcherFiles(const TSharedPtr<FJsonObject>& Json, const FString& Platform, const FString& BaseUrl,
    const FString& Version, bool bIoStore, TArray<FCloudDownloadFile>& OutFiles, FString& OutError);
 
@@ -57,6 +65,23 @@ namespace CloudUpdatePrivate
  void GetLocalIPv4Addresses(TArray<FString>& Out);
  /** 把主机名解析为 IPv4 列表（字面量直接返回）。 */
  bool ResolveHostIPv4(const FString& InHost, TArray<FString>& Out);
+
+ /**
+  * 该 IPv4 是否属于"本机/本机代理"地址。除了与本机网卡地址完全相同，
+  * 还覆盖：回环(127/8)、未指定(0.0.0.0)、RFC2544 fake-IP(198.18.0.0/15，
+  * Clash/Mihomo 等代理的默认段)、链路本地(169.254/16)、以及与本机网卡同 /24 的地址。
+  * 这些地址发给"自己"都到不了真实服务器，正是需要回退到局域网地址的场景。
+  */
+ bool IsLocalOrProxyIPv4(const FString& InIp, const TArray<FString>& InLocalIps);
+
+ /**
+  * 下载残片身份用的 URL 路径（含查询串，不含主机与端口）。
+  * 局域网回退会把主机名换掉，如果身份里带主机，换过一次就会丢掉已下载的分片。
+  */
+ FString GetUrlPathIdentity(const FString& InUrl);
+
+ /** 主机名是否为本机回环（localhost / 127.0.0.0/8 / ::1）。 */
+ bool IsLoopbackHost(const FString& InHost);
 
  // ---------- 容器集（.pak / .utoc / .ucas，同 basename 为一组） ----------
 

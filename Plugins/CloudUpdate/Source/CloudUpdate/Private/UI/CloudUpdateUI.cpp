@@ -5,6 +5,7 @@
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
+#include <initializer_list>
 
 #define LOCTEXT_NAMESPACE "CloudUpdateScreen"
 namespace
@@ -12,6 +13,22 @@ namespace
 void PutText(UUserWidget* Screen, const TCHAR* Name, const FText& Text)
 {
  if (UTextBlock* Widget = Cast<UTextBlock>(Screen->GetWidgetFromName(FName(Name)))) Widget->SetText(Text);
+}
+/** 面板资产可能改过控件名（例如 CheckButton 改成 RetryButton）：按候选名依次查找，兼容新旧布局。 */
+UWidget* FindAnyWidget(UUserWidget* Screen, std::initializer_list<const TCHAR*> Names)
+{
+ for (const TCHAR* Name : Names)
+  if (UWidget* Widget = Screen->GetWidgetFromName(FName(Name))) return Widget;
+ return nullptr;
+}
+UButton* FindAnyButton(UUserWidget* Screen, std::initializer_list<const TCHAR*> Names)
+{
+ return Cast<UButton>(FindAnyWidget(Screen, Names));
+}
+void PutTextAny(UUserWidget* Screen, std::initializer_list<const TCHAR*> Names, const FText& Text)
+{
+ for (const TCHAR* Name : Names)
+  if (UTextBlock* Widget = Cast<UTextBlock>(Screen->GetWidgetFromName(FName(Name)))) { Widget->SetText(Text); return; }
 }
 void PutProgress(UUserWidget* Screen, const TCHAR* Name, float Value, bool bUnknown = false)
 {
@@ -34,11 +51,11 @@ void UCloudUpdateScreen::NativeConstruct()
  Super::NativeConstruct();
  UnbindSubsystem();
  BoundSubsystem = GetUpdateSubsystem();
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CheckButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::CheckClicked);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("UpdateButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::UpdateClicked);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CancelButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::CancelClicked);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CloseButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::CloseClicked);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("RepairButton")))) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::RepairClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("CheckButton"), TEXT("RetryButton")})) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::CheckClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("UpdateButton")})) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::UpdateClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("CancelButton")})) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::CancelClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("CloseButton"), TEXT("ExitButton")})) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::CloseClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("RepairButton")})) Button->OnClicked.AddUniqueDynamic(this, &UCloudUpdateScreen::RepairClicked);
  bChecking = bApplying = bCancelRequested = false;
  if (BoundSubsystem)
  {
@@ -52,6 +69,12 @@ void UCloudUpdateScreen::NativeConstruct()
   else SetStatus(BoundSubsystem->GetPendingResourceVersion().IsEmpty() ? LOCTEXT("Ready", "点击检查更新，获取当前平台的版本信息。") : LOCTEXT("Pending", "资源已准备好，请关闭并重新打开应用使其生效。"));
   const auto Progress = BoundSubsystem->GetDownloadProgress();
   if (Progress.bActive) { bApplying = true; DownloadChanged(Progress); MergeChanged(BoundSubsystem->GetMergeProgress()); }
+  // 把本次启动的 GameInstance 决策（bootstrap / resource + 原因）显示到面板上：
+  // 真机上看不到日志时，这是"为什么没进资源实例/为什么还是引导包"的直接线索。
+  const FString StartupInfo = BoundSubsystem->GetStartupGameInstanceInfo();
+  PutText(this, TEXT("StartupStatusText"), StartupInfo.IsEmpty()
+   ? LOCTEXT("StartupInfoNone", "启动实例：未参与（编辑器或未启用动态切换）")
+   : FText::FromString(StartupInfo));
  }
  else SetStatus(LOCTEXT("Unavailable", "更新服务不可用，请重新打开此页面。"), true);
  RefreshVersions(); RefreshButtons();
@@ -70,10 +93,10 @@ void UCloudUpdateScreen::UnbindSubsystem()
 void UCloudUpdateScreen::NativeDestruct()
 {
  UnbindSubsystem();
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CheckButton")))) Button->OnClicked.RemoveDynamic(this, &UCloudUpdateScreen::CheckClicked);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("UpdateButton")))) Button->OnClicked.RemoveDynamic(this, &UCloudUpdateScreen::UpdateClicked);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CancelButton")))) Button->OnClicked.RemoveDynamic(this, &UCloudUpdateScreen::CancelClicked);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CloseButton")))) Button->OnClicked.RemoveDynamic(this, &UCloudUpdateScreen::CloseClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("CheckButton"), TEXT("RetryButton")})) Button->OnClicked.RemoveDynamic(this, &UCloudUpdateScreen::CheckClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("UpdateButton")})) Button->OnClicked.RemoveDynamic(this, &UCloudUpdateScreen::UpdateClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("CancelButton")})) Button->OnClicked.RemoveDynamic(this, &UCloudUpdateScreen::CancelClicked);
+ if (auto* Button = FindAnyButton(this, {TEXT("CloseButton"), TEXT("ExitButton")})) Button->OnClicked.RemoveDynamic(this, &UCloudUpdateScreen::CloseClicked);
  Super::NativeDestruct();
 }
 void UCloudUpdateScreen::NativeTick(const FGeometry& Geometry, float DeltaTime)
@@ -101,13 +124,13 @@ void UCloudUpdateScreen::RefreshButtons()
  const bool Busy = BoundSubsystem && BoundSubsystem->IsBusy();
  const FCloudUpdatePlan Plan = BoundSubsystem ? BoundSubsystem->GetUpdatePlan() : FCloudUpdatePlan();
  const bool Pending = BoundSubsystem && !BoundSubsystem->GetPendingResourceVersion().IsEmpty();
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CheckButton")))) Button->SetIsEnabled(BoundSubsystem && !Busy);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("UpdateButton"))))
+ if (auto* Button = FindAnyButton(this, {TEXT("CheckButton"), TEXT("RetryButton")})) Button->SetIsEnabled(BoundSubsystem && !Busy);
+ if (auto* Button = FindAnyButton(this, {TEXT("UpdateButton")}))
   Button->SetIsEnabled(BoundSubsystem && !Busy && !Pending && Plan.bValid && !Plan.bGameUpdateRequired && !Plan.bResourceUpdateRequiresGame && Plan.PendingResourceVersionCount > 0);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CancelButton"))))
+ if (auto* Button = FindAnyButton(this, {TEXT("CancelButton")}))
   Button->SetIsEnabled(Busy && (bChecking || bApplying) && !bCancelRequested);
- if (auto* Button = Cast<UButton>(GetWidgetFromName(TEXT("CloseButton")))) Button->SetIsEnabled(!Busy);
- PutText(this, TEXT("CheckLabel"), bChecking ? LOCTEXT("CheckingLabel", "检查中…") : LOCTEXT("CheckLabel", "检查更新"));
+ if (auto* Button = FindAnyButton(this, {TEXT("CloseButton"), TEXT("ExitButton")})) Button->SetIsEnabled(!Busy);
+ PutTextAny(this, {TEXT("CheckLabel"), TEXT("RetryLabel")}, bChecking ? LOCTEXT("CheckingLabel", "检查中…") : LOCTEXT("CheckLabel", "检查更新"));
  PutText(this, TEXT("UpdateLabel"), bApplying ? LOCTEXT("ApplyingLabel", "更新中…") : LOCTEXT("UpdateLabel", "更新资源"));
 }
 void UCloudUpdateScreen::CheckClicked()

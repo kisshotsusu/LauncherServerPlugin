@@ -231,6 +231,18 @@ namespace CloudUpdatePrivate
 		}
 		return false;
 	}
+
+	FString ChooseRollbackTargetVersion(const FString& InRevokedVersion, const TArray<FString>& InCandidates, const FString& InInitialVersion)
+	{
+		FString Best;
+		for (const FString& Candidate : InCandidates)
+		{
+			if (Candidate.IsEmpty() || !IsVersionNewer(InRevokedVersion, Candidate)) continue;
+			if (Best.IsEmpty() || IsVersionNewer(Candidate, Best)) Best = Candidate;
+		}
+		// 没有"客户端可能装过的更低版本"可用时，退到构建的初始版本让下一次检查重新下载最新基础包。
+		return Best.IsEmpty() ? InInitialVersion : Best;
+	}
 }
 
 namespace CloudUpdatePrivate
@@ -324,6 +336,69 @@ namespace CloudUpdatePrivate
   return true;
  }
 
+ namespace
+ {
+  bool ParseIPv4Segments(const FString& InText, int32 (&OutSegments)[4])
+  {
+   TArray<FString> Segments;
+   InText.ParseIntoArray(Segments, TEXT("."), false);
+   if (Segments.Num() != 4) return false;
+   for (int32 Index = 0; Index < 4; ++Index)
+   {
+    if (Segments[Index].IsEmpty() || Segments[Index].Len() > 3) return false;
+    for (const TCHAR Ch : Segments[Index]) if (!FChar::IsDigit(Ch)) return false;
+    OutSegments[Index] = FCString::Atoi(*Segments[Index]);
+    if (OutSegments[Index] < 0 || OutSegments[Index] > 255) return false;
+   }
+   return true;
+  }
+
+  bool IsProxyFakeIpv4(const int32 (&Segments)[4])
+  {
+   // RFC 2544 的 198.18.0.0/15：Clash / Mihomo / Surge 等按 fake-IP 模式运行时的默认网段。
+   // 域名被本机代理接管后解析到这里，直连必然打到自己，必须回退到真实局域网地址。
+   return Segments[0] == 198 && (Segments[1] == 18 || Segments[1] == 19);
+  }
+ }
+
+ bool IsLocalOrProxyIPv4(const FString& InIp, const TArray<FString>& InLocalIps)
+ {
+  if (!IsIPv4Literal(InIp)) return false;
+  if (InLocalIps.Contains(InIp)) return true; // 与某块网卡地址完全相同
+  int32 Segments[4];
+  if (!ParseIPv4Segments(InIp, Segments)) return false;
+  if (Segments[0] == 127) return true; // 回环
+  if (Segments[0] == 0 && Segments[1] == 0 && Segments[2] == 0 && Segments[3] == 0) return true; // 未指定
+  if (IsProxyFakeIpv4(Segments)) return true; // 本机代理 fake-IP
+  if (Segments[0] == 169 && Segments[1] == 254) return true; // 链路本地，没有真实路由
+  // 与某块本机网卡同 /24：代理 TUN 网段（如 198.18.0.1/30 与 fake-IP 198.18.0.124）就是这种关系。
+  for (const FString& Local : InLocalIps)
+  {
+   int32 LocalSegments[4];
+   if (!ParseIPv4Segments(Local, LocalSegments)) continue;
+   if (Segments[0] == LocalSegments[0] && Segments[1] == LocalSegments[1]
+    && Segments[2] == LocalSegments[2]) return true;
+  }
+  return false;
+ }
+
+ FString GetUrlPathIdentity(const FString& InUrl)
+ {
+  const FCloudUrlParts Parts = ParseCloudUrl(InUrl);
+  return Parts.bValid && !Parts.Path.IsEmpty() ? Parts.Path : InUrl;
+ }
+
+ bool IsLoopbackHost(const FString& InHost)
+ {
+  if (InHost.IsEmpty()) return false;
+  if (InHost.Equals(TEXT("localhost"), ESearchCase::IgnoreCase)
+   || InHost.Equals(TEXT("::1"), ESearchCase::IgnoreCase)
+   || InHost.Equals(TEXT("[::1]"), ESearchCase::IgnoreCase)) return true;
+  if (!IsIPv4Literal(InHost)) return false;
+  int32 Segments[4];
+  return ParseIPv4Segments(InHost, Segments) && Segments[0] == 127;
+ }
+
  bool DecideLanFallback(const FString& InOriginalUrl, const FString& InLanBaseUrl,
   const TArray<FString>& InResolvedIps, const TArray<FString>& InLocalIps,
   FString& OutUrl, FString& OutReason)
@@ -339,11 +414,15 @@ namespace CloudUpdatePrivate
   if (!Lan.bValid) { OutReason = TEXT("局域网服务器地址不是 http(s) URL，跳过回退"); return false; }
   if (Lan.Host.Equals(Original.Host, ESearchCase::IgnoreCase) && Lan.Port == Original.Port)
   { OutReason = TEXT("地址已经是局域网服务器地址"); return false; }
+  // 127.0.0.1 / localhost 上的随机端口通常就是本机联调服务（以及自动化测试的本地 fixture），
+  // 直连本来就通；只有端口与局域网服务器一致时才改写，避免把本机 mock 的请求打到局域网上。
+  if (IsLoopbackHost(Original.Host) && Lan.Port > 0 && Original.Port > 0 && Original.Port != Lan.Port)
+  { OutReason = TEXT("本机回环地址端口与局域网服务器不一致，保持直连"); return false; }
 
   FString Matched;
   for (const FString& Ip : InResolvedIps)
   {
-   if (InLocalIps.Contains(Ip)) { Matched = Ip; break; }
+   if (IsLocalOrProxyIPv4(Ip, InLocalIps)) { Matched = Ip; break; }
   }
   if (Matched.IsEmpty())
   { OutReason = TEXT("服务器地址不是本机地址，无需回退"); return false; }
@@ -352,7 +431,7 @@ namespace CloudUpdatePrivate
   Effective.Host = Lan.Host;
   Effective.Port = Lan.Port > 0 ? Lan.Port : Original.Port;
   OutUrl = ComposeCloudUrl(Effective);
-  OutReason = FString::Printf(TEXT("服务器 IP %s 与本机相同，已回退到 %s"), *Matched, *Lan.Host);
+  OutReason = FString::Printf(TEXT("服务器地址 %s 指向本机/本机代理，已回退到 %s"), *Matched, *Lan.Host);
   return true;
  }
 

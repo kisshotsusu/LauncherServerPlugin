@@ -124,6 +124,10 @@ private:
  // ---------- 局域网回退 ----------
  /** 对单个 URL 应用局域网回退（按主机缓存判定，避免每次请求都做 DNS/网卡枚举）。 */
  FString ApplyLanFallback(const FString& InUrl) const;
+ /** 把主机与端口换成 LanServerUrl；配置关闭/已在局域网地址上时返回 false。 */
+ bool GetLanFallbackUrl(const FString& InUrl, FString& OutUrl) const;
+ /** 记录"这个主机要走局域网地址"：下一次请求开始就直接命中，不必先失败一次。 */
+ void RememberLanFallback(const FString& InOriginalUrl) const;
 
  struct FLanFallbackDecision
  {
@@ -132,6 +136,8 @@ private:
   int32 ReplacementPort = 0;
   FString Reason;
   double Time = 0.0;
+  /** 实测回退成功得到的记录：不随 LanFallbackCacheSeconds 过期，避免长下载中途退回不可用地址。 */
+  bool bSticky = false;
  };
  mutable FCriticalSection LanFallbackLock;
  mutable TMap<FString, FLanFallbackDecision> LanFallbackCache;
@@ -161,11 +167,18 @@ private:
 	bool IsPathIgnored(const FString& InRelativePath) const;
 
 	// ---------- HTTP ----------
-	void FetchJson(const FString& InUrl, TFunction<void(bool, const TSharedPtr<FJsonObject>&)> InCallback);
+	/** @param bAllowLanRetry 请求失败时是否允许改走局域网地址（每个 URL 只兜底一次）。 */
+	void FetchJson(const FString& InUrl, TFunction<void(bool, const TSharedPtr<FJsonObject>&)> InCallback,
+		bool bAllowLanRetry = true);
+	/**
+	 * @param bAllowLanRetry    传输失败时是否改走局域网回退地址（只兜底一次）
+	 * @param bSkipInstalledCheck 跳过"目标文件已存在且哈希匹配则视为完成"的快速确认（内部重入用）
+	 */
 	void DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
 		TFunction<void(bool)> InCallback,
 		TFunction<void(int64 /*BytesDone*/, int64 /*TotalBytes*/)> InProgress = nullptr,
-        const FString& ExpectedHash = TEXT(""), int64 ExpectedSize = -1);
+        const FString& ExpectedHash = TEXT(""), int64 ExpectedSize = -1,
+        bool bAllowLanRetry = true, bool bSkipInstalledCheck = false);
 
 	// ---------- 完整性检查 ----------
 	void ParseManifest(const TSharedPtr<FJsonObject>& InJson);

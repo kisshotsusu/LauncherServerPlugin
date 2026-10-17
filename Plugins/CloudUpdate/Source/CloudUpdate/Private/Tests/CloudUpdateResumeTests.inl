@@ -1,4 +1,8 @@
 #include "CloudUpdateDownload.h"
+#include "CloudUpdateService.h"
+#include "CloudUpdateUtil.h"
+#include "Misc/Guid.h"
+#include "Misc/AutomationTest.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 
@@ -115,6 +119,48 @@ public:
  FAutomationTestBase* Test;TSharedPtr<FCloudUpdateService> Service;FString Root,Path,Hash,Url,PortFile;int64 Size=0;FProcHandle Server;
  int32 Stage=0,Intermediate=0;bool bStarted=false,bDone=false,Success=false,bUnavailable=false,bRestarted=false,SawPrefix=false;double Started=0;
 };
+// 跨进程"再次进入"：上一轮已下完并落地的文件必须按 hash 直接确认完成，不再重下。
+class FCloudInstalledReuseCommand : public IAutomationLatentCommand
+{
+public:
+ FCloudInstalledReuseCommand(FAutomationTestBase* InTest) : Test(InTest)
+ {
+  Root = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation/InstalledReuse") / FGuid::NewGuid().ToString());
+  IFileManager::Get().MakeDirectory(*Root, true);
+  Path = Root / TEXT("already-installed.bin");
+  TArray<uint8> Data; Data.SetNumUninitialized(4096);
+  for (int32 Index = 0; Index < Data.Num(); ++Index) Data[Index] = static_cast<uint8>(Index * 7);
+  FFileHelper::SaveArrayToFile(Data, *Path);
+  CloudUpdatePrivate::ComputeFileHash(Path, Size, Hash);
+  Service = MakeShared<FCloudUpdateService>(nullptr);
+  // 故意给一个不可达地址：只有"已落地文件快速确认"生效时才会立即成功。
+  FCloudUpdateMetricsTestAccess::DownloadResume(*Service, TEXT("http://127.0.0.1:9/never-exists"), Path, 0, Hash, Size,
+   [this](bool bOk) { Success = bOk; bDone = true; }, [](int64, int64) {});
+ }
+ ~FCloudInstalledReuseCommand()
+ {
+  Service->Abort();
+  IFileManager::Get().DeleteDirectory(*Root, false, true);
+ }
+ bool Update() override
+ {
+  if (!bDone) return false;
+  Test->TestTrue(TEXT("Already installed file is confirmed without re-download"), Success);
+  int64 ActualSize = 0; FString ActualHash;
+  Test->TestTrue(TEXT("Existing installed content untouched"),
+   CloudUpdatePrivate::ComputeFileHash(Path, ActualSize, ActualHash) && ActualHash == Hash && ActualSize == Size);
+  return true;
+ }
+ FAutomationTestBase* Test; TSharedPtr<FCloudUpdateService> Service; FString Root, Path, Hash; int64 Size = 0;
+ bool bDone = false, Success = false;
+};
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCloudInstalledReuseTest, "CloudUpdate.Service.InstalledFileReuse",
+ (EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::CommandletContext) | EAutomationTestFlags::EngineFilter)
+bool FCloudInstalledReuseTest::RunTest(const FString&)
+{
+ ADD_LATENT_AUTOMATION_COMMAND(FCloudInstalledReuseCommand(this)); return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCloudResumeHTTPTest,"CloudUpdate.Service.ResumeHTTP",(EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::CommandletContext)|EAutomationTestFlags::EngineFilter)
 bool FCloudResumeHTTPTest::RunTest(const FString&)
 {

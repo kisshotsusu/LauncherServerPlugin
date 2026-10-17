@@ -351,22 +351,54 @@ void FCloudUpdateService::PromotePendingResourceVersion()
  if (Pending.IsEmpty()) return;
  FString Text;
  TSharedPtr<FJsonObject> Json;
- if (!ReadLocalVersionRecord(Json)) return;
+ if (!ReadLocalVersionRecord(Json))
+ {
+  UE_LOG(LogCloudUpdate, Warning, TEXT("待生效资源 %s 未能激活：本地版本记录读取失败，继续使用 bootstrap。"), *Pending);
+  return;
+ }
  const TArray<TSharedPtr<FJsonValue>>* Values = nullptr;
- if (!Json->TryGetArrayField(TEXT("pendingFiles"), Values) || Values->IsEmpty()) return;
+ if (!Json->TryGetArrayField(TEXT("pendingFiles"), Values) || Values->IsEmpty())
+ {
+  UE_LOG(LogCloudUpdate, Warning, TEXT("待生效资源 %s 未能激活：记录里没有 pendingFiles。"), *Pending);
+  return;
+ }
  for (const auto& Value : *Values)
  {
-  if (!Value.IsValid() || Value->Type != EJson::Object) return;
+  if (!Value.IsValid() || Value->Type != EJson::Object)
+  {
+   UE_LOG(LogCloudUpdate, Warning, TEXT("待生效资源 %s 未能激活：pendingFiles 条目格式非法。"), *Pending);
+   return;
+  }
   const auto Entry = Value->AsObject();
   FString Path, Hash;
   Entry->TryGetStringField(TEXT("path"), Path);
   Entry->TryGetStringField(TEXT("hash"), Hash);
-  if (Path.IsEmpty() || !IFileManager::Get().FileExists(*Path) || IFileManager::Get().FileExists(*(Path + TEXT(".pending")))) return;
+  if (Path.IsEmpty())
+  {
+   UE_LOG(LogCloudUpdate, Warning, TEXT("待生效资源 %s 未能激活：条目缺少 path。"), *Pending);
+   return;
+  }
+  if (!IFileManager::Get().FileExists(*Path))
+  {
+   UE_LOG(LogCloudUpdate, Warning, TEXT("待生效资源 %s 未能激活：文件不存在 %s"), *Pending, *Path);
+   return;
+  }
+  if (IFileManager::Get().FileExists(*(Path + TEXT(".pending"))))
+  {
+   // 最常见的卡住原因：启动前交换没执行（Android JNI 早期钩子 / Windows main 前钩子未覆盖到该目录）。
+   UE_LOG(LogCloudUpdate, Warning, TEXT("待生效资源 %s 未能激活：仍是暂存文件 %s.pending（启动前交换未执行）"), *Pending, *Path);
+   return;
+  }
   if (!Hash.IsEmpty())
   {
    int64 Size = 0; FString Actual;
-   if (!CloudUpdatePrivate::ComputeFileHash(Path, Size, Actual) || !Actual.Equals(Hash, ESearchCase::IgnoreCase)) return;
+   if (!CloudUpdatePrivate::ComputeFileHash(Path, Size, Actual) || !Actual.Equals(Hash, ESearchCase::IgnoreCase))
+   {
+    UE_LOG(LogCloudUpdate, Warning, TEXT("待生效资源 %s 未能激活：哈希不符 %s（记录 %s，实际 %s）"), *Pending, *Path, *Hash, *Actual);
+    return;
+   }
   }
  }
  SaveLocalVersion(Pending);
+ UE_LOG(LogCloudUpdate, Log, TEXT("待生效资源 %s 已激活（启动校验通过）。"), *Pending);
 }

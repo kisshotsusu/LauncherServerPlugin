@@ -47,6 +47,29 @@ Plugins/CloudUpdate/
 | 下载后校验哈希 | 默认开启 |
 | HTTP 超时 / 重试次数 | 网络参数 |
 
+### 启动实例（GameInstance）选择（2026-10-17）
+
+项目设置 -> Cloud Update (云更新) -> 启动实例：
+
+| 配置项 | 说明 |
+| --- | --- |
+| 启用按资源切换 GameInstance | 开启后，资源校验通过时把引擎的 GameInstance 切换为下面选择的"资源类"；否则使用"引导类"。关闭则完全使用项目/命令行配置的 GameInstance |
+| 引导用 GameInstance 类 | **类选择器直接选择 UGameInstance 子类**（默认 `/Script/Engine.GameInstance`）。资源缺失、未激活、校验失败或安全模式时使用 |
+| 资源激活后 GameInstance 类 | **类选择器直接选择蓝图类**（例如 `/Game/BiNanSuo/BNS_GI`）。资源校验通过后使用 |
+
+- 两个字段都是 **`TSoftClassPtr<UGameInstance>`（软类引用）**：编辑器里是类选择器（下拉 + 资产选择），不再需要手工输入类路径；选择器只列出 `UGameInstance` 子类。
+- 之所以用软引用而不是 `TSubclassOf`/硬引用：资源 GameInstance 通常位于**下载的基础包**里，硬引用会在 cook 时把 `/Game` 内容拉进 bootstrap 包，破坏分包。
+- **运行时解析**：先按选中的软类同步加载；若旧 ini 里保存的是不带 `_C` 的蓝图资产路径，会先补 `_C` 再试，或按蓝图资产取 `GeneratedClass`，因此历史配置仍然兼容。
+- Android 平台可在 `Config/Android/AndroidGame.ini` 覆盖（文本格式与类路径一致）：
+  ```
+  [/Script/CloudUpdate.CloudUpdateSettings]
+  bSelectGameInstanceFromResources=True
+  BootstrapGameInstanceClass=/Script/Engine.GameInstance
+  ResourceGameInstanceClass=/Game/BiNanSuo/BNS_GI.BNS_GI_C
+  ```
+- 启动决策会写入 `Saved/CloudUpdate/<平台>/startup_gameinstance.json`（`mode`/`configuredClass`/`effectiveClass`/`reason`），
+  更新面板的 `StartupStatusText` 也会显示同一摘要，便于真机排查"为什么没进资源实例"。
+
 ## 蓝图 API
 
 获取子系统：`Get Cloud Update Subsystem`
@@ -87,7 +110,7 @@ Plugins/CloudUpdate/
 
 打开使用该 GameMode 的关卡并运行后，PlayerController 会自动创建 WBP_GameStart、加入视口、显示鼠标并设置 UI 输入模式，退出关卡时移除控件。用户点击“检查更新”后异步查询平台对应的完整更新计划；不会打开页面就自动下载。原项目默认启动地图保持现有配置。
 
-CloudUpdateScreen 的 NativeConstruct / NativeDestruct 自动绑定和解除自身监听；WBP 不需重复绑定。按钮名 CheckButton / UpdateButton / CancelButton 对应 QueryUpdatePlan / ApplyLatestUpdate / AbortCurrentTask。文本名 PlatformText / VersionsText / StatusText / SummaryText / DownloadText / FileProgressText / MergeText 和进度条 DownloadProgress / FileProgress / MergeProgress 可供自定义子控件复用。异步完成后才展示服务器结果，失败时可重试；需要游戏包更新或有待生效资源时禁用资源更新按钮，忙碌期间防止重复请求。未知总大小显示明确提示和循环进度，不伪造百分比；合并只有文件级进度。按钮固定在滚动内容下方，安卓使用 SafeZone。
+CloudUpdateScreen 的 NativeConstruct / NativeDestruct 自动绑定和解除自身监听；WBP 不需重复绑定。按钮名 CheckButton（兼容 RetryButton）/ UpdateButton / CancelButton / CloseButton（兼容 ExitButton）/ RepairButton 对应 检查更新 / 更新资源 / 取消 / 关闭 / 修复。文本名 PlatformText / VersionsText / StatusText / SummaryText / DownloadText / FileProgressText / MergeText 和进度条 DownloadProgress / FileProgress / MergeProgress 可供自定义子控件复用。异步完成后才展示服务器结果，失败时可重试；需要游戏包更新或有待生效资源时禁用资源更新按钮，忙碌期间防止重复请求。未知总大小显示明确提示和循环进度，不伪造百分比；合并只有文件级进度。按钮固定在滚动内容下方，安卓使用 SafeZone。
 
 原 PreConstruct 单版本显示与 Construct 手工拆分版本字符串的入口已断开，原函数保留作参考。更新面板不改写本地版本，只有资源更新成功或启动后完成激活才改变资源记录。
 
@@ -195,6 +218,8 @@ requiredGameVersion 是明确的游戏包版本依赖；baseVersionId 是资源�
 
 下载默认保留目标旁的 `.download` 数据和 `.download.json` 元信息。网络中断、重试用尽或重新发起下载时，按实际残片长度发送 Range；有验证标记时同时发送 If-Range。清单哈希或大小变化会使旧残片失效；没有哈希时只在有服务器验证标记的情况下续传。
 
+退出游戏后再次进入也属于"重新发起下载"：未完成的那个文件按 `.download` 残片长度续传；**已经下载并落地的文件**（或 IoStore 的 `.pending` 文件）只要大小与清单哈希匹配就直接确认完成、不再重下，避免每次进入都从第一个文件开始。无哈希时残片身份改用 URL 路径（不含主机/端口），局域网回退换掉主机后仍能续传。
+
 严格验证 206 的 Content-Range 和大小，错误响应体不会写入残片。服务器返回 200 时安全覆盖旧片段；无效区间、416 或最终校验失败时重新下载。完整文件成功校验并安装后清理元信息，IoStore 保留原有 pending 重启生效流程。
 
 每 0.1 秒在游戏线程报告实际接收字节，包含已有残片；校验由后台线程执行。清除无效数据或服务器要求重新下载时，进度按真实数据回退。服务端支持单段 Range、ETag、Last-Modified 和 If-Range。
@@ -211,13 +236,18 @@ requiredGameVersion 是明确的游戏包版本依赖；baseVersionId 是资源�
 | --- | --- |
 | 启用局域网回退 | 总开关，**默认关闭**。关闭时零开销，不产生 DNS / 网卡枚举 |
 | 局域网服务器地址 | 回退目标，如 `http://192.168.1.10:8710`；可带路径前缀；**不写端口时沿用原 URL 的端口** |
-| 编辑器内也应用 | 默认关闭。编辑器通常与服务器同机，`127.0.0.1` 本来就是对的，回退会打断联调 |
+| 编辑器内也应用 | 默认关闭。编辑器通常与服务器同机，`127.0.0.1` 本来就是对的，回退会打断联调。本工程 `Config/DefaultGame.ini` 已显式设为 **True**（本机域名会被代理解析成 fake-IP，编辑器联调也需要回退） |
 | 回退判定缓存（秒） | 默认 30。DNS + 网卡枚举只在缓存未命中时执行，避免每个文件都解析一次；0 表示每次请求都重新判定 |
 
 ### 行为
 
-- **判定规则**：把服务器 `host` 解析为 IPv4 列表，与本机网卡 IPv4 列表求交集；有交集即认为"服务器就是本机"。
-  纯 IPv4 字面量直接参与比较；IPv6 不参与（回退目标请用 IPv4）。
+- **判定规则**：把服务器 `host` 解析为 IPv4 列表，命中下列任一即认为"服务器就是本机/本机代理"：
+  与本机网卡地址完全相同、回环 `127.0.0.0/8`、未指定 `0.0.0.0`、
+  RFC2544 fake-IP（`198.18.0.0/15`，Clash/Mihomo 等代理默认段）、链路本地 `169.254.0.0/16`、
+  与本机网卡同 `/24`。纯 IPv4 字面量直接参与比较；IPv6 不参与（回退目标请用 IPv4）。
+- **连接失败兜底**：直连（DNS/连接/超时/5xx）失败时，会改用 `LanServerUrl` 再试一次；
+  成功后记住该主机，后续请求（含文件下载）直接走局域网地址，不再先失败一次。
+  这条兜底让"域名在局域网内不可达、但内网 IP 可达"的部署也能正常更新。
 - **只替换主机与端口**，`路径`与查询串保持不变：
   `http://127.0.0.1:8710/files/a.pak?x=1` → `http://192.168.1.10:8710/files/a.pak?x=1`
 - **覆盖所有请求**：清单、版本索引、版本描述、资源包下载、完整性修复。注入点是
@@ -241,6 +271,14 @@ requiredGameVersion 是明确的游戏包版本依赖；baseVersionId 是资源�
 ```
 UnrealEditor-Cmd.exe BiNanSuo.uproject -unattended -NullRHI -ExecCmds="Automation RunTests CloudUpdate.LanFallback" -TestExit="Automation Test Queue Empty"
 ```
+
+2026-10-17 第 3 批（本机实测）：`www.susudesu.top` 解析为 `198.18.0.124`（本机代理 fake-IP），
+`GetEffectiveServerUrl()` 返回 `http://192.168.1.10:8710`、`IsLanFallbackActive()==True`，
+判定说明为"服务器地址 198.18.0.124 指向本机/本机代理"。自动化测试新增 fake-IP / 回环 / 同网段 /
+"回环随机端口不改写"用例；完整 `CloudUpdate` 套件 12/12 通过。
+
+> 回环保护：`127.0.0.1`/`localhost` 只有端口与 `LanServerUrl` 一致时才回退，
+> 以免把本机随机端口的联调服务/自动化 fixture 改写到局域网地址。
 
 ## 容器集（.pak / .utoc / .ucas）一致性修复（2026-10-17）
 
@@ -270,11 +308,16 @@ UnrealEditor-Cmd.exe BiNanSuo.uproject -unattended -NullRHI -ExecCmds="Automatio
 3. **Android 补上"挂载之前"的交换**：`BNSAndroidStorage.cpp` 的 JNI 早期钩子（`nativeConfigureBNSAndroidStorage`，
    引擎初始化之前）用 POSIX `rename` 递归交换外部存储下的 `*.pending`，并删除 0 字节残片。
    Windows 侧原本就有 `BNSWindowsStorageBootstrap.inl`（`main` 之前）；`FinalizePendingMerges` 作为兜底。
-4. **启动校验增加"容器集必须成套"**：`ValidateStartupManifest` 里只要资源记录出现 `.utoc` 或 `.ucas`，
-   就要求 `.pak`/`.utoc`/`.ucas` 三者齐全，否则判定资源不可用 → 回退 bootstrap 引导包
+4. **启动校验增加"容器集必须成套"**：`ValidateStartupManifest` 里**非 global 的** `.utoc`/`.ucas`
+   要求 `.pak`/`.utoc`/`.ucas` 三者齐全，否则判定资源不可用 → 回退 bootstrap 引导包
    （升级/修复入口仍然可达），而不是带着残缺容器切到资源 GameInstance 崩溃。
-   `OutPaks` 仍然只收集 `.pak`（容器会随同 basename 的 `.pak` 一起被引擎挂载）；但不再强制要求
-   记录里必须有 `.pak`，"只有版本号、没有任何文件"依然不算安装证据。
+   - **例外（2026-10-17 真机修复）**：`global.utoc`/`global.ucas` 是 IoStore 的全局脚本/数据容器，
+     引擎不通过 `.pak` 挂载，**不存在也不需要 `global.pak`**；只要求 `global.ucas`（如有）配 `global.utoc`。
+     把 global 也按"三件套"校验会让已安装的基础包每次启动都被判为"容器集不完整"，
+     GameInstance 永远回退 bootstrap（真机 `startup_gameinstance.json` 的 reason 可证）。
+   - 支持 `..._s0.ucas` 这类 IoStore 分片：按去掉 `_sN` 后缀的容器名归组，不要求 `..._s0.pak`。
+   `OutPaks` 仍然只收集 `.pak`（容器会随同 basename 的 `.pak` 一起被引擎挂载）；"只有版本号、没有任何文件"
+   依然不算安装证据。
 
 ### 验证
 

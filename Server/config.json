@@ -27,9 +27,9 @@
       "patch:1.4"
     ],
     "Android": [
-      "base:1.0",
+      "base:1.0.0001",
       "installer:1.0",
-      "base:1.0.1"
+      "base:1.0.0002"
     ]
   },
   "api_endpoints": {

@@ -244,6 +244,11 @@ void UCloudUpdateSubsystem::RefreshLanFallback()
 	}
 }
 
+FString UCloudUpdateSubsystem::GetStartupGameInstanceInfo() const
+{
+	return CloudUpdatePrivate::GetStartupGameInstanceDecision();
+}
+
 FString UCloudUpdateSubsystem::GetServerToken() const
 {
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();

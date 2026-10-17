@@ -31,11 +31,11 @@
 #include "Containers/Ticker.h"
 using namespace CloudUpdatePrivate;
 
-void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, const TSharedPtr<FJsonObject>&)> InCallback)
+void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, const TSharedPtr<FJsonObject>&)> InCallback, bool bAllowLanRetry)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 	Request->SetURL(ResolveRemoteUrl(InUrl));
- Request->SetDelegateThreadPolicy(EHttpRequestDelegateThreadPolicy::CompleteOnGameThread);
+	Request->SetDelegateThreadPolicy(EHttpRequestDelegateThreadPolicy::CompleteOnGameThread);
 	Request->SetVerb(TEXT("GET"));
 	Request->SetHeader(TEXT("Accept"), TEXT("application/json"));
 	const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
@@ -54,8 +54,9 @@ void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, c
 			}
 		}
 	}
- TSharedRef<bool> Completed = MakeShared<bool>(false);
- Request->OnProcessRequestComplete().BindLambda([InCallback, Completed](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
+	TSharedRef<bool> Completed = MakeShared<bool>(false);
+	TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
+	Request->OnProcessRequestComplete().BindLambda([WeakThis, InUrl, InCallback, Completed, bAllowLanRetry](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnectedSuccessfully)
 	{
         if (*Completed) return;
         *Completed = true;
@@ -67,16 +68,53 @@ void FCloudUpdateService::FetchJson(const FString& InUrl, TFunction<void(bool, c
 			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(ResponseStr);
 			bOk = FJsonSerializer::Deserialize(Reader, Json) && Json.IsValid();
 		}
+		// 直连失败（DNS / 连接 / 超时 / 5xx）时改走局域网地址。典型场景：域名被本机代理
+		// 解析成 fake-IP（198.18.x.x），请求打回本机永远到不了真实服务器。
+		if (!bOk && bAllowLanRetry)
+		{
+			const auto Service = WeakThis.Pin();
+			FString LanUrl;
+			if (Service.IsValid() && Service->GetLanFallbackUrl(InUrl, LanUrl))
+			{
+				UE_LOG(LogCloudUpdate, Warning, TEXT("请求失败，改用局域网地址重试：%s -> %s"), *InUrl, *LanUrl);
+				TWeakPtr<FCloudUpdateService> WeakService = WeakThis;
+				TFunction<void(bool, const TSharedPtr<FJsonObject>&)> Wrapped =
+					[WeakService, InUrl, InCallback](bool bLanOk, const TSharedPtr<FJsonObject>& LanJson)
+				{
+					const auto Self = WeakService.Pin();
+					if (bLanOk && Self.IsValid()) Self->RememberLanFallback(InUrl);
+					if (InCallback) InCallback(bLanOk, LanJson);
+				};
+				Service->FetchJson(LanUrl, Wrapped, /*bAllowLanRetry=*/false);
+				return;
+			}
+		}
 		if (InCallback)
 		{
 			InCallback(bOk, Json);
 		}
 	});
- if (!Request->ProcessRequest() && !*Completed)
- {
-  *Completed = true;
-  if (InCallback) InCallback(false, nullptr);
- }
+	if (!Request->ProcessRequest() && !*Completed)
+	{
+		*Completed = true;
+		const auto Service = WeakThis.Pin();
+		FString LanUrl;
+		if (bAllowLanRetry && Service.IsValid() && Service->GetLanFallbackUrl(InUrl, LanUrl))
+		{
+			UE_LOG(LogCloudUpdate, Warning, TEXT("请求无法发起，改用局域网地址重试：%s -> %s"), *InUrl, *LanUrl);
+			TWeakPtr<FCloudUpdateService> WeakService = WeakThis;
+			TFunction<void(bool, const TSharedPtr<FJsonObject>&)> Wrapped =
+				[WeakService, InUrl, InCallback](bool bLanOk, const TSharedPtr<FJsonObject>& LanJson)
+			{
+				const auto Self = WeakService.Pin();
+				if (bLanOk && Self.IsValid()) Self->RememberLanFallback(InUrl);
+				if (InCallback) InCallback(bLanOk, LanJson);
+			};
+			Service->FetchJson(LanUrl, Wrapped, /*bAllowLanRetry=*/false);
+			return;
+		}
+		if (InCallback) InCallback(false, nullptr);
+	}
 }
 
 namespace
@@ -93,14 +131,66 @@ private:
 }
 
 void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& InTargetPath, int32 InRetriesLeft,
- TFunction<void(bool)> InCallback, TFunction<void(int64, int64)> InProgress, const FString& ExpectedHash, int64 ExpectedSize)
+ TFunction<void(bool)> InCallback, TFunction<void(int64, int64)> InProgress, const FString& ExpectedHash, int64 ExpectedSize,
+ bool bAllowLanRetry, bool bSkipInstalledCheck)
 {
  if (bAbortRequested) { if (InCallback) InCallback(false); return; }
  IFileManager::Get().MakeDirectory(*FPaths::GetPath(InTargetPath), true);
  const FString TempPath = InTargetPath + TEXT(".download");
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ const bool bVerifyHash = !Settings || Settings->bVerifyDownloadHash;
+
+ // ---------------------------------------------------------------------
+ // 跨进程续传：上一轮启动时已经下载并落地（或暂存为 .pending）的文件，
+ // 只要大小+哈希匹配就直接确认完成，不再重新下载一遍。
+ // 否则"退出再进入"会从第一个文件开始重下，看起来就像完全没有续传。
+ // ---------------------------------------------------------------------
+ if (!bSkipInstalledCheck && bVerifyHash && !ExpectedHash.IsEmpty() && ExpectedSize >= 0)
+ {
+  const FString StagedPath = InTargetPath + TEXT(".pending");
+  FString Existing;
+  if (IFileManager::Get().FileSize(*InTargetPath) == ExpectedSize) Existing = InTargetPath;
+  else if (IFileManager::Get().FileSize(*StagedPath) == ExpectedSize) Existing = StagedPath;
+  if (!Existing.IsEmpty())
+  {
+   TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
+   const bool bStaged = Existing.EndsWith(TEXT(".pending"));
+   Async(EAsyncExecution::ThreadPool, [WeakThis, InUrl, InTargetPath, InRetriesLeft, InCallback, InProgress,
+    ExpectedHash, ExpectedSize, bAllowLanRetry, Existing, bStaged, TempPath]() mutable
+   {
+    int64 Size = 0; FString Hash;
+    const bool bMatched = ComputeFileHash(Existing, Size, Hash)
+     && Hash.Equals(ExpectedHash, ESearchCase::IgnoreCase) && Size == ExpectedSize;
+    AsyncTask(ENamedThreads::GameThread, [WeakThis, InUrl, InTargetPath, InRetriesLeft, InCallback, InProgress,
+     ExpectedHash, ExpectedSize, bAllowLanRetry, bMatched, bStaged, TempPath]() mutable
+    {
+     const auto Service = WeakThis.Pin();
+     if (!Service || Service->bAbortRequested) { if (InCallback) InCallback(false); return; }
+     if (bMatched)
+     {
+      // 已经是目标内容：.pending 说明只差启动前交换，仍需重启生效。
+      if (bStaged) Service->bRestartRequired = true;
+      // 清掉上一轮遗留的残片，避免下次被误判为"未完成"。
+      IFileManager::Get().Delete(*TempPath, false, true);
+      IFileManager::Get().Delete(*(TempPath + TEXT(".json")), false, true);
+      UE_LOG(LogCloudUpdate, Log, TEXT("已存在且校验通过，跳过下载：%s"), *InTargetPath);
+      if (InProgress) InProgress(ExpectedSize, ExpectedSize);
+      if (InCallback) InCallback(true);
+      return;
+     }
+     // 旧版本/损坏的同尺寸文件：继续正常下载覆盖。
+     Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft, InCallback, InProgress, ExpectedHash, ExpectedSize,
+      bAllowLanRetry, /*bSkipInstalledCheck=*/true);
+    });
+   });
+   return;
+  }
+ }
+
  // Hash-based identity also survives signed URL renewal. Without a hash, require If-Range validation.
+ // 无哈希时身份用 URL 路径（不含主机/端口）：局域网回退换掉主机后，已下载的残片仍能续传。
  const FString Identity = FString::Printf(TEXT("%s\n%lld"),
-  ExpectedHash.IsEmpty() ? *ResolveRemoteUrl(InUrl) : *ExpectedHash.ToLower(), ExpectedSize);
+  ExpectedHash.IsEmpty() ? *GetUrlPathIdentity(ResolveRemoteUrl(InUrl)) : *ExpectedHash.ToLower(), ExpectedSize);
  auto Stream = MakeShared<FCloudDownloadStream, ESPMode::ThreadSafe>(TempPath, Identity, ExpectedSize);
  if (ExpectedHash.IsEmpty() && Stream->Offset > 0 && Stream->Validator.IsEmpty())
  { Stream->Discard(); Stream = MakeShared<FCloudDownloadStream, ESPMode::ThreadSafe>(TempPath, Identity, ExpectedSize); }
@@ -113,7 +203,6 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
  Request->SetVerb(TEXT("GET"));
  // Headers must be validated on the HTTP thread before a single response byte is appended.
  Request->SetDelegateThreadPolicy(EHttpRequestDelegateThreadPolicy::CompleteOnHttpThread);
- const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
  if (Settings)
  {
   if (!Settings->ServerToken.IsEmpty()) Request->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *Settings->ServerToken));
@@ -144,12 +233,15 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
   }
   Request->SetTimeout(Timeout);
  }
+ // 传输级失败后的局域网回退目标（每个 URL 只兜底一次；已经是局域网地址时为空）。
+ FString LanFallbackUrl;
+ if (bAllowLanRetry) GetLanFallbackUrl(ResolveRemoteUrl(InUrl), LanFallbackUrl);
  Request->OnStatusCodeReceived().BindLambda([Stream](FHttpRequestPtr, int32 Code) { Stream->Status(Code); });
  Request->OnHeaderReceived().BindLambda([Stream](FHttpRequestPtr, const FString& Name, const FString& Value) { Stream->Header(Name, Value); });
  Request->OnProcessRequestComplete().BindLambda([Stream](FHttpRequestPtr, FHttpResponsePtr, bool Connected) { Stream->Finish(Connected); });
- const bool bVerifyHash = !Settings || Settings->bVerifyDownloadHash;
  TWeakPtr<FCloudUpdateService> WeakThis = AsShared();
- auto Finish = [WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback, InProgress, ExpectedHash, ExpectedSize, Stream](bool bOk, bool bDiscard)
+ auto Finish = [WeakThis, InUrl, InTargetPath, TempPath, InRetriesLeft, InCallback, InProgress, ExpectedHash, ExpectedSize,
+  Stream, bAllowLanRetry, bSkipInstalledCheck, LanFallbackUrl](bool bOk, bool bDiscard)
  {
   const auto Service = WeakThis.Pin();
   if (!Service || Service->bAbortRequested) { if (InCallback) InCallback(false); return; }
@@ -179,11 +271,28 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
     return;
    }
   }
+  // 传输/HTTP 失败（非区间错误、非哈希不符）：先尝试局域网地址。
+  // 域名在本机被解析成 127.0.0.1 / fake-IP，或服务器只在局域网内可达时，
+  // 这是唯一能让下载继续的路径。
+  if (!bDiscard && bAllowLanRetry && !LanFallbackUrl.IsEmpty())
+  {
+   UE_LOG(LogCloudUpdate, Warning, TEXT("下载失败，改用局域网地址重试：%s -> %s"), *InUrl, *LanFallbackUrl);
+   TWeakPtr<FCloudUpdateService> WeakService = WeakThis;
+   Service->DownloadFileTo(LanFallbackUrl, InTargetPath, FMath::Max(InRetriesLeft, 1),
+    [WeakService, InUrl, InCallback](bool bLanOk)
+    {
+     const auto Self = WeakService.Pin();
+     if (bLanOk && Self.IsValid()) Self->RememberLanFallback(InUrl);
+     if (InCallback) InCallback(bLanOk);
+    }, InProgress, ExpectedHash, ExpectedSize, /*bAllowLanRetry=*/false, /*bSkipInstalledCheck=*/true);
+   return;
+  }
   if (InRetriesLeft > 0)
   {
    UE_LOG(LogCloudUpdate, Warning, TEXT("下载未完成 %s，保留 %lld 字节，剩余重试 %d 次"), *InUrl,
     FMath::Max<int64>(IFileManager::Get().FileSize(*TempPath), 0), InRetriesLeft);
-   Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft - 1, InCallback, InProgress, ExpectedHash, ExpectedSize);
+   Service->DownloadFileTo(InUrl, InTargetPath, InRetriesLeft - 1, InCallback, InProgress, ExpectedHash, ExpectedSize,
+    bAllowLanRetry, bSkipInstalledCheck);
   }
   else if (InCallback) InCallback(false);
  };
@@ -191,33 +300,33 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
  // Holding the request here also keeps its delegates alive until completion has been observed.
  FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda(
   [Stream, Request, WeakThis, InProgress, ExpectedHash, ExpectedSize, bVerifyHash, bCached, TempPath, Finish = MoveTemp(Finish)](float) mutable
- {
-  int64 Done, Total; bool Finished, Success;
-  Stream->Snapshot(Done, Total, Finished, Success);
-  const auto Service = WeakThis.Pin();
-  if (!Service || Service->bAbortRequested) Request->CancelRequest();
-  else if (InProgress) InProgress(Done, Total);
-  if (!Finished && !bCached) return true;
-  const bool bTransportOk = bCached || Success;
-  const bool bBadRange = Stream->bInvalidRange;
-  // Disk reads and MD5 of large containers must never block game-thread UI/progress updates.
-  Async(EAsyncExecution::ThreadPool, [Stream, ExpectedHash, ExpectedSize, bVerifyHash, bTransportOk, bBadRange,
-   TempPath, Finish = MoveTemp(Finish)]() mutable
   {
-   bool Ok = bTransportOk;
-   bool Discard = bBadRange;
-   if (Ok)
+   int64 Done, Total; bool Finished, Success;
+   Stream->Snapshot(Done, Total, Finished, Success);
+   const auto Service = WeakThis.Pin();
+   if (!Service || Service->bAbortRequested) Request->CancelRequest();
+   else if (InProgress) InProgress(Done, Total);
+   if (!Finished && !bCached) return true;
+   const bool bTransportOk = bCached || Success;
+   const bool bBadRange = Stream->bInvalidRange;
+   // Disk reads and MD5 of large containers must never block game-thread UI/progress updates.
+   Async(EAsyncExecution::ThreadPool, [Stream, ExpectedHash, ExpectedSize, bVerifyHash, bTransportOk, bBadRange,
+    TempPath, Finish = MoveTemp(Finish)]() mutable
    {
-    const int64 Size = IFileManager::Get().FileSize(*TempPath);
-    Ok = Size >= 0 && (ExpectedSize < 0 || Size == ExpectedSize);
-    if (Ok && bVerifyHash && !ExpectedHash.IsEmpty())
-    { int64 HashSize = 0; FString Hash; Ok = ComputeFileHash(TempPath, HashSize, Hash) && Hash.Equals(ExpectedHash, ESearchCase::IgnoreCase); }
-    Discard |= !Ok;
-   }
-   AsyncTask(ENamedThreads::GameThread, [Finish = MoveTemp(Finish), Ok, Discard]() mutable { Finish(Ok, Discard); });
-  });
-  return false;
- }), 0.1f);
+    bool Ok = bTransportOk;
+    bool Discard = bBadRange;
+    if (Ok)
+    {
+     const int64 Size = IFileManager::Get().FileSize(*TempPath);
+     Ok = Size >= 0 && (ExpectedSize < 0 || Size == ExpectedSize);
+     if (Ok && bVerifyHash && !ExpectedHash.IsEmpty())
+     { int64 HashSize = 0; FString Hash; Ok = ComputeFileHash(TempPath, HashSize, Hash) && Hash.Equals(ExpectedHash, ESearchCase::IgnoreCase); }
+     Discard |= !Ok;
+    }
+    AsyncTask(ENamedThreads::GameThread, [Finish = MoveTemp(Finish), Ok, Discard]() mutable { Finish(Ok, Discard); });
+   });
+   return false;
+  }), 0.1f);
  if (!bCached)
  {
   if (!Request->SetResponseBodyReceiveStream(MakeShared<FCloudResponseArchive>(Stream)) || !Request->ProcessRequest())

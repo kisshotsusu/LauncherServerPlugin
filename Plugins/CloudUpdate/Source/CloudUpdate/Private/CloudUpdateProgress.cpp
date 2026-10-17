@@ -60,7 +60,9 @@ FString FCloudUpdateService::ApplyLanFallback(const FString& InUrl) const
   FScopeLock Lock(&LanFallbackLock);
   if (const FLanFallbackDecision* Found = LanFallbackCache.Find(CacheKey))
   {
-   if (Settings->LanFallbackCacheSeconds <= 0.0f || (Now - Found->Time) < Settings->LanFallbackCacheSeconds)
+   // 实测"直连该主机失败、局域网地址可用"的记录不随缓存时间过期：
+   // 否则长下载（几十分钟）会在 30 秒后又退回不可用的地址，每个文件都要先失败一次。
+   if (Found->bSticky || Settings->LanFallbackCacheSeconds <= 0.0f || (Now - Found->Time) < Settings->LanFallbackCacheSeconds)
    {
     Decision = *Found;
     bCached = true;
@@ -96,6 +98,53 @@ FString FCloudUpdateService::ApplyLanFallback(const FString& InUrl) const
  Effective.Port = Decision.ReplacementPort;
  const FString Result = ComposeCloudUrl(Effective);
  return Result.IsEmpty() ? InUrl : Result;
+}
+
+bool FCloudUpdateService::GetLanFallbackUrl(const FString& InUrl, FString& OutUrl) const
+{
+ OutUrl.Reset();
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ if (!Settings || !Settings->bEnableLanFallback || Settings->LanServerUrl.IsEmpty() || InUrl.IsEmpty()) return false;
+#if WITH_EDITOR
+ if (!Settings->bLanFallbackInEditor) return false;
+#endif
+ const FCloudUrlParts Original = ParseCloudUrl(InUrl);
+ const FCloudUrlParts Lan = ParseCloudUrl(Settings->LanServerUrl);
+ if (!Original.bValid || !Lan.bValid) return false;
+ const int32 EffectiveLanPort = Lan.Port > 0 ? Lan.Port : Original.Port;
+ // 已经在局域网地址上：不再改写，避免自转发/重复兜底。
+ if (Lan.Host.Equals(Original.Host, ESearchCase::IgnoreCase) && EffectiveLanPort == Original.Port) return false;
+ // 127.0.0.1 / localhost 的随机端口是本机联调服务（含自动化 fixture）：只对与局域网服务器
+ // 一致的端口做兜底，否则一个可用的本机服务会被改写到一个不存在的局域网端口上。
+ if (IsLoopbackHost(Original.Host) && Lan.Port > 0 && Original.Port > 0 && Original.Port != Lan.Port) return false;
+ FCloudUrlParts Effective = Original;
+ Effective.Host = Lan.Host;
+ Effective.Port = EffectiveLanPort;
+ OutUrl = ComposeCloudUrl(Effective);
+ return !OutUrl.IsEmpty() && !OutUrl.Equals(InUrl, ESearchCase::CaseSensitive);
+}
+
+void FCloudUpdateService::RememberLanFallback(const FString& InOriginalUrl) const
+{
+ const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+ if (!Settings || Settings->LanServerUrl.IsEmpty()) return;
+ const FCloudUrlParts Original = ParseCloudUrl(InOriginalUrl);
+ const FCloudUrlParts Lan = ParseCloudUrl(Settings->LanServerUrl);
+ if (!Original.bValid || !Lan.bValid) return;
+ FLanFallbackDecision Decision;
+ Decision.ReplacementHost = Lan.Host;
+ Decision.ReplacementPort = Lan.Port > 0 ? Lan.Port : Original.Port;
+ Decision.Reason = FString::Printf(TEXT("直连 %s 失败，已改用局域网地址 %s"), *Original.Host, *Lan.Host);
+ Decision.Time = FPlatformTime::Seconds();
+ Decision.bSticky = true;
+ const FString CacheKey = FString::Printf(TEXT("%s:%d"), *Original.Host.ToLower(), Original.Port);
+ {
+  FScopeLock Lock(&LanFallbackLock);
+  LanFallbackCache.Add(CacheKey, Decision);
+ }
+ bLanFallbackApplied = true;
+ LanFallbackAppliedReason = Decision.Reason;
+ UE_LOG(LogCloudUpdate, Display, TEXT("局域网回退：%s"), *Decision.Reason);
 }
 
 FString FCloudUpdateService::GetEffectiveServerUrl() const

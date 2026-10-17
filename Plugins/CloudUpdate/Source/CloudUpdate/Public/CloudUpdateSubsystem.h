@@ -188,6 +188,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CloudUpdate|局域网回退")
 	void RefreshLanFallback();
 
+	/** 本次启动 GameInstance 的选择结果与原因（bootstrap=引导包 / resource=资源实例）；为空表示未参与（编辑器或未启用）。 */
+	UFUNCTION(BlueprintCallable, Category = "CloudUpdate|诊断")
+	FString GetStartupGameInstanceInfo() const;
+
 	/** 读取访问令牌（与项目设置中的「访问令牌」一致） */
 	UFUNCTION(BlueprintPure, Category = "CloudUpdate")
 	FString GetServerToken() const;
