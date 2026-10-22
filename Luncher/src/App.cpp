@@ -556,6 +556,20 @@ void App::handleMessage(const std::string& text) {
     if (root.type != Json::Type::Object) return;
     const std::string type = root.getString("type");
 
+    // Settings and directory changes replace updater_; never do so during work.
+    if (type == "settings_save" || type == "set_game_path" || type == "browse") {
+        bool busy;
+        { std::lock_guard<std::mutex> lock(ui_.m); busy = ui_.busy; }
+        if (busy) {
+            Json ack = Json::object();
+            ack.obj["type"] = Json::string("settings_saved");
+            ack.obj["ok"] = Json::boolean(false);
+            ack.obj["message"] = Json::string("请等待当前操作完成后修改设置或游戏目录");
+            sendJson(ack.dump(0));
+            return;
+        }
+    }
+
     if (type == "init") {
         sendInit();
     } else if (type == "check") {
@@ -599,6 +613,8 @@ void App::handleMessage(const std::string& text) {
             cfg_.gamePath = path;
             ConfigStore::save(configPath(), cfg_);
             updater_ = std::make_unique<UpdateManager>(cfg_);
+            checked_ = false;
+            { std::lock_guard<std::mutex> lock(ui_.m); ui_.pending.clear(); ui_.pendingText.clear(); }
             sendInit();
             pushUiEvent(3, "游戏目录已更新", 0, true);
         }
@@ -646,8 +662,12 @@ std::string App::buildInitJson() {
         root.obj["progress"] = Json::number(ui_.progress);
         root.obj["showProgress"] = Json::boolean(ui_.showProgress);
         root.obj["busy"] = Json::boolean(ui_.busy);
+        root.obj["mode"] = Json::number(opMode_.load());
+        root.obj["total"] = Json::number(ui_.total);
+        root.obj["download"] = Json::boolean(ui_.download);
         root.obj["pendingText"] = Json::string(ui_.pendingText);
         root.obj["lastResult"] = Json::string(ui_.lastResult);
+        root.obj["lastResultOk"] = Json::boolean(ui_.lastResultOk);
 
         Json pending = Json::arrayValue();
         for (const VersionInfo& v : ui_.pending) {
@@ -682,6 +702,8 @@ void App::reportProgress(const std::string& status, int64_t done, int64_t total,
         ui_.status = status;
         ui_.currentFile = file;
         ui_.showProgress = true;
+        ui_.total = static_cast<double>(total);
+        ui_.download = download;
         if (total > 0) p = static_cast<double>(done) / static_cast<double>(total);
         ui_.progress = p;
     }
@@ -699,6 +721,7 @@ void App::applyOperationResult(bool ok, const std::string& message) {
         ui_.showProgress = false;
         ui_.currentFile.clear();
         ui_.lastResult = message;
+        ui_.lastResultOk = ok;
     }
     pushUiEvent(4, "", 0, false);
     pushUiEvent(1, "", 0, false);
@@ -1371,6 +1394,8 @@ void App::checkBackgroundUpdate() {
 /* ---------- 设置与目录选择 ---------- */
 
 void App::saveSettings(const Json& root) {
+    const bool targetChanged = root.getString("gamePath", cfg_.gamePath) != cfg_.gamePath
+        || root.getString("serverUrl", cfg_.serverUrl) != cfg_.serverUrl;
     cfg_.gamePath = root.getString("gamePath", cfg_.gamePath);
     cfg_.serverUrl = root.getString("serverUrl", cfg_.serverUrl);
     cfg_.speedLimitKBps = static_cast<long>(root.getNumber("speedLimitKBps", cfg_.speedLimitKBps));
@@ -1382,6 +1407,14 @@ void App::saveSettings(const Json& root) {
 
     ConfigStore::save(configPath(), cfg_);
     updater_ = std::make_unique<UpdateManager>(cfg_);
+    if (targetChanged) {
+        checked_ = false;
+        std::lock_guard<std::mutex> lock(ui_.m);
+        ui_.pending.clear();
+        ui_.pendingText.clear();
+        ui_.lastResult.clear();
+        ui_.status = "设置已更新，请刷新检查更新";
+    }
     loadFrames();
     setVirtualHostMappings();
 

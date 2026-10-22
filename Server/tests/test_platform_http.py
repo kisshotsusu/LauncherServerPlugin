@@ -58,6 +58,16 @@ class PlatformHTTPTests(unittest.TestCase):
     def error(self,path,code,**kwargs):
         with self.assertRaises(HTTPError) as caught:self.request(path,**kwargs)
         self.assertEqual(caught.exception.code,code)
+    def test_missing_project_config_returns_json(self):
+        (self.root/'projects'/'b'/'config.json').unlink()
+        with self.assertRaises(HTTPError) as caught:
+            self.request('/b/api/projects')
+        self.assertEqual(caught.exception.code, 404)
+        result = json.load(caught.exception)
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['project'], 'b')
+        self.assertIn('配置文件缺失', result['error'])
+
     def test_all_platform_selectors(self):
         for path,headers in [('/a/IOS/api/versions',{}),('/a/platforms/IOS/api/versions',{}),('/a/api/versions?platform=ios',{}),('/a/api/versions',{'X-Platform':'IOS'})]:
             result=self.request(path,headers=headers)

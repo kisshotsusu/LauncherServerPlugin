@@ -1583,7 +1583,11 @@ class UpdateHandler(BaseHTTPRequestHandler):
         reload_projects_if_changed()
         parsed = urlparse(self.path)
         key, rest = resolve_project_path(unquote(parsed.path))
-        cfg = load_project_cfg(key)
+        try:
+            cfg = load_project_cfg(key)
+        except FileNotFoundError:
+            self._send_json({"ok": False, "error": "项目配置文件缺失，请恢复配置或从其他项目管理页处理该项目", "project": key}, status=404)
+            return False
         if cfg is None:
             self._send_json({"error": "项目不存在"}, status=404)
             return False

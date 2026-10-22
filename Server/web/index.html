@@ -228,8 +228,10 @@
         <div class="toolbar">
           <label>平台</label>
           <select id="managePlatform" onchange="switchPlatform(this.value)"></select><select id="manageKind" aria-label="版本类型" onchange="renderVersions()"><option value="all">全部类型</option><option value="installer">程序包</option><option value="resources">资源包</option></select>
-          <button class="ghost" onclick="setAllVersions(true)">全部开放</button>
-          <button class="ghost" onclick="setAllVersions(false)">全部关闭</button>
+          <input id="versionSearch" type="search" aria-label="搜索版本" placeholder="搜索版本号 / 依赖版本" oninput="renderVersions()">
+          <select id="versionAvailability" aria-label="开放状态" onchange="renderVersions()"><option value="all">全部状态</option><option value="open">已开放</option><option value="closed">已关闭</option><option value="invalid">异常包</option></select>
+          <button id="enableVisibleVersions" class="ghost" onclick="setAllVersions(true)">开放筛选结果</button>
+          <button id="disableVisibleVersions" class="ghost" onclick="setAllVersions(false)">关闭筛选结果</button>
           <span class="muted" id="enabledHint"></span>
           <span class="spacer"></span>
           <button class="green" onclick="openUploadVersion()">上传新版本文件</button>
@@ -647,10 +649,26 @@ function apiUrl(url, prefix = window.__PREFIX__ || '') {
 }
 async function api(url, opts = {}) {
   const {projectPrefix = window.__PREFIX__ || '', ...requestOptions} = opts;
-  const resp = await fetch(apiUrl(url, projectPrefix), {...requestOptions, headers: {...headers(), ...(opts.headers || {})}});
-  const data = await resp.json().catch(() => null);
-  if (!resp.ok || (data && data.ok === false)) throw new Error((data && (data.error || data.message)) || ('HTTP ' + resp.status));
-  return data;
+  const readOnly = !opts.method || opts.method.toUpperCase() === 'GET';
+  const controller = new AbortController();
+  // Only reads time out: an interrupted write may still be running on the server.
+  const timer = readOnly && !opts.signal ? setTimeout(() => controller.abort(), 20000) : null;
+  try {
+    let resp;
+    try {
+      resp = await fetch(apiUrl(url, projectPrefix), {...requestOptions, signal: opts.signal || controller.signal, headers: {...headers(), ...(opts.headers || {})}});
+    } catch (e) {
+      if (controller.signal.aborted) throw new Error('读取超时，请检查服务器连接后刷新');
+      if (e.name === 'AbortError') throw e;
+      throw new Error(readOnly ? '无法连接服务器，请检查网络和服务是否启动' : '连接中断，操作结果未知。请刷新核对后再操作，避免重复提交');
+    }
+    const data = await resp.json().catch(() => null);
+    if (controller.signal.aborted) throw new Error('读取超时，请检查服务器连接后刷新');
+    if (resp.status === 401 || resp.status === 403) throw new Error('没有管理权限，请检查管理令牌并保存后重试');
+    if (!resp.ok || (data && data.ok === false)) throw new Error((data && (data.error || data.message)) || ('服务器请求失败（HTTP ' + resp.status + '）'));
+    if (data === null) throw new Error(readOnly ? '服务器返回了无效数据，请刷新重试' : '服务器返回了无效数据，操作结果未知，请刷新核对后再操作');
+    return data;
+  } finally { if (timer !== null) clearTimeout(timer); }
 }
 
 function switchProject(key) {
@@ -949,6 +967,7 @@ async function loadAll() {
     try { await loadCert(); } catch (e) {}
     try { await loadAccess(); } catch (e) {}
   } catch (e) {
+    if (generation !== state.loadGeneration) return;
     $('serverBadge').textContent = '离线';
     $('serverBadge').className = 'badge offline';
     toast('加载失败：' + e.message, 'err');
@@ -960,23 +979,35 @@ function versionKey(v) { return versionKind(v) + ':' + v.versionId; }
 function versionEnabled(v, list) { return v.valid !== false && (list.includes(versionKey(v)) || list.includes(v.versionId)); }
 function managedVersions() {
   const kind = $('manageKind').value;
-  return state.versions.filter(v => kind === 'all' || (kind === 'installer' ? versionKind(v) === 'installer' : versionKind(v) !== 'installer'));
+  const query = $('versionSearch').value.trim().toLowerCase();
+  const availability = $('versionAvailability').value;
+  const enabled = state.enabledMap[state.managePlatform];
+  return state.versions.filter(v => {
+    const open = v.valid !== false && (enabled === undefined || versionEnabled(v, enabled));
+    return (kind === 'all' || (kind === 'installer' ? versionKind(v) === 'installer' : versionKind(v) !== 'installer'))
+      && (!query || [v.versionId, v.baseVersionId, v.gameVersion, v.resourceVersion, v.requiredGameVersion].some(value => String(value || '').toLowerCase().includes(query)))
+      && (availability === 'all' || (availability === 'open' ? open : availability === 'closed' ? v.valid !== false && !open : v.valid === false));
+  });
 }
 function renderVersions() {
   const body = $('versionsBody');
+  const saving = !!state.enabledSaveBusy;
+  $('enableVisibleVersions').disabled = saving || !managedVersions().some(v => v.valid !== false);
+  $('disableVisibleVersions').disabled = $('enableVisibleVersions').disabled;
   const list = managedVersions().slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  if (!list.length) { $('enabledHint').textContent = '当前平台暂无版本'; body.innerHTML = '<tr><td colspan="8" class="empty">暂无版本，请先导入对应的程序包或资源包</td></tr>'; return; }
+  if (!list.length) { $('enabledHint').textContent = '显示 0 / ' + state.versions.length + ' 个包'; body.innerHTML = '<tr><td colspan="8" class="empty">' + (state.versions.length ? '没有匹配的版本，请调整搜索或筛选条件' : '暂无版本，请先导入对应的程序包或资源包') + '</td></tr>'; return; }
   const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
   const configured = state.enabledMap[platform] !== undefined;
   const effective = list.filter(v => v.valid !== false && (!configured || versionEnabled(v, state.enabledMap[platform]))).map(versionKey);
   $('enabledHint').textContent = configured
     ? '已开放 ' + effective.length + ' / ' + list.length + ' 个版本'
     : '未设置开放列表，默认全部开放';
+  $('enabledHint').textContent += ' · 显示 ' + list.length + ' / ' + state.versions.length + ' 个包' + (saving ? ' · 正在保存…' : '');
   body.innerHTML = list.map(v => `
     <tr>
       <td>
         <label class="switch" title="${effective.includes(versionKey(v)) ? '点击关闭开放' : '点击开放下载'}">
-          <input type="checkbox" ${effective.includes(versionKey(v)) ? 'checked' : ''} ${v.valid === false ? 'disabled' : ''} onchange="toggleVersion('${esc(versionKey(v))}', this.checked)">
+          <input type="checkbox" ${effective.includes(versionKey(v)) ? 'checked' : ''} ${v.valid === false || saving ? 'disabled' : ''} onchange="toggleVersion('${esc(versionKey(v))}', this.checked)">
           <span class="track"></span>
         </label>
       </td>
@@ -1004,6 +1035,7 @@ function initManagePlatform() {
 }
 
 async function toggleVersion(id, on) {
+  if (state.enabledSaveBusy) return;
   const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
   if (!platform) { toast('无可用平台', 'err'); return; }
   const all = [...new Set(state.versions.filter(v => v.valid !== false).map(versionKey))];
@@ -1017,6 +1049,7 @@ async function toggleVersion(id, on) {
 }
 
 async function setAllVersions(on) {
+  if (state.enabledSaveBusy) return;
   const platform = state.managePlatform || (state.status && state.status.platforms[0]) || '';
   if (!platform) { toast('无可用平台', 'err'); return; }
   const visible = managedVersions().filter(v => v.valid !== false).map(versionKey);
@@ -1026,15 +1059,18 @@ async function setAllVersions(on) {
 }
 
 async function saveEnabledVersions(platform, list) {
+  if (state.enabledSaveBusy) return;
+  state.enabledSaveBusy = true; renderVersions();
   try {
-    const r = await api('/api/enabled_versions', {
+    const r = await api('/api/enabled_versions?platform=' + encodeURIComponent(platform), {
       method: 'POST',
       headers: headers(true),
       body: JSON.stringify({ platform, versions: list }),
     });
+    state.enabledMap[platform] = list;
     toast(r.message + '（客户端可见 ' + r.clientVersions.length + ' 个版本）', 'ok');
-    await loadAll();
   } catch (e) { toast(e.message, 'err'); }
+  finally { state.enabledSaveBusy = false; renderVersions(); }
 }
 
 async function showVersion(id, kind = 'patch') {
@@ -1855,19 +1891,25 @@ $('tokenInput').value = state.token;
 switchTab(TAB_TITLES[location.hash.slice(1)] ? location.hash.slice(1) : 'overview');
 loadAll();
 async function refreshStatus() {
+  if (state.statusRefreshing || document.hidden) return;
+  state.statusRefreshing = true;
   const platform = state.selectedPlatform;
   try {
     const status = await api('/api/status');
     if (platform !== state.selectedPlatform) return;
     state.uptimeBase = status.uptimeSeconds || 0; state.uptimeAt = Date.now();
     $('serverBadge').textContent = '在线'; $('serverBadge').className = 'badge online';
+    $('serverBadge').title = '';
     $('serverTime').textContent = $('sideServerTime').textContent = status.serverTime || '';
     $('stCurrent').textContent = '游戏 ' + (status.gameVersion || '—') + ' / 资源 ' + (status.resourceVersion || '—');
     $('stCount').textContent = status.versionCount;
   } catch (e) {
-    $('serverBadge').textContent='离线'; $('serverBadge').className='badge offline';
-  }
+    if (platform !== state.selectedPlatform) return;
+    $('serverBadge').textContent='连接异常'; $('serverBadge').className='badge offline';
+    $('serverBadge').title = e.message;
+  } finally { state.statusRefreshing = false; }
 }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshStatus(); });
 setInterval(refreshStatus, 30000);
 setInterval(() => {
   if (state.uptimeAt) $('ctlUptime').textContent = fmtUptime(state.uptimeBase + Math.floor((Date.now() - state.uptimeAt) / 1000));

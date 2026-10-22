@@ -23,9 +23,12 @@ struct UiState {
     std::string currentFile;
     double progress = 0;
     bool showProgress = false;
+    double total = 0;
+    bool download = false;
     bool busy = false;
     std::string pendingText;
     std::string lastResult;
+    bool lastResultOk = true;
     std::vector<VersionInfo> pending;
 };
 

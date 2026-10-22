@@ -65,10 +65,6 @@
 
   <!-- 主舞台 -->
   <main id="stage">
-    <div id="versionOverlay" class="versionOverlay">
-      <span>版本</span>
-      <b id="localVersion">未知</b>
-    </div>
 
     <section id="hero">
       <div class="heroCopy">
@@ -79,8 +75,18 @@
     </section>
 
     <section id="dock">
+      <div class="operationInfo">
+        <div id="versionOverlay" class="versionOverlay"><span>版本</span><b id="localVersion">未知</b></div>
+        <div id="operationStatus" role="status" aria-live="polite">就绪</div>
+        <div id="transferInfo"></div>
+        <div id="currentFile"></div>
+        <details id="updateDetails" class="hidden">
+          <summary id="updateSummary">更新明细</summary>
+          <ul id="updateList"></ul>
+        </details>
+      </div>
       <div class="actionCluster">
-        <button id="btnLaunch" class="launchBtn" aria-label="启动游戏">
+        <button id="btnLaunch" class="launchBtn">
           <span class="launchIcon">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5z" fill="currentColor"/></svg>
           </span>
@@ -146,7 +152,7 @@
 
       <div class="settingsActions">
         <button type="button" id="btnSettingsCancel" class="miniBtn">取消</button>
-        <button type="submit" class="miniBtn primary">保存设置</button>
+        <button id="btnSettingsSave" type="submit" class="miniBtn primary">保存设置</button>
       </div>
     </form>
   </aside>

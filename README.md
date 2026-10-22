@@ -31,7 +31,7 @@ Launcher.exe（单文件）                     run_server.py / CloudUpdateServe
 
 ## 快速开始（本地联调）
 
-1. **启动服务器**：运行 `Server\启动服务器.bat`（或 `Server\build_exe.bat` 打包后运行
+1. **启动服务器**：运行 `Server\Start.bat`（或 `Server\build_exe.bat` 打包后运行
    `Server\dist\CloudUpdateServer.exe`），打开 http://127.0.0.1:8710/
 2. **构建启动器**：`Luncher\build.bat`（自动探测 VS vcvars64）
 3. **部署**：只需把 `Launcher.exe` 拷到目标机器，首次运行自动从服务器拉取

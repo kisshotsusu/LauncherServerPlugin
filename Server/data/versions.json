@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "project": "CodeBuild",
+  "platforms": [
+    "Windows",
+    "Android",
+    "IOS"
+  ],
+  "current": "",
+  "versions": [],
+  "updateChain": [],
+  "baseVersions": {
+    "Windows": [],
+    "Android": [],
+    "IOS": []
+  },
+  "revoked": [],
+  "generatedAt": "2026-10-22T15:15:58+0800"
+}

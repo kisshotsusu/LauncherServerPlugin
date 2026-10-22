@@ -1,0 +1,31 @@
+{
+  "project": "test",
+  "platforms": [
+    "Windows",
+    "Android",
+    "IOS"
+  ],
+  "default_platform": "Windows",
+  "workspace_dir": "..\\..\\workspace\\test",
+  "web_dir": "H:\\LauncherServerPlugin\\Server\\web",
+  "platform_settings": {
+    "Windows": {
+      "hotpatcherOrder": ""
+    }
+  },
+  "enabled_versions": {},
+  "admin_token": "",
+  "storage": {
+    "backend": "local",
+    "s3": {}
+  },
+  "manifest_hash": "md5",
+  "manifest_exclude_patterns": [
+    "**/*.pdb",
+    "**/*.download",
+    "Manifest_*.txt",
+    "Saved/**",
+    "**/__pycache__/**"
+  ],
+  "max_upload_mb": 2048
+}

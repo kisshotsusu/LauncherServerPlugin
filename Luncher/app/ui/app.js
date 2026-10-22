@@ -59,6 +59,7 @@ const ui = {
 let frameIdx = 0;
 let frameTimer = null;
 let bgRaf = 0;
+let frameResize = null;
 
 function setupFrames(urls, fps) {
   const canvas = $('bgSeq');
@@ -70,6 +71,7 @@ function setupFrames(urls, fps) {
 
   if (frameTimer) { clearInterval(frameTimer); frameTimer = null; }
   if (bgRaf) { cancelAnimationFrame(bgRaf); bgRaf = 0; }
+  if (frameResize) window.removeEventListener('resize', frameResize);
   ui.frames = frames;
   ui.fps = Math.max(1, Number(fps) || 24);
 
@@ -79,6 +81,7 @@ function setupFrames(urls, fps) {
   };
   resize();
   window.addEventListener('resize', resize);
+  frameResize = resize;
 
   const imgs = [];
   frames.forEach((src, i) => {
@@ -118,11 +121,12 @@ function setupFrames(urls, fps) {
   };
 
   const tick = (now) => {
+    if (document.hidden) { lastSwitch = now; bgRaf = requestAnimationFrame(tick); return; }
     if (current < 0) {
       if (showFirstReady()) lastSwitch = now;
     } else if (imgs.length > 1 && now - lastSwitch >= frameMs) {
       // 到点切下一帧；下一帧未就绪则保持当前帧
-      lastSwitch += frameMs;
+      lastSwitch = now;
       const next = (current + 1) % imgs.length;
       if (draw(next)) {
         current = next;
@@ -142,15 +146,20 @@ function setupFrames(urls, fps) {
 
 function renderStatus(text) {
   ui.status = text || '就绪';
+  $('operationStatus').textContent = ui.status;
+  $('operationStatus').classList.remove('error');
 }
 
 function renderBusy(busy, mode) {
   ui.busy = !!busy;
   ui.opMode = Number(mode) || 0;
   $('btnLaunch').disabled = ui.busy;
-  document.querySelectorAll('.toolBtn[data-action]').forEach((b) => {
+  document.querySelectorAll('.menuItem, #btnRepairMenu, #btnRefresh, #btnBrowse, #btnSettingsSave').forEach((b) => {
     b.disabled = ui.busy;
   });
+  if (ui.busy) $('repairMenu').classList.remove('open');
+  $('btnCancel').disabled = false;
+  $('btnCancel').textContent = '取消';
   $('btnCancel').classList.toggle('hidden', !ui.busy);
   updateLaunchButton();
 }
@@ -159,7 +168,7 @@ let dlSpeed = 0, dlLastBytes = 0, dlLastTime = 0, lastDlRender = 0;
 
 function trackDownloadSpeed(doneBytes) {
   const now = performance.now();
-  if (doneBytes <= 0) {
+  if (doneBytes <= 0 || doneBytes < dlLastBytes) {
     dlSpeed = 0; dlLastBytes = 0; dlLastTime = 0;
     lastDlRender = 0;
     return;
@@ -191,14 +200,25 @@ function renderProgress(show, p, file, total, download, mode) {
   ui.progressTotal = Number(total) || 0;
   ui.downloading = !!download && ui.progressShow;
   ui.opMode = Number(mode) || ui.opMode;
+  $('currentFile').textContent = ui.progressShow ? ui.progressFile : '';
+  $('currentFile').title = ui.progressFile;
 
   if (ui.downloading) {
     trackDownloadSpeed(ui.progress * ui.progressTotal);
+    const remaining = dlSpeed > 0 ? Math.ceil(ui.progressTotal * (1 - ui.progress) / dlSpeed) : 0;
+    $('transferInfo').textContent = ui.progressTotal > 0
+      ? (fmtSize(ui.progress * ui.progressTotal) || '0 B') + ' / ' + fmtSize(ui.progressTotal) + (remaining > 0 ? ' · 预计剩余 ' + fmtDuration(remaining) : '') : '正在获取下载大小…';
     const now = performance.now();
     if (now - lastDlRender < 100) return;  // 节流，避免高频刷新
     lastDlRender = now;
-  }
+  } else $('transferInfo').textContent = '';
   updateLaunchButton();
+}
+
+function fmtDuration(seconds) {
+  if (seconds < 60) return seconds + ' 秒';
+  if (seconds < 3600) return Math.ceil(seconds / 60) + ' 分钟';
+  return Math.floor(seconds / 3600) + ' 小时 ' + Math.ceil((seconds % 3600) / 60) + ' 分钟';
 }
 
 function fmtSize(bytes) {
@@ -213,12 +233,21 @@ function fmtSize(bytes) {
 function renderPending(items, text) {
   ui.pending = Array.isArray(items) ? items : [];
   ui.pendingText = text || '';
+  $('updateDetails').classList.toggle('hidden', !ui.pending.length);
+  const total = ui.pending.reduce((sum, item) => sum + Math.max(0, Number(item.totalSize) || 0), 0);
+  $('updateSummary').textContent = ui.pending.length + ' 个待更新包' + (total ? ' · ' + fmtSize(total) : '') + ' · 查看明细';
+  $('updateList').replaceChildren();
+  ui.pending.forEach(item => {
+    const row = document.createElement('li');
+    row.textContent = ({full:'程序包', resource:'资源基础包', patch:'资源补丁'}[item.type] || '更新包') + ' ' + item.versionId + ' · ' + (fmtSize(item.totalSize) || '大小待确认');
+    $('updateList').appendChild(row);
+  });
   updateLaunchButton();
 }
 
 function renderResult(ok, message) {
-  // 结果通过 Toast 提示，无独立文本区
-  void ok; void message;
+  $('operationStatus').textContent = message || (ok ? '操作完成' : '操作失败，请重试');
+  $('operationStatus').classList.toggle('error', !ok);
 }
 
 function toast(message, kind) {
@@ -262,10 +291,10 @@ function applyInit(d) {
 
   setupFrames(d.frames, d.frameFps);
   renderStatus(d.status || '就绪');
-  renderBusy(d.busy);
-  renderProgress(d.showProgress, d.progress, d.currentFile);
+  renderBusy(d.busy, d.mode);
+  renderProgress(d.showProgress, d.progress, d.currentFile, d.total, d.download, d.mode);
   renderPending(d.pending, d.pendingText);
-  if (d.lastResult) renderResult(true, d.lastResult);
+  if (d.lastResult && !d.busy) renderResult(d.lastResultOk !== false, d.lastResult);
   updateLaunchButton();
 
   ui.settings = {
@@ -277,7 +306,7 @@ function applyInit(d) {
     autoCheck: !!d.autoCheckOnStart,
     autoRepair: !!d.autoRepairOnStart,
   };
-  fillSettingsForm();
+  if (!$('settingsPanel').classList.contains('open')) fillSettingsForm();
 }
 
 function handleHost(d) {
@@ -312,11 +341,13 @@ function handleHost(d) {
     case 'folder_selected':
       if (d.path) {
         $('setGamePath').value = d.path;
-        post('set_game_path', { path: d.path });
+        if (!$('settingsPanel').classList.contains('open')) post('set_game_path', { path: d.path });
       }
       break;
     case 'settings_saved':
+      if (d.ok === false) { toast(d.message, 'err'); break; }
       toast('设置已保存', 'ok');
+      closeSettings();
       break;
     default:
       break;
@@ -353,6 +384,11 @@ $('btnSettingsCancel').addEventListener('click', closeSettings);
 
 $('settingsForm').addEventListener('submit', (e) => {
   e.preventDefault();
+  if (ui.busy) { toast('请等待当前操作完成后保存设置', 'info'); return; }
+  try {
+    const url = new URL($('setServerUrl').value.trim());
+    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) throw new Error();
+  } catch (_) { toast('请输入有效的 HTTP 或 HTTPS 服务器地址', 'err'); $('setServerUrl').focus(); return; }
   post('settings_save', {
     gamePath: $('setGamePath').value.trim(),
     serverUrl: $('setServerUrl').value.trim(),
@@ -362,7 +398,6 @@ $('settingsForm').addEventListener('submit', (e) => {
     autoCheckOnStart: $('setAutoCheck').checked,
     autoRepairOnStart: $('setAutoRepair').checked,
   });
-  closeSettings();
 });
 
 $('btnBrowse').addEventListener('click', () => post('browse'));
@@ -442,7 +477,12 @@ $('btnLaunch').addEventListener('click', () => {
   else if (ui.pending.length > 0) post('apply');
   else post('launch');
 });
-$('btnCancel').addEventListener('click', () => post('cancel'));
+$('btnCancel').addEventListener('click', () => {
+  if (!ui.busy) return;
+  $('btnCancel').disabled = true;
+  $('btnCancel').textContent = '正在取消…';
+  post('cancel');
+});
 $('btnRefresh').addEventListener('click', () => post('refresh'));
 
 /* 修复 / 目录 下拉菜单 */
@@ -454,6 +494,7 @@ $('btnRepairMenu').addEventListener('click', (e) => {
 repairMenu.querySelectorAll('.menuItem').forEach((item) => {
   item.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (ui.busy) return;
     repairMenu.classList.remove('open');
     post(item.dataset.action);
   });
@@ -464,7 +505,7 @@ document.addEventListener('click', () => repairMenu.classList.remove('open'));
 
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeSettings();
+  if (e.key === 'Escape') { closeSettings(); repairMenu.classList.remove('open'); }
 });
 
 /* ---------- 启动 ---------- */

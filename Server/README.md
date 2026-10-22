@@ -4,11 +4,24 @@
 
 ## 启动
 
+双击 `Start.bat` 启动并自动打开管理台（优先运行 `dist/CloudUpdateServer.exe`，不存在时使用 Python 源码）。保留启动窗口，在该窗口按 `Ctrl+C` 停止服务；服务运行期间可直接用浏览器访问管理台。
+
 ```bat
 python run_server.py --config config.json serve
 ```
 
 默认地址为 `http://127.0.0.1:8710/`。打包版本使用 `dist/CloudUpdateServer.exe --config config.json serve`。源码修改后须重新打包才能更新 EXE 内的后端；管理网页从 Server/web 加载，发布版本同时内置网页。
+
+服务器目录只保留两个 BAT 入口：`Start.bat` 用于日常启动，`build_exe.bat` 用于打包。包导入在管理台“项目内部 → 包导入”完成，完整性清单在总览或清单管理中生成，版本开放在版本管理中操作。原有重复启动、打开网页、强制停止及导入/发布/清单快捷脚本已移除。
+
+需要命令行操作时，可直接调用原有命令（`--platform` 按实际平台填写）：
+
+```bat
+python run_server.py --config config.json import-hotpatcher --platform Windows
+python run_server.py --config config.json gen-manifest --platform Windows
+```
+
+打包环境将 `python run_server.py` 替换为 `dist/CloudUpdateServer.exe`。导入成功后再生成清单，版本是否对客户端开放仍由管理台控制。
 
 ## 配置流程
 
@@ -91,11 +104,16 @@ GET /codebuild/api/versions   (请求头 X-Platform: IOS)
 
 ```bat
 python -m unittest discover -s tests -v
+node tests/test_console.cjs
 python -m compileall -q .
 build_venv/Scripts/python.exe -m PyInstaller --noconfirm build_exe.spec
 ```
 
 回归测试使用临时项目验证真实 HTTP 分发、平台与项目隔离、独立删除、配置路径、开放列表和下载链接。
+
+管理台版本列表支持按版本号、依赖版本搜索，以及按已开放、已关闭、异常包筛选。“开放筛选结果”和“关闭筛选结果”只修改当前筛选命中的有效包，其他包保持原状态。保存期间锁定开放操作，失败后恢复操作按钮。
+
+读取请求超过 20 秒会提示超时；写入操作不自动超时或重试，避免大型导入尚未完成时重复提交。写入期间连接中断时，请刷新核对结果后再操作。页面切到后台后暂停状态轮询，返回时立即检查连接。前端行为测试需要 Node.js；服务器运行仍无需 Node.js 或第三方 Python 依赖。
 
 ## 工作空间校验与导入反馈
 
