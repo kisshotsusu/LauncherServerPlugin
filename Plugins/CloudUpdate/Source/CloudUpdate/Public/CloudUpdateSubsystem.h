@@ -301,6 +301,11 @@ private:
 	/** 启动稳定窗口的 ticker（稳定后清除"启动尝试"记录） */
 	FTSTicker::FDelegateHandle StartupStabilityHandle;
 	double StartupStabilityDeadline = 0.0;
+    bool bStartupInBackground = false;
+    FDelegateHandle StartupBackgroundHandle;
+    FDelegateHandle StartupForegroundHandle;
+    void HandleStartupBackground();
+    void HandleStartupForeground();
 	bool TickStartupStability(float DeltaTime);
 
 	TSharedPtr<FCloudUpdateService> Service;

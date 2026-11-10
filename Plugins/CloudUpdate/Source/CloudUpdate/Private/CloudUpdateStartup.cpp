@@ -379,6 +379,21 @@ void CloudUpdatePrivate::SelectStartupGameInstance()
             UE_LOG(LogCloudUpdate, Warning, TEXT("BootstrapGameInstanceClass 无法解析（%s），退回 UGameInstance"), *Settings->BootstrapGameInstanceClass.ToString());
         }
         Maps->GameInstanceClass = FSoftClassPath(BootstrapUsedPath);
+        // 安全模式：资源实例连续启动失败（崩在稳定窗口内，记录未被清除）达到阈值时，
+        // 本次强制使用 bootstrap 引导包 —— 保证更新/修复入口一定可见。
+        const FString TrackedVersion = EffectiveRecordedResourceVersion();
+        const int32 Threshold = FMath::Max(1, Settings->SafeModeFailureThreshold);
+        const int32 PreviousAttempts = CloudUpdatePrivate::ReadStartupAttempt(TrackedVersion);
+        if (!TrackedVersion.IsEmpty() && PreviousAttempts >= Threshold)
+        {
+            bStartupSafeModeTriggered = true;
+            CloudUpdatePrivate::WriteStartupAttempt(TrackedVersion, Threshold); // 保持计数，等 UI 显式清除
+            RecordStartupGameInstanceDecision(TEXT("bootstrap"), Settings->ResourceGameInstanceClass.ToString(), BootstrapUsedPath,
+                FString::Printf(TEXT("安全模式：资源版本 %s 连续启动失败 %d 次"), *TrackedVersion, PreviousAttempts));
+            return;
+        }
+        // 记一次尝试：撑过安全窗口后由 UCloudUpdateSubsystem 的 ticker 清除。
+
         TArray<FString> Paks;
         FString ResourceReason;
         if (!HasInstalledResources(*Settings, Paks, ResourceReason))
@@ -386,6 +401,7 @@ void CloudUpdatePrivate::SelectStartupGameInstance()
             RecordStartupGameInstanceDecision(TEXT("bootstrap"), Settings->ResourceGameInstanceClass.ToString(), BootstrapUsedPath, ResourceReason);
             return;
         }
+        if (!TrackedVersion.IsEmpty()) CloudUpdatePrivate::WriteStartupAttempt(TrackedVersion, PreviousAttempts + 1);
         // Engine subsystem initialization is AFTER the initial container mount and BEFORE GameInstance creation. Never exchange
         // .pending files here. Mount only containers not already mounted, including IoStore sidecars.
         auto* PakFile = static_cast<FPakPlatformFile*>(FPlatformFileManager::Get().FindPlatformFile(TEXT("PakFile")));
@@ -407,22 +423,6 @@ void CloudUpdatePrivate::SelectStartupGameInstance()
                 return;
             }
         }
-        // 安全模式：资源实例连续启动失败（崩在稳定窗口内，记录未被清除）达到阈值时，
-        // 本次强制使用 bootstrap 引导包 —— 保证更新/修复入口一定可见。
-        const FString TrackedVersion = EffectiveRecordedResourceVersion();
-        const int32 Threshold = FMath::Max(1, Settings->SafeModeFailureThreshold);
-        const int32 PreviousAttempts = CloudUpdatePrivate::ReadStartupAttempt(TrackedVersion);
-        if (!TrackedVersion.IsEmpty() && PreviousAttempts >= Threshold)
-        {
-            bStartupSafeModeTriggered = true;
-            CloudUpdatePrivate::WriteStartupAttempt(TrackedVersion, Threshold); // 保持计数，等 UI 显式清除
-            RecordStartupGameInstanceDecision(TEXT("bootstrap"), Settings->ResourceGameInstanceClass.ToString(), BootstrapUsedPath,
-                FString::Printf(TEXT("安全模式：资源版本 %s 连续启动失败 %d 次"), *TrackedVersion, PreviousAttempts));
-            return;
-        }
-        // 记一次尝试：撑过安全窗口后由 UCloudUpdateSubsystem 的 ticker 清除。
-        if (!TrackedVersion.IsEmpty()) CloudUpdatePrivate::WriteStartupAttempt(TrackedVersion, PreviousAttempts + 1);
-
         FString ResourceUsedPath;
         UClass* GameClass = ResolveSelectedGameInstanceClass(Settings->ResourceGameInstanceClass, ResourceUsedPath);
         if (!GameClass)

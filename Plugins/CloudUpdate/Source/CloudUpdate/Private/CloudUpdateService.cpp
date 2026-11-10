@@ -308,7 +308,7 @@ FString FCloudUpdateService::GetPendingResourceVersion() const
  }
  return Pending;
 }
-void FCloudUpdateService::SavePendingResourceVersion(const FString& Version)
+bool FCloudUpdateService::SavePendingResourceVersion(const FString& Version)
 {
  TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
  Json->SetNumberField(TEXT("schemaVersion"), 2);
@@ -343,7 +343,14 @@ void FCloudUpdateService::SavePendingResourceVersion(const FString& Version)
  FString Text;
  FJsonSerializer::Serialize(Json, TJsonWriterFactory<>::Create(&Text));
  IFileManager::Get().MakeDirectory(*FPaths::GetPath(GetVersionRecordPath()), true);
- FFileHelper::SaveStringToFile(Text, *GetVersionRecordPath());
+ const FString RecordPath = GetVersionRecordPath();
+ const FString TempPath = RecordPath + TEXT(".tmp");
+ if (!FFileHelper::SaveStringToFile(Text, *TempPath) || !IFileManager::Get().Move(*RecordPath, *TempPath, true, true))
+ {
+  UE_LOG(LogCloudUpdate, Error, TEXT("无法保存待生效资源记录：%s"), *RecordPath);
+  return false;
+ }
+ return true;
 }
 void FCloudUpdateService::PromotePendingResourceVersion()
 {

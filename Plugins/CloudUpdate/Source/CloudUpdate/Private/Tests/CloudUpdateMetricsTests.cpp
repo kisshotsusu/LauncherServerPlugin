@@ -188,6 +188,13 @@ bool FCloudUpdateIoStoreMergeTest::RunTest(const FString& Parameters)
   }
  }
  TestEqual(TEXT("Two IoStore containers exchanged before mount"), FCloudBinaryMerge::FinalizePendingMerges(Root), 2);
+ // Split IoStore data belongs to the same transaction group as its index.
+ FFileHelper::SaveStringToFile(TEXT("index"), *(Root / TEXT("split.utoc.pending")));
+ FFileHelper::SaveStringToFile(TEXT("data"), *(Root / TEXT("split_s0.ucas.pending")));
+ TestEqual(TEXT("Split container index and shard exchange together"), FCloudBinaryMerge::FinalizePendingMerges(Root), 2);
+ FFileHelper::SaveStringToFile(TEXT("global index"), *(Root / TEXT("global.utoc.pending")));
+ TestEqual(TEXT("Global index may have no data partition"), FCloudBinaryMerge::FinalizePendingMerges(Root), 1);
+
  IModularFeatures::Get().UnregisterModularFeature(BINARIES_DIFF_PATCH_FEATURE_NAME, &Feature);
  IFileManager::Get().DeleteDirectory(*Root, false, true);
  return true;

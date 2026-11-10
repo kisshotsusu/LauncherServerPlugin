@@ -10,6 +10,7 @@
 #include "Misc/Paths.h"
 #include "Containers/Ticker.h"
 #include "HAL/PlatformTime.h"
+#include "Misc/CoreDelegates.h"
 
 UCloudUpdateSubsystem* UCloudUpdateSubsystem::GetCloudUpdateSubsystem()
 {
@@ -63,12 +64,31 @@ void UCloudUpdateSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		UE_LOG(LogCloudUpdate, Error, TEXT("安全模式：资源实例连续启动失败，本次使用 bootstrap 引导包。处理完后可调用 ExitSafeMode 清除标记。"));
 	}
 	StartupStabilityDeadline = FPlatformTime::Seconds() + (Settings ? FMath::Max(5, Settings->SafeModeStableSeconds) : 45);
-	StartupStabilityHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UCloudUpdateSubsystem::TickStartupStability));
+	// A bootstrap/safe-mode session must never erase a failed resource startup.
+	if (!bSafeModeActive && CloudUpdatePrivate::GetStartupGameInstanceDecision().StartsWith(TEXT("resource |")))
+	{
+		StartupBackgroundHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(this, &UCloudUpdateSubsystem::HandleStartupBackground);
+        StartupForegroundHandle = FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddUObject(this, &UCloudUpdateSubsystem::HandleStartupForeground);
+        StartupStabilityHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UCloudUpdateSubsystem::TickStartupStability));
+	}
+}
+
+void UCloudUpdateSubsystem::HandleStartupBackground()
+{
+    bStartupInBackground = true;
+}
+
+void UCloudUpdateSubsystem::HandleStartupForeground()
+{
+    bStartupInBackground = false;
+    const UCloudUpdateSettings* Settings = UCloudUpdateSettings::Get();
+    // Require a continuous foreground window after resume; background time is not health.
+    StartupStabilityDeadline = FPlatformTime::Seconds() + (Settings ? FMath::Max(5, Settings->SafeModeStableSeconds) : 45);
 }
 
 bool UCloudUpdateSubsystem::TickStartupStability(float DeltaTime)
 {
-	if (FPlatformTime::Seconds() < StartupStabilityDeadline) return true;
+	if (bStartupInBackground || FPlatformTime::Seconds() < StartupStabilityDeadline) return true;
 	// 撑过稳定窗口 = 本次资源实例启动成功，清除尝试记录。
 	CloudUpdatePrivate::ClearStartupAttempt();
 	StartupStabilityHandle.Reset();
@@ -111,6 +131,11 @@ void UCloudUpdateSubsystem::HandleIntegrityCheckFinishedForRepair(bool bSuccess,
 
 void UCloudUpdateSubsystem::Deinitialize()
 {
+    FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(StartupBackgroundHandle);
+    FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(StartupForegroundHandle);
+    // Orderly shutdown is not a failed startup, even before the stability window.
+    if (!bSafeModeActive && CloudUpdatePrivate::GetStartupGameInstanceDecision().StartsWith(TEXT("resource |")))
+        CloudUpdatePrivate::ClearStartupAttempt();
 	if (StartupStabilityHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(StartupStabilityHandle);

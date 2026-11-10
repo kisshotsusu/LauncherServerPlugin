@@ -113,7 +113,8 @@ EBinaryMergeResult FCloudBinaryMerge::ApplyPatchToFileEx(const FString& InBaseFi
 	// 原子替换：先写临时文件，再 Move 覆盖基础文件，避免写一半损坏基础文件
 	const FString Extension = FPaths::GetExtension(InBaseFilePath).ToLower();
     const bool bIoStore = Extension == TEXT("utoc") || Extension == TEXT("ucas");
-    if (!bIoStore && IFileManager::Get().Move(*InBaseFilePath, *TmpPath, /*ReplaceExisting=*/true, /*EvenIfReadOnly=*/false, /*Attributes=*/false))
+    const bool bStagePak = (PLATFORM_ANDROID || PLATFORM_IOS) && Extension == TEXT("pak");
+    if (!bIoStore && !bStagePak && IFileManager::Get().Move(*InBaseFilePath, *TmpPath, /*ReplaceExisting=*/true, /*EvenIfReadOnly=*/false, /*Attributes=*/false))
 	{
 		return EBinaryMergeResult::Success;
 	}
@@ -136,6 +137,10 @@ EBinaryMergeResult FCloudBinaryMerge::ApplyPatchToFileEx(const FString& InBaseFi
 
 int32 FCloudBinaryMerge::FinalizePendingMerges(const FString& InDirectory, bool bIncludeSubdirectories)
 {
+	// Android commits only completed manifest transactions before engine mounting.
+#if PLATFORM_ANDROID
+    return 0;
+#endif
 	TArray<FString> Pending;
 	IFileManager::Get().FindFilesRecursive(Pending, *InDirectory, TEXT("*.pending"), /*Files=*/true, /*Dirs=*/false, bIncludeSubdirectories);
 
@@ -182,8 +187,14 @@ int32 FCloudBinaryMerge::FinalizePendingMerges(const FString& InDirectory, bool 
 		FString BasePath = PendingPath;
 		if (!BasePath.RemoveFromEnd(TEXT(".pending"))) continue;
 		const FString Extension = FPaths::GetExtension(BasePath).ToLower();
-		const FString Key = (Extension == TEXT("utoc") || Extension == TEXT("ucas"))
-			? BasePath.LeftChop(Extension.Len() + 1)   // 去掉 ".utoc"/".ucas"，同组共用同一 base
+		FString ContainerBase = BasePath.LeftChop(Extension.Len() + 1);
+        if (Extension == TEXT("ucas"))
+        {
+            const int32 Split = ContainerBase.Find(TEXT("_s"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+            if (Split != INDEX_NONE && ContainerBase.Mid(Split + 2).IsNumeric()) ContainerBase = ContainerBase.Left(Split);
+        }
+        const FString Key = (Extension == TEXT("utoc") || Extension == TEXT("ucas"))
+			? ContainerBase   // 去掉 ".utoc"/".ucas"，同组共用同一 base
 			: BasePath;
 		if (!Groups.Contains(Key)) GroupKeys.Add(Key);
 		Groups.FindOrAdd(Key).Add(BasePath);
@@ -203,7 +214,8 @@ int32 FCloudBinaryMerge::FinalizePendingMerges(const FString& InDirectory, bool 
 			bHasUtoc |= Extension == TEXT("utoc");
 			bHasUcas |= Extension == TEXT("ucas");
 		}
-		if (bHasUtoc != bHasUcas)
+		const bool bGlobalIndexOnly = FPaths::GetCleanFilename(Key).Equals(TEXT("global"), ESearchCase::IgnoreCase) && bHasUtoc;
+		if (bHasUtoc != bHasUcas && !bGlobalIndexOnly)
 		{
 			UE_LOG(LogCloudUpdate, Error, TEXT("容器组不完整，拒绝交换以免留下半套容器：%s"), *Key);
 			continue;

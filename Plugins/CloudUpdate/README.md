@@ -393,3 +393,25 @@ UnrealEditor-Cmd.exe BiNanSuo.uproject -unattended -NullRHI -ExecCmds="Automatio
   被拒绝、成套容器被接受、安全模式计数读/写/清与换版本归零。
 - 过程中发现并修正：`ValidateStartupManifest` 中那行 Error 级日志会被自动化框架记为测试失败，
   已改为 Warning（该条件本就安全回退 bootstrap，不是错误）。
+
+
+## 移动端事务提交优化（2026-11-03）
+
+Android/iOS 下载和差分合并产生的 pak 与 IoStore 文件均暂存为 `.pending`。Android 项目集成的 BNSGameCore 在引擎挂载前读取 `Saved/CloudUpdate/Android/local_version.json`，仅对具有完整 pendingFiles 清单且逐项大小/MD5 校验通过的更新执行提交；没有完成记录的残留暂存文件保留用于重试，不盲目安装。
+
+Android 提交前写入持久化事务日志，保留 `.cloudbak` 旧文件；进程中断后在下次挂载前按日志恢复。完成提交后清理备份。C++ 的 Android 初始化兜底不再自行交换未提交文件，避免绕过完整清单。需一并打包本次 BNSGameCore 的 Java/native 修改。手动合并产生但未登记进 pendingFiles 的文件不会在 Android 上自动激活；应通过受管更新流程完成登记。iOS 尚需接入等价的挂载前事务提交器。
+
+安全模式阈值在插件主动挂载之前检查；只有实际选择资源实例的正常会话才会启动清理失败记录的 ticker，bootstrap/安全模式会话不清理计数。引擎自动挂载早于 EngineSubsystem，因此隔离自动挂载阶段的损坏容器仍需启动前容器隔离策略。
+
+启动仍包含全量哈希校验，未引入按时间戳跳过校验的缓存。资源量较大时须测量真机冷启动耗时。GameInstance 选择仍只在进程启动时发生。
+
+
+### 第二轮：挂载前完整性隔离与前后台稳定窗口
+
+Android 完成事务恢复/提交后，在引擎挂载前验证记录中的活动下载容器。仅检查 Saved/Paks 内的受管 pak/utoc/ucas；发现损坏或缺失时，将整套已登记的活动容器改名为 `.quarantine`（重复隔离用数字后缀），保留原始字节，避免半套容器被自动挂载。APK 和 Content/Paks 引导资源不受此隔离路径影响。隔离后需要重新获取完整资源/修复，不能将隔离文件直接改回原名当作修复。
+
+此机制检测字节完整性，不等价于隔离所有蓝图逻辑崩溃或内容兼容性错误。没有有效记录或未登记的第三方容器仍需另外的管理策略。启动前校验会增加磁盘读取，尚未提供真机耗时结论。
+
+启动稳定窗口只累计连续前台运行；退后台暂停判定，回前台重新计时。正常 Deinitialize 清除正常资源会话的本轮尝试记录，安全模式会话仍保留失败计数。生命周期代理在 Deinitialize 中解除。
+
+Android 外部基础容器检查支持只有 `_sN.ucas` 的分片形式。事务恢复在任何文件操作前验证完整日志的数量、路径、重复项及 existed 字段，避免后续坏条目导致先修改部分文件。

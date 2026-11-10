@@ -622,7 +622,14 @@ void FCloudUpdateService::DownloadNextUpdateFile()
 		if (!MountPendingPaks()) { FinishUpdate(false, TEXT("补丁文件已下载，但挂载失败；资源版本未推进")); return; }
         const FString ResourceVersion = PendingResourceVersion.IsEmpty() ? PendingVersionId : PendingResourceVersion;
         bRestartRequired |= UCloudUpdateSettings::Get()->bSelectGameInstanceFromResources;
-        if (bRestartRequired) SavePendingResourceVersion(ResourceVersion);
+        if (bRestartRequired)
+        {
+            if (!SavePendingResourceVersion(ResourceVersion))
+            {
+                FinishUpdate(false, TEXT("无法保存待生效资源记录；请检查存储空间后重试"));
+                return;
+            }
+        }
         else SaveLocalVersion(ResourceVersion);
 		const bool bRestart = bRestartRequired;
 		FinishUpdate(true, bRestart

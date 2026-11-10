@@ -250,16 +250,14 @@ void FCloudUpdateService::DownloadFileTo(const FString& InUrl, const FString& In
   if (bOk)
   {
    if (InProgress) InProgress(Size, Size);
-   // 安装策略：保持既有语义 —— IoStore 容器（.utoc/.ucas）始终暂存为 .pending，
-   // 普通文件（含 .pak）直接落到目标路径。
-   // 容器之所以不原地覆盖：运行时引擎可能已经挂载了旧容器，原地替换正在被读取的文件
-   // 不安全。而"新 .pak + 旧/缺失容器"这一不对称，由**重启前的成组交换**消除：
-   //   - Android：BNSAndroidStorage.cpp 的 JNI 早期钩子（引擎挂载 Paks 之前）
-   //   - Windows：BNSWindowsStorageBootstrap.inl（main 之前）
-   //   - 兜底：FCloudBinaryMerge::FinalizePendingMerges（成组交换 + 整组回滚 + 崩溃恢复）
-   // 交换发生在引擎挂载之前，所以下次启动时 .pak 与 .utoc/.ucas 一定是配套的。
+   // Stage IoStore and mobile pak sidecars until the completed manifest can be
+   // committed before mounting. Android's Java transaction owns backup/recovery;
+   // downloading only part of an update must never replace the active container.
    const bool bIoStore = InTargetPath.EndsWith(TEXT(".utoc")) || InTargetPath.EndsWith(TEXT(".ucas"));
    bool bPending = bIoStore;
+#if PLATFORM_ANDROID || PLATFORM_IOS
+   bPending |= InTargetPath.EndsWith(TEXT(".pak"), ESearchCase::IgnoreCase);
+#endif
    bool bMoved = IFileManager::Get().Move(*(bPending ? InTargetPath + TEXT(".pending") : InTargetPath), *TempPath, true, true);
    if (!bMoved && !bPending)
    { bPending = true; bMoved = IFileManager::Get().Move(*(InTargetPath + TEXT(".pending")), *TempPath, true, true); }

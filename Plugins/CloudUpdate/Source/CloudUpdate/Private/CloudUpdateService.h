@@ -114,7 +114,7 @@ private:
  FString LocalVersionRecordPath;
  FString GetVersionRecordPath() const;
  bool ReadLocalVersionRecord(TSharedPtr<FJsonObject>& OutRecord) const;
- void SavePendingResourceVersion(const FString& Version);
+ bool SavePendingResourceVersion(const FString& Version);
 
  void ResolveNextPlanDescriptor();
  void FinishPlan(bool bSuccess, const FString& Message);
